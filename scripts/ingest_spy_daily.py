@@ -43,7 +43,15 @@ def _clean_col(c):
         c = "_".join([str(x) for x in c if x is not None and str(x) != ""])
     return str(c).strip().lower().replace(" ", "_")
 
-df.columns = [_clean_col(c) for c in df.columns]
+def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    def norm(c):
+        if isinstance(c, tuple):
+            c = "_".join(str(x) for x in c if x)
+        return str(c).strip().lower().replace(" ", "_")
+
+    df.columns = [norm(c) for c in df.columns]
+    return df
+
 
 if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
     # Example: ('Open','SPY') -> 'open_spy'
