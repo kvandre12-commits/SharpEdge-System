@@ -1,0 +1,32 @@
+name: Ingest SPY
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "29 14 * * 1-5"
+    - cron: "30 15 * * 1-5"
+
+permissions:
+  contents: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - run: python scripts/ingest_spy_daily.py
+
+      - run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add .
+          git diff --cached --quiet || git commit -m "auto update spy truth"
+          git push
