@@ -10,6 +10,8 @@ def fetch_spy_daily():
             c = "_".join(str(x) for x in c if x not in (None, ""))
         return str(c).strip().lower().replace(" ", "_")
 
+        df.columns = [norm(c) for c in df.columns]
+
     # pick correct columns across yfinance variants
     def pick(*names):
         for n in names:
