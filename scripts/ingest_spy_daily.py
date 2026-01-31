@@ -55,6 +55,8 @@ else:
     df.columns = [str(c) for c in df.columns]
 
 df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+# yfinance usually uses "Date" before cleaning -> becomes "date"
+df["date"] = pd.to_datetime(df["date"]).dt.date.astype(str)
 
     df["date"] = pd.to_datetime(df["date"]).dt.date.astype(str)
 
