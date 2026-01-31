@@ -32,9 +32,23 @@ def connect_db():
     return con
 
 def fetch_spy_daily():
-    df = yf.download(SYMBOL, period="2y", interval="1d", auto_adjust=False)
-    df = df.reset_index()
-    df.columns = [c.lower().replace(" ", "_") for c in df.columns]
+    # yfinance sometimes returns MultiIndex columns (tuples). Flatten them safely.
+sym = SYMBOL[0] if isinstance(SYMBOL, (list, tuple)) else SYMBOL
+
+df = yf.download(sym, period="2y", interval="1d", auto_adjust=False)
+df = df.reset_index()
+
+if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
+    # Example: ('Open','SPY') -> 'open_spy'
+    df.columns = [
+        "_".join([str(x) for x in col if x is not None and str(x) != ""])
+        for col in df.columns.to_list()
+    ]
+else:
+    df.columns = [str(c) for c in df.columns]
+
+df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+
     df["date"] = pd.to_datetime(df["date"]).dt.date.astype(str)
 
     out = df[["date", "open", "high", "low", "close", "volume"]].copy()
