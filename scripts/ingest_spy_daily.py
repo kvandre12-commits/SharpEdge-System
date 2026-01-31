@@ -12,8 +12,7 @@ SOURCE = "yfinance"
 
 def connect(db_path: str) -> sqlite3.Connection:
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    con = sqlite3.connect(db_path)
-    return con
+    return sqlite3.connect(db_path)
 
 
 def ensure_truth_table(con: sqlite3.Connection):
@@ -37,18 +36,15 @@ def ensure_truth_table(con: sqlite3.Connection):
 
 
 def fetch_spy_daily(period: str = "2y") -> pd.DataFrame:
-    df = yf.download(SYMBOL, period=period, interval="1d", auto_adjust=False)
+    df = yf.download(SYMBOL, period=period, interval="1d", auto_adjust=False, progress=False)
 
-    # yfinance can return MultiIndex columns sometimes; flatten them safely.
+    # flatten MultiIndex if present
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = [c[0] for c in df.columns]
 
     df = df.reset_index()
-
-    # Normalize column names
     df.columns = [str(c).lower().replace(" ", "_") for c in df.columns]
 
-    # yfinance usually uses 'date' for daily; sometimes 'datetime'
     if "date" not in df.columns and "datetime" in df.columns:
         df = df.rename(columns={"datetime": "date"})
 
@@ -59,7 +55,6 @@ def fetch_spy_daily(period: str = "2y") -> pd.DataFrame:
     out["source"] = SOURCE
     out["ingest_ts"] = datetime.now(timezone.utc).isoformat()
 
-    # Basic truth sanity: drop rows with missing OHLC
     out = out.dropna(subset=["open", "high", "low", "close"]).reset_index(drop=True)
     return out
 
@@ -109,7 +104,6 @@ def main():
         upsert_truth(con, truth)
         write_truth_csv(con)
 
-        # Quick visibility in logs
         last = truth.tail(1)
         print("OK: truth ingested. Last row:")
         print(last.to_string(index=False))
