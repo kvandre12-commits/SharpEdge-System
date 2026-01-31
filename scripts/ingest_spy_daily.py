@@ -47,7 +47,33 @@ df.columns = [_clean_col(c) for c in df.columns]
 
 if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
     # Example: ('Open','SPY') -> 'open_spy'
-    df.columns = [
+   # Normalize columns from yfinance (sometimes MultiIndex -> tuples)
+df.columns = [
+    "_".join([str(x) for x in c if x not in (None, "")]).strip()
+    if isinstance(c, tuple) else str(c).strip()
+    for c in df.columns
+]
+df.columns = [c.lower().replace(" ", "_") for c in df.columns]
+
+# Pick the right column names whether yfinance returns "open" or "spy_open"/"open_spy"
+def pick(*names):
+    for n in names:
+        if n in df.columns:
+            return n
+    raise KeyError(f"Missing columns. Have: {df.columns.tolist()}")
+
+date_col = pick("date", "datetime")
+open_col = pick("open", "spy_open", "open_spy")
+high_col = pick("high", "spy_high", "high_spy")
+low_col  = pick("low",  "spy_low",  "low_spy")
+close_col= pick("close","spy_close","close_spy")
+vol_col  = pick("volume","spy_volume","volume_spy")
+
+df[date_col] = pd.to_datetime(df[date_col]).dt.date.astype(str)
+
+out = df[[date_col, open_col, high_col, low_col, close_col, vol_col]].copy()
+out.columns = ["date", "open", "high", "low", "close", "volume"]
+ df.columns = [
         "_".join([str(x) for x in col if x is not None and str(x) != ""])
         for col in df.columns.to_list()
     ]
