@@ -37,6 +37,13 @@ sym = SYMBOL[0] if isinstance(SYMBOL, (list, tuple)) else SYMBOL
 
 df = yf.download(sym, period="2y", interval="1d", auto_adjust=False)
 df = df.reset_index()
+# Flatten MultiIndex columns from yfinance (tuples like ('Open','SPY'))
+def _clean_col(c):
+    if isinstance(c, tuple):
+        c = "_".join([str(x) for x in c if x is not None and str(x) != ""])
+    return str(c).strip().lower().replace(" ", "_")
+
+df.columns = [_clean_col(c) for c in df.columns]
 
 if hasattr(df.columns, "nlevels") and df.columns.nlevels > 1:
     # Example: ('Open','SPY') -> 'open_spy'
