@@ -314,12 +314,6 @@ def write_latest_signal(feats: pd.DataFrame):
         )
     }])
 
-    os.makedirs("outputs", exist_ok=True)
-    path = "outputs/latest_signal.csv"
-    signal.to_csv(path, index=False)
-    print(f"Wrote {path} (1 row)")
-
-
 # ---- update main to call it ----
 def main():
     con = connect(DB_PATH)
