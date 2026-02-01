@@ -183,7 +183,21 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     feats["feature_version"] = "v2_triggers_permission_strength"
 
     feats = feats.dropna(subset=["prev_close"]).reset_index(drop=True)
-    return feats
+    
+    # --- FINRA ATS pressure overlay (weekly, forward-filled) ---
+    finra_path = "outputs/spy_finra_ats_weekly.csv"
+    if os.path.exists(finra_path):
+        finra = pd.read_csv(finra_path)
+        finra["date"] = pd.to_datetime(finra["date"])
+        finra = finra.sort_values("date")
+
+        out = out.merge(finra[["date", "ats_ratio"]], on="date", how="left")
+        out["ats_ratio"] = out["ats_ratio"].ffill()
+        out["ats_pressure_flag"] = (
+            out["ats_ratio"] >= out["ats_ratio"].rolling(20).quantile(0.8)
+        ).astype(int)
+
+    return outreturn feats
 
 
 def ensure_features_table(con: sqlite3.Connection):
