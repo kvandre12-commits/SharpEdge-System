@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 import os, json, time, sqlite3
 import datetime as dt
+from typing import Any, Dict, List
+
 import pandas as pd
 import requests
+from requests.auth import HTTPBasicAuth
 
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 SYMBOL = os.getenv("SYMBOL", "SPY")
 
-FINRA_API_KEY = os.getenv("FINRA_API_KEY", "")
+# FINRA credentials (DO NOT hardcode; set as GitHub secrets/env vars)
+FINRA_CLIENT_ID = os.getenv("FINRA_CLIENT_ID", "")
+FINRA_CLIENT_SECRET = os.getenv("FINRA_CLIENT_SECRET", "")
+
 BASE_URL = "https://api.finra.org/data/group/otcMarket/name"
 DATASET_PRIMARY = "weeklySummaryHistoric"
 DATASET_FALLBACK = "weeklySummary"
@@ -17,19 +23,19 @@ SUMMARY_TYPE = os.getenv("FINRA_SUMMARY_TYPE", "ATS_W_SMBL")
 
 START = os.getenv("FINRA_START", "2024-01-01")
 LIMIT = int(os.getenv("FINRA_LIMIT", "5000"))
+SLEEP_S = float(os.getenv("FINRA_SLEEP_S", "0.25"))
 
 def monday_of_week(d: dt.date) -> dt.date:
     return d - dt.timedelta(days=d.weekday())
 
 def daterange_mondays(start: dt.date, end: dt.date):
-    s = monday_of_week(start)
-    e = monday_of_week(end)
-    cur = s
-    while cur <= e:
+    cur = monday_of_week(start)
+    endm = monday_of_week(end)
+    while cur <= endm:
         yield cur
         cur += dt.timedelta(days=7)
 
-def build_payload(week_start: str):
+def build_payload(week_start: str) -> Dict[str, Any]:
     return {
         "compareFilters": [
             {"compareType": "equal", "fieldName": "issueSymbolIdentifier", "fieldValue": SYMBOL},
@@ -41,25 +47,43 @@ def build_payload(week_start: str):
         "offset": 0
     }
 
-def post_rows(dataset: str, payload: dict, headers: dict):
-    url = f"{BASE_URL}/{dataset}"
-    r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=60)
-    if r.status_code in (401, 403):
-        raise PermissionError(f"{r.status_code} from FINRA. Set FINRA_API_KEY secret.")
-    r.raise_for_status()
-    data = r.json()
-    return data["data"] if isinstance(data, dict) and "data" in data else data
+def safe_rows(resp: requests.Response) -> List[Dict[str, Any]]:
+    # FINRA sometimes returns HTML/blank → treat as empty instead of crashing
+    txt = resp.text or ""
+    if not txt.strip():
+        return []
+    if txt.lstrip().startswith("<"):
+        return []
+    try:
+        data = resp.json()
+    except Exception:
+        return []
+    if isinstance(data, dict) and isinstance(data.get("data"), list):
+        return data["data"]
+    if isinstance(data, list):
+        return data
+    return []
 
-def fetch_week(week_start: dt.date, headers: dict) -> pd.DataFrame:
+def post_rows(dataset: str, payload: dict, headers: dict, auth: HTTPBasicAuth) -> List[Dict[str, Any]]:
+    url = f"{BASE_URL}/{dataset}"
+    resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=60, auth=auth)
+
+    if resp.status_code in (401, 403):
+        raise PermissionError("FINRA auth failed (401/403). Check FINRA_CLIENT_ID/FINRA_CLIENT_SECRET.")
+    if resp.status_code >= 400:
+        snippet = (resp.text or "")[:200].replace("\n", " ")
+        raise RuntimeError(f"FINRA HTTP {resp.status_code}: {snippet}")
+
+    return safe_rows(resp)
+
+def fetch_week(week_start: dt.date, headers: dict, auth: HTTPBasicAuth) -> pd.DataFrame:
     ws = week_start.isoformat()
     payload = build_payload(ws)
     try:
-        rows = post_rows(DATASET_PRIMARY, payload, headers)
+        rows = post_rows(DATASET_PRIMARY, payload, headers, auth)
     except Exception:
-        rows = post_rows(DATASET_FALLBACK, payload, headers)
-    if not rows:
-        return pd.DataFrame()
-    return pd.DataFrame(rows)
+        rows = post_rows(DATASET_FALLBACK, payload, headers, auth)
+    return pd.DataFrame(rows) if rows else pd.DataFrame()
 
 def ensure_tables(con: sqlite3.Connection):
     con.execute("""
@@ -89,86 +113,41 @@ def ensure_tables(con: sqlite3.Connection):
     """)
     con.commit()
 
-def upsert_weekly(con: sqlite3.Connection, weekly: pd.DataFrame):
-    cols = [
-        "week_start","symbol","ats_weekly_shares","ats_weekly_trades","ats_venue_count",
-        "avg_trade_size","shares_vs_13w_avg","trades_vs_13w_avg","shares_z_26w","ingest_ts"
-    ]
-    sql = f"""
-    INSERT INTO ats_weekly ({",".join(cols)})
-    VALUES ({",".join(["?"]*len(cols))})
-    ON CONFLICT(symbol, week_start) DO UPDATE SET
-      ats_weekly_shares=excluded.ats_weekly_shares,
-      ats_weekly_trades=excluded.ats_weekly_trades,
-      ats_venue_count=excluded.ats_venue_count,
-      avg_trade_size=excluded.avg_trade_size,
-      shares_vs_13w_avg=excluded.shares_vs_13w_avg,
-      trades_vs_13w_avg=excluded.trades_vs_13w_avg,
-      shares_z_26w=excluded.shares_z_26w,
-      ingest_ts=excluded.ingest_ts
-    """
-    con.executemany(sql, weekly[cols].values.tolist())
-    con.commit()
-
 def z_to_strength(z: float) -> float:
     # 0 until z>=1.0, ramps to 1 by z>=2.5
     if z is None or pd.isna(z):
         return 0.0
     return float(max(0.0, min(1.0, (z - 1.0) / 1.5)))
 
-def write_daily_overlay(con: sqlite3.Connection, weekly: pd.DataFrame):
-    days = pd.read_sql_query(
-        "SELECT date FROM bars_daily WHERE symbol=? ORDER BY date ASC",
-        con, params=(SYMBOL,)
-    )
-    if days.empty:
-        return
-    days["date"] = pd.to_datetime(days["date"])
-    w = weekly.copy()
-    w["week_start"] = pd.to_datetime(w["week_start"])
-    w = w.sort_values("week_start")
-
-    # FINRA week is Monday; map each day to its Monday
-    days["week_start"] = days["date"].map(lambda d: monday_of_week(d.date()))
-    j = days.merge(w[["week_start","shares_z_26w"]], on="week_start", how="left")
-
-    j["overlay_strength"] = j["shares_z_26w"].apply(z_to_strength)
-    j["notes"] = j["shares_z_26w"].apply(lambda z: f"finra_ats_shares_z_26w={z:.2f}" if pd.notna(z) else "finra_ats_missing")
-
-    sql = """
-    INSERT INTO overlays_daily (date, symbol, overlay_type, overlay_strength, notes)
-    VALUES (?, ?, 'darkpool', ?, ?)
-    ON CONFLICT(symbol, date, overlay_type) DO UPDATE SET
-      overlay_strength=excluded.overlay_strength,
-      notes=excluded.notes
-    """
-    con.executemany(sql, [
-        (d.strftime("%Y-%m-%d"), SYMBOL, float(s), str(n))
-        for d, s, n in zip(j["date"], j["overlay_strength"], j["notes"])
-    ])
-    con.commit()
-
 def main():
+    if not FINRA_CLIENT_ID or not FINRA_CLIENT_SECRET:
+        raise RuntimeError("Missing FINRA_CLIENT_ID or FINRA_CLIENT_SECRET env vars.")
+
+    auth = HTTPBasicAuth(FINRA_CLIENT_ID, FINRA_CLIENT_SECRET)
+
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "User-Agent": "spy-finra-darkpool/1.0",
+        "User-Agent": "spy-finra-darkpool/2.0",
     }
-    if FINRA_API_KEY:
-        headers["X-API-KEY"] = FINRA_API_KEY
 
     start = dt.date.fromisoformat(START)
     end = dt.date.today()
 
     frames = []
+    failures = 0
+
     for m in daterange_mondays(start, end):
-        dfw = fetch_week(m, headers=headers)
-        if not dfw.empty:
-            frames.append(dfw)
-        time.sleep(0.15)
+        try:
+            dfw = fetch_week(m, headers, auth)
+            if not dfw.empty:
+                frames.append(dfw)
+        except Exception:
+            failures += 1
+        time.sleep(SLEEP_S)
 
     if not frames:
-        raise RuntimeError("No FINRA rows returned. Check FINRA_API_KEY and filters.")
+        raise RuntimeError("No FINRA rows returned. Auth may be wrong or FINRA returned empty for all weeks.")
 
     raw = pd.concat(frames, ignore_index=True)
 
@@ -205,20 +184,70 @@ def main():
     weekly["shares_vs_13w_avg"] = weekly["ats_weekly_shares"] / weekly["ats_weekly_shares"].rolling(13, min_periods=4).mean()
     weekly["trades_vs_13w_avg"] = weekly["ats_weekly_trades"] / weekly["ats_weekly_trades"].rolling(13, min_periods=4).mean()
     weekly["shares_z_26w"] = (weekly["ats_weekly_shares"] - weekly["ats_weekly_shares"].rolling(26, min_periods=8).mean()) / weekly["ats_weekly_shares"].rolling(26, min_periods=8).std()
-    weekly["week_start"] = weekly["week_start"].dt.strftime("%Y-%m-%d")
+
+    weekly["week_start"] = pd.to_datetime(weekly["week_start"]).dt.strftime("%Y-%m-%d")
     weekly["ingest_ts"] = dt.datetime.utcnow().isoformat()
 
     con = sqlite3.connect(DB_PATH)
     try:
         ensure_tables(con)
-        upsert_weekly(con, weekly)
-        write_daily_overlay(con, weekly)
+
+        cols = [
+            "week_start","symbol","ats_weekly_shares","ats_weekly_trades","ats_venue_count",
+            "avg_trade_size","shares_vs_13w_avg","trades_vs_13w_avg","shares_z_26w","ingest_ts"
+        ]
+
+        upsert = f"""
+        INSERT INTO ats_weekly ({",".join(cols)})
+        VALUES ({",".join(["?"]*len(cols))})
+        ON CONFLICT(symbol, week_start) DO UPDATE SET
+          ats_weekly_shares=excluded.ats_weekly_shares,
+          ats_weekly_trades=excluded.ats_weekly_trades,
+          ats_venue_count=excluded.ats_venue_count,
+          avg_trade_size=excluded.avg_trade_size,
+          shares_vs_13w_avg=excluded.shares_vs_13w_avg,
+          trades_vs_13w_avg=excluded.trades_vs_13w_avg,
+          shares_z_26w=excluded.shares_z_26w,
+          ingest_ts=excluded.ingest_ts
+        """
+        con.executemany(upsert, weekly[cols].values.tolist())
+        con.commit()
+
+        # map week_start (Mon) to each trading day
+        days = pd.read_sql_query(
+            "SELECT date FROM bars_daily WHERE symbol=? ORDER BY date ASC",
+            con, params=(SYMBOL,)
+        )
+        days["date"] = pd.to_datetime(days["date"])
+        days["week_start"] = days["date"].map(lambda d: monday_of_week(d.date()))
+
+        w = weekly.copy()
+        w["week_start"] = pd.to_datetime(w["week_start"])
+
+        j = days.merge(w[["week_start","shares_z_26w"]], on="week_start", how="left")
+        j["overlay_strength"] = j["shares_z_26w"].apply(z_to_strength)
+        j["notes"] = j["shares_z_26w"].apply(
+            lambda z: f"finra_ats_shares_z_26w={z:.2f}" if pd.notna(z) else "finra_ats_missing"
+        )
+
+        write_overlay = """
+        INSERT INTO overlays_daily (date, symbol, overlay_type, overlay_strength, notes)
+        VALUES (?, ?, 'darkpool', ?, ?)
+        ON CONFLICT(symbol, date, overlay_type) DO UPDATE SET
+          overlay_strength=excluded.overlay_strength,
+          notes=excluded.notes
+        """
+        con.executemany(write_overlay, [
+            (d.strftime("%Y-%m-%d"), SYMBOL, float(s), str(n))
+            for d, s, n in zip(j["date"], j["overlay_strength"], j["notes"])
+        ])
+        con.commit()
     finally:
         con.close()
 
     os.makedirs("outputs", exist_ok=True)
     weekly.to_csv("outputs/spy_finra_ats_weekly.csv", index=False)
-    print("Wrote outputs/spy_finra_ats_weekly.csv and updated overlays_daily(darkpool).")
+    print(f"OK: outputs/spy_finra_ats_weekly.csv | weeks={len(weekly)} | failures={failures}")
 
 if __name__ == "__main__":
     main()
