@@ -24,7 +24,6 @@ jobs:
 
       - run: python scripts/ingest_spy_daily.py
       - run: python scripts/build_features_spy_daily.py
-      - run: python scripts/seed_tariff_overlays.py
       
       - run: |
           git config user.name github-actions
