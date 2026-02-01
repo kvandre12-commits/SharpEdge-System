@@ -220,7 +220,7 @@ def main():
         )
         days["date"] = pd.to_datetime(days["date"])
         days["week_start"] = days["date"].map(lambda d: monday_of_week(d.date()))
-
+        days["week_start"] = pd.to_datetime(days["week_start"])
         w = weekly.copy()
         w["week_start"] = pd.to_datetime(w["week_start"])
 
