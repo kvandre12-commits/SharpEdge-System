@@ -272,21 +272,31 @@ def write_csv(feats: pd.DataFrame):
     print(f"Wrote {path} ({len(feats)} rows)")
 
 
-def main():
-    con = connect(DB_PATH)
-    try:
-        truth = read_truth(con, SYMBOL)
-        feats = build_features(truth)
-        upsert_features(con, feats)
-        write_csv(feats)
-        print("OK: features built from truth; truth unchanged.")
-    finally:
-        con.close()
-
 def write_latest_signal(feats: pd.DataFrame):
     if feats.empty:
         print("No features available; skipping latest signal.")
         return
+
+    last = feats.sort_values("date").iloc[-1]
+
+    signal = pd.DataFrame([{
+        "date": last["date"],
+        "symbol": last["symbol"],
+        "compression_flag": int(last["compression_flag"]),
+        "true_range_pct": float(last["true_range_pct"]),
+        "intraday_range_pct": float(last["intraday_range_pct"]),
+        "gap_open_pct": float(last["gap_open_pct"]),
+        "trigger_cluster": int(last["trigger_cluster"]),
+        "permission_strength": int(last["permission_strength"]),
+        "trade_permission": int(last["trade_permission"]),
+        "permission_reason": last["permission_reason"],
+        "feature_version": last["feature_version"],
+    }])
+
+    os.makedirs("outputs", exist_ok=True)
+    path = "outputs/latest_signal.csv"
+    signal.to_csv(path, index=False)
+    print(f"Wrote {path} (1 row)")
 
     last = feats.sort_values("date").iloc[-1].copy()
 
