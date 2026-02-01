@@ -24,6 +24,7 @@ jobs:
 
       - run: python scripts/ingest_spy_daily.py
       - run: python scripts/build_features_spy_daily.py
+      - run: python scripts/ingest_finra_darkpool_overlay.py
       
       - run: |
           git config user.name github-actions
