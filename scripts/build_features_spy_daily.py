@@ -283,6 +283,44 @@ def main():
     finally:
         con.close()
 
+def write_latest_signal(feats: pd.DataFrame):
+    if feats.empty:
+        print("No features available; skipping latest signal.")
+        return
 
+    last = feats.sort_values("date").iloc[-1].copy()
+
+    signal = pd.DataFrame([{
+        "date": last["date"],
+        "symbol": last.get("symbol", "SPY"),
+        "compression": bool(last.get("is_compression", False)),
+        "atr_pct": float(last.get("atr_pct", float("nan"))),
+        "range_pct": float(last.get("range_pct", float("nan"))),
+        "gap_pct": float(last.get("gap_pct", float("nan"))),
+        "expansion_bias": (
+            "UP" if last.get("expansion_up", False)
+            else "DOWN" if last.get("expansion_down", False)
+            else "NEUTRAL"
+        )
+    }])
+
+    os.makedirs("outputs", exist_ok=True)
+    path = "outputs/latest_signal.csv"
+    signal.to_csv(path, index=False)
+    print(f"Wrote {path} (1 row)")
+
+
+# ---- update main to call it ----
+def main():
+    con = connect(DB_PATH)
+    try:
+        truth = read_truth(con, SYMBOL)
+        feats = build_features(truth)
+        upsert_features(con, feats)
+        write_csv(feats)
+        write_latest_signal(feats)
+        print("OK: features + latest signal built from truth.")
+    finally:
+        con.close()
 if __name__ == "__main__":
     main()
