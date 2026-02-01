@@ -1,0 +1,2 @@
+date,symbol,close,gap_open_pct,true_range_pct,intraday_range_pct,compression_flag,trigger_cluster,permission_strength,trade_permission,permission_reason,feature_version
+2026-01-30,SPY,691.969970703125,-0.0032418881782503295,0.010215588553876383,0.010215588553876383,0,3,1,0,cluster_only,v2_triggers_permission_strength
