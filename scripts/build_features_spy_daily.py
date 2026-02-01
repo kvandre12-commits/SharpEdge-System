@@ -282,10 +282,11 @@ def write_latest_signal(feats: pd.DataFrame):
     signal = pd.DataFrame([{
         "date": last["date"],
         "symbol": last["symbol"],
-        "compression_flag": int(last["compression_flag"]),
+        "close": float(last["close"]),
+        "gap_open_pct": float(last["gap_open_pct"]),
         "true_range_pct": float(last["true_range_pct"]),
         "intraday_range_pct": float(last["intraday_range_pct"]),
-        "gap_open_pct": float(last["gap_open_pct"]),
+        "compression_flag": int(last["compression_flag"]),
         "trigger_cluster": int(last["trigger_cluster"]),
         "permission_strength": int(last["permission_strength"]),
         "trade_permission": int(last["trade_permission"]),
@@ -294,11 +295,9 @@ def write_latest_signal(feats: pd.DataFrame):
     }])
 
     os.makedirs("outputs", exist_ok=True)
-    path = "outputs/latest_signal.csv"
-    signal.to_csv(path, index=False)
-    print(f"Wrote {path} (1 row)")
+    signal.to_csv("outputs/latest_signal.csv", index=False)
+    print("Wrote outputs/latest_signal.csv (1 row)")
 
-# ---- update main to call it ----
 def main():
     con = connect(DB_PATH)
     try:
@@ -310,4 +309,7 @@ def main():
         print("OK: features + latest signal built from truth.")
     finally:
         con.close()
+
+
 if __name__ == "__main__":
+    main()
