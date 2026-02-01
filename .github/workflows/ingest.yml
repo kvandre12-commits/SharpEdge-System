@@ -25,11 +25,10 @@ jobs:
       - run: python scripts/ingest_spy_daily.py
       - run: python scripts/build_features_spy_daily.py
       - name: FINRA darkpool overlay
-  run: python scripts/ingest_finra_darkpool_overlay.py
-  env:
-    FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
-    FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
-      
+        run: python scripts/ingest_finra_darkpool_overlay.py
+        env:
+          FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
+          FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
       - run: |
           git config user.name github-actions
           git config user.email actions@github.com
