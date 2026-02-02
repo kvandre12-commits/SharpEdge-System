@@ -282,31 +282,7 @@ def ensure_features_table(con: sqlite3.Connection):
     for col, typ in adds.items():
         if col not in existing:
             con.execute(f"ALTER TABLE features_daily ADD COLUMN {col} {typ}")
-    con.commit()
-
-
-def upsert_features(con: sqlite3.Connection, feats: pd.DataFrame):
-    ensure_features_table(con)
-
-    rows = feats.to_dict(orient="records")
-    cols = list(feats.columns)
-
-    placeholders = ",".join(["?"] * len(cols))
-    col_list = ",".join(cols)
-
-    update_cols = [c for c in cols if c not in ("symbol", "date")]
-    set_clause = ",".join([f"{c}=excluded.{c}" for c in update_cols])
-
-    sql = f"""
-    INSERT INTO features_daily ({col_list})
-    VALUES ({placeholders})
-    ON CONFLICT(symbol, date) DO UPDATE SET
-        {set_clause}
-    """
-    con.executemany(sql, [[r[c] for c in cols] for r in rows])
-    con.commit()
-
-
+    
 def write_csv(feats: pd.DataFrame):
     os.makedirs("outputs", exist_ok=True)
     path = "outputs/spy_features_daily.csv"
@@ -345,7 +321,6 @@ def main():
     try:
         truth = read_truth(con, SYMBOL)
         feats = build_features(truth)
-        upsert_features(con, feats)
         write_csv(feats)
         write_latest_signal(feats)
         print("OK: features + latest signal built from truth.")
