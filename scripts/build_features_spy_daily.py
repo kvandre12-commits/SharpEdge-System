@@ -185,19 +185,22 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     feats = feats.dropna(subset=["prev_close"]).reset_index(drop=True)
     
     # --- FINRA ATS pressure overlay (weekly, forward-filled) ---
-    finra_path = "outputs/spy_finra_ats_weekly.csv"
-    if os.path.exists(finra_path):
-        finra = pd.read_csv(finra_path)
-        finra["date"] = pd.to_datetime(finra["date"])
-        finra = finra.sort_values("date")
+finra_path = "outputs/spy_finra_ats_weekly.csv"
+if os.path.exists(finra_path):
+    finra = pd.read_csv(finra_path)
+    finra["date"] = pd.to_datetime(finra["date"]).dt.date.astype(str)
+    finra = finra.sort_values("date")
 
-        out = out.merge(finra[["date", "ats_ratio"]], on="date", how="left")
-        out["ats_ratio"] = out["ats_ratio"].ffill()
-        out["ats_pressure_flag"] = (
-            out["ats_ratio"] >= out["ats_ratio"].rolling(20).quantile(0.8)
-        ).astype(int)
+    feats = feats.merge(finra[["date", "ats_ratio"]], on="date", how="left")
+    feats["ats_ratio"] = feats["ats_ratio"].ffill()
+    feats["ats_pressure_flag"] = (
+        feats["ats_ratio"] >= feats["ats_ratio"].rolling(20).quantile(0.8)
+    ).astype(int)
+else:
+    feats["ats_ratio"] = np.nan
+    feats["ats_pressure_flag"] = 0
 
-    return outreturn feats
+    return feats
 
 
 def ensure_features_table(con: sqlite3.Connection):
