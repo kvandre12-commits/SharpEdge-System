@@ -197,26 +197,27 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
                     finra["date"] = finra[c]
                     break
 
-        # standardize date
         if "date" in finra.columns:
             finra["date"] = pd.to_datetime(finra["date"]).dt.date.astype(str)
             finra = finra.sort_values("date")
 
-            # ensure ats_ratio ALWAYS exists
+            # ensure ats_ratio always exists
             if "ats_ratio" not in finra.columns:
                 finra["ats_ratio"] = np.nan
 
             feats = feats.merge(
                 finra[["date", "ats_ratio"]],
                 on="date",
-                how="left"
+                how="left",
             )
 
             feats["ats_ratio"] = feats["ats_ratio"].ffill()
 
             feats["ats_pressure_flag"] = (
                 feats["ats_ratio"]
-                >= feats["ats_ratio"].rolling(20, min_periods=5).quantile(0.80)
+                >= feats["ats_ratio"]
+                .rolling(20, min_periods=5)
+                .quantile(0.80)
             ).astype(int)
         else:
             feats["ats_ratio"] = np.nan
