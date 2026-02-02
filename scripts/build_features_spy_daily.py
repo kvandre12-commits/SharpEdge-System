@@ -188,15 +188,31 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     finra_path = "outputs/spy_finra_ats_weekly.csv"
 
     if os.path.exists(finra_path):
-        finra = pd.read_csv(finra_path)
-        # normalize FINRA date column
-if "date" not in finra.columns:
-    for c in ["week", "week_start", "report_date", "trade_date"]:
-        if c in finra.columns:
-            finra["date"] = finra[c]
-            break
+    finra = pd.read_csv(finra_path)
 
-finra["date"] = pd.to_datetime(finra["date"]).dt.date.astype(str)
+    # normalize FINRA date column
+    if "date" not in finra.columns:
+        for c in ["week", "week_start", "report_date", "trade_date"]:
+            if c in finra.columns:
+                finra["date"] = finra[c]
+                break
+
+    finra["date"] = pd.to_datetime(finra["date"]).dt.date.astype(str)
+
+    finra = finra.sort_values("date")
+    feats = feats.merge(
+        finra[["date", "ats_ratio"]],
+        on="date",
+        how="left"
+    )
+    feats["ats_ratio"] = feats["ats_ratio"].ffill()
+    feats["ats_pressure_flag"] = (
+        feats["ats_ratio"]
+        >= feats["ats_ratio"].rolling(20).quantile(0.8)
+    ).astype(int)
+else:
+    feats["ats_ratio"] = np.nan
+    feats["ats_pressure_flag"] = 0
         finra = finra.sort_values("date")
 
         feats = feats.merge(
