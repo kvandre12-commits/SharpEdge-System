@@ -191,21 +191,27 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
         finra = pd.read_csv(finra_path)
 
         # normalize FINRA date column
-        if "date" not in finra.columns:
-            for c in ["week", "week_start", "report_date", "trade_date"]:
-                if c in finra.columns:
-                    finra["date"] = finra[c]
-                    break
+if "date" not in finra.columns:
+    for c in ["week", "week_start", "report_date", "trade_date"]:
+        if c in finra.columns:
+            finra["date"] = finra[c]
+            break
 
-        if "date" in finra.columns:
-            finra["date"] = pd.to_datetime(finra["date"]).dt.date.astype(str)
-            finra = finra.sort_values("date")
+# standardize date
+if "date" in finra.columns:
+    finra["date"] = pd.to_datetime(finra["date"]).dt.date.astype(str)
+    finra = finra.sort_values("date")
 
-            feats = feats.merge(
-                finra[["date", "ats_ratio"]],
-                on="date",
-                how="left"
-            )
+# ensure ats_ratio exists (ALWAYS)
+if "ats_ratio" not in finra.columns:
+    finra["ats_ratio"] = np.nan
+
+# merge ATS data
+feats = feats.merge(
+    finra[["date", "ats_ratio"]],
+    on="date",
+    how="left"
+)
 
             feats["ats_ratio"] = feats["ats_ratio"].ffill()
 
