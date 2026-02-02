@@ -18,7 +18,11 @@ def connect(db_path: str) -> sqlite3.Connection:
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     return sqlite3.connect(db_path)
 
+def existing_cols(con: sqlite3.Connection, table: str) -> set[str]:
+    return {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+
 def ensure_regime_table(con: sqlite3.Connection):
+    # Base table
     con.execute("""
     CREATE TABLE IF NOT EXISTS regime_daily (
       date TEXT NOT NULL,
@@ -34,16 +38,49 @@ def ensure_regime_table(con: sqlite3.Connection):
       dp_strength REAL,
       dp_state TEXT,
 
-      tr_pct_rank REAL,
       compression_flag INTEGER,
 
       regime_label TEXT,
       regime_id TEXT,
 
+      -- transitions
+      vol_state_prev TEXT,
+      vol_trend_state_prev TEXT,
+      dp_state_prev TEXT,
+      transition_label TEXT,
+      transition_score INTEGER,
+      transition_flag INTEGER,
+
       regime_ts TEXT,
       PRIMARY KEY (symbol, date)
     )
     """)
+    con.commit()
+
+    # Forward adds for older DBs
+    cols = existing_cols(con, "regime_daily")
+    adds = {
+        "vol20": "REAL",
+        "vol_rank_252": "REAL",
+        "vol_state": "TEXT",
+        "vol_trend_10": "REAL",
+        "vol_trend_state": "TEXT",
+        "dp_strength": "REAL",
+        "dp_state": "TEXT",
+        "compression_flag": "INTEGER",
+        "regime_label": "TEXT",
+        "regime_id": "TEXT",
+        "vol_state_prev": "TEXT",
+        "vol_trend_state_prev": "TEXT",
+        "dp_state_prev": "TEXT",
+        "transition_label": "TEXT",
+        "transition_score": "INTEGER",
+        "transition_flag": "INTEGER",
+        "regime_ts": "TEXT",
+    }
+    for c, typ in adds.items():
+        if c not in cols:
+            con.execute(f"ALTER TABLE regime_daily ADD COLUMN {c} {typ}")
     con.commit()
 
 def pct_rank_last(x: pd.Series) -> float:
@@ -71,7 +108,7 @@ def bucket_trend(delta: float, eps: float) -> str:
     return "flat"
 
 def bucket_dp(dp_strength: float) -> str:
-    # dp_strength is already [0,1] from your overlay mapping
+    # dp_strength is [0,1] from overlays_daily mapping
     if pd.isna(dp_strength):
         return "unknown"
     if dp_strength >= 0.70:
@@ -85,12 +122,19 @@ def main():
     try:
         ensure_regime_table(con)
 
-        # Pull from features_daily (vol20, compression flags)
+        # --- read features_daily safely (no tr_pct_rank dependency) ---
+        fcols = existing_cols(con, "features_daily")
+        needed = {"date", "symbol", "vol20", "compression_flag"}
+        if not needed.issubset(fcols):
+            raise RuntimeError(
+                f"features_daily missing required columns: {sorted(list(needed - fcols))}. "
+                "Run scripts/build_features_spy_daily.py and ensure features are written."
+            )
+
         feats = pd.read_sql_query("""
             SELECT
               date, symbol,
               vol20,
-              tr_pct_rank,
               compression_flag
             FROM features_daily
             WHERE symbol = ?
@@ -100,13 +144,19 @@ def main():
         if feats.empty:
             raise RuntimeError("features_daily is empty. Run build_features_spy_daily.py first.")
 
-        # Pull darkpool overlay strength (daily) from overlays_daily
-        dp = pd.read_sql_query("""
-            SELECT date, symbol, overlay_strength AS dp_strength
-            FROM overlays_daily
-            WHERE symbol = ? AND overlay_type = 'darkpool'
-            ORDER BY date ASC
-        """, con, params=(SYMBOL,))
+        # --- read darkpool overlay (optional) ---
+        ocols = existing_cols(con, "overlays_daily")
+        has_overlays = {"date", "symbol", "overlay_type", "overlay_strength"}.issubset(ocols)
+
+        if has_overlays:
+            dp = pd.read_sql_query("""
+                SELECT date, symbol, overlay_strength AS dp_strength
+                FROM overlays_daily
+                WHERE symbol = ? AND overlay_type = 'darkpool'
+                ORDER BY date ASC
+            """, con, params=(SYMBOL,))
+        else:
+            dp = pd.DataFrame(columns=["date", "symbol", "dp_strength"])
 
         # Merge
         df = feats.merge(dp, on=["date", "symbol"], how="left")
@@ -114,10 +164,9 @@ def main():
         # Vol rank over trailing window (causal)
         df["vol_rank_252"] = (
             df["vol20"]
-            .rolling(VOL_RANK_WIN, min_periods=max(30, VOL_RANK_WIN // 4))
-            .apply(pct_rank_last, raw=False)
+              .rolling(VOL_RANK_WIN, min_periods=max(30, VOL_RANK_WIN // 4))
+              .apply(pct_rank_last, raw=False)
         )
-
         df["vol_state"] = df["vol_rank_252"].apply(bucket_vol_state)
 
         # Vol trend: delta over lookback (causal)
@@ -127,7 +176,7 @@ def main():
         # Darkpool pressure state
         df["dp_state"] = df["dp_strength"].apply(bucket_dp)
 
-        # Composite labels
+        # Composite label (slow state)
         df["regime_label"] = (
             df["vol_state"].astype(str) + "_vol"
             + "|" + df["vol_trend_state"].astype(str) + "_voltrend"
@@ -137,15 +186,47 @@ def main():
 
         # Compact stable key
         df["regime_id"] = (
-            df["vol_state"].astype(str).str[:1]  # l/m/h/u
-            + df["vol_trend_state"].astype(str).str[:1]  # r/f/f/u (flat -> f)
-            + df["dp_state"].astype(str).str[:1]  # h/n/l/u
+            df["vol_state"].astype(str).str[:1]          # l/m/h/u
+            + df["vol_trend_state"].astype(str).str[:1]  # r/f/f/u (we remap flat below)
+            + df["dp_state"].astype(str).str[:1]         # h/n/l/u
             + df["compression_flag"].fillna(0).astype(int).astype(str)
         )
+        # make flat explicitly "t" (for "flat")
         df.loc[df["vol_trend_state"] == "flat", "regime_id"] = (
             df.loc[df["vol_trend_state"] == "flat", "regime_id"].str.slice(0, 1) + "t"
             + df.loc[df["vol_trend_state"] == "flat", "regime_id"].str.slice(2)
         )
+
+        # -----------------------------
+        # Transitions (yesterday -> today)
+        # -----------------------------
+        df["vol_state_prev"] = df["vol_state"].shift(1)
+        df["vol_trend_state_prev"] = df["vol_trend_state"].shift(1)
+        df["dp_state_prev"] = df["dp_state"].shift(1)
+
+        def changed(a, b) -> int:
+            if pd.isna(a) or pd.isna(b):
+                return 0
+            return int(a != b)
+
+        df["transition_score"] = (
+            df.apply(lambda r: changed(r["vol_state_prev"], r["vol_state"]), axis=1)
+            + df.apply(lambda r: changed(r["vol_trend_state_prev"], r["vol_trend_state"]), axis=1)
+            + df.apply(lambda r: changed(r["dp_state_prev"], r["dp_state"]), axis=1)
+        )
+
+        df["transition_label"] = (
+            df["vol_state_prev"].astype(str) + "->" + df["vol_state"].astype(str)
+            + " | " + df["vol_trend_state_prev"].astype(str) + "->" + df["vol_trend_state"].astype(str)
+            + " | " + df["dp_state_prev"].astype(str) + "->" + df["dp_state"].astype(str)
+        )
+
+        trend_flip_up = (
+            df["vol_trend_state_prev"].isin(["falling", "flat"])
+            & (df["vol_trend_state"] == "rising")
+            & df["vol_state"].isin(["low", "mid"])
+        )
+        df["transition_flag"] = ((df["transition_score"] >= 2) | trend_flip_up).astype(int)
 
         df["regime_ts"] = datetime.now(timezone.utc).isoformat()
 
@@ -155,8 +236,10 @@ def main():
             "vol20","vol_rank_252","vol_state",
             "vol_trend_10","vol_trend_state",
             "dp_strength","dp_state",
-            "tr_pct_rank","compression_flag",
+            "compression_flag",
             "regime_label","regime_id",
+            "vol_state_prev","vol_trend_state_prev","dp_state_prev",
+            "transition_label","transition_score","transition_flag",
             "regime_ts"
         ]
 
@@ -171,16 +254,21 @@ def main():
           vol_trend_state=excluded.vol_trend_state,
           dp_strength=excluded.dp_strength,
           dp_state=excluded.dp_state,
-          tr_pct_rank=excluded.tr_pct_rank,
           compression_flag=excluded.compression_flag,
           regime_label=excluded.regime_label,
           regime_id=excluded.regime_id,
+          vol_state_prev=excluded.vol_state_prev,
+          vol_trend_state_prev=excluded.vol_trend_state_prev,
+          dp_state_prev=excluded.dp_state_prev,
+          transition_label=excluded.transition_label,
+          transition_score=excluded.transition_score,
+          transition_flag=excluded.transition_flag,
           regime_ts=excluded.regime_ts
         """
         con.executemany(upsert, df[cols].to_records(index=False).tolist())
         con.commit()
 
-        # Optional CSV output
+        # CSV
         os.makedirs("outputs", exist_ok=True)
         df[cols].to_csv("outputs/spy_regime_daily.csv", index=False)
         print(f"OK: outputs/spy_regime_daily.csv | rows={len(df)}")
