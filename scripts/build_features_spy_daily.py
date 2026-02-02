@@ -189,7 +189,14 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 
     if os.path.exists(finra_path):
         finra = pd.read_csv(finra_path)
-        finra["date"] = pd.to_datetime(finra["date"]).dt.date.astype(str)
+        # normalize FINRA date column
+if "date" not in finra.columns:
+    for c in ["week", "week_start", "report_date", "trade_date"]:
+        if c in finra.columns:
+            finra["date"] = finra[c]
+            break
+
+finra["date"] = pd.to_datetime(finra["date"]).dt.date.astype(str)
         finra = finra.sort_values("date")
 
         feats = feats.merge(
