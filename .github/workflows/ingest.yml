@@ -24,6 +24,8 @@ jobs:
 
       - run: python scripts/ingest_spy_daily.py
       - run: python scripts/build_features_spy_daily.py
+      - name: Build liquidity regime (daily)
+        run: python scripts/build_liquidity_regime_daily.py
       - name: FINRA darkpool overlay
         run: python scripts/ingest_finra_darkpool_overlay.py
         env:
