@@ -70,15 +70,15 @@ def ensure_table(con: sqlite3.Connection) -> None:
     con.commit()
 
 
-def fetch_daily(con: sqlite3.Connection, symbol: str) -> List[Dict]:
-    q = """
+def fetch_bars(con: sqlite3.Connection, symbol: str, bars_table: str) -> List[Dict]:
+    q = f"""
     SELECT
       date AS session_date,
       open  AS session_open,
       high  AS session_high,
       low   AS session_low,
       close AS session_close
-    FROM bars_daily
+    FROM {bars_table}
     WHERE symbol = ?
     ORDER BY date ASC
     """
