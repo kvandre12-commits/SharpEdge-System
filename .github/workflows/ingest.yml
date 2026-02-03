@@ -32,6 +32,8 @@ jobs:
           # If you need IEX feed, you can set env and read it in code (optional)
           INTRADAY_TIMEFRAME: "15Min"
           INTRADAY_BARS_TABLE: "spy_bars_15m"
+      - name: Build liquidity regime (intraday 15m)
+        run: python scripts/build_liquidity_regime_events.py --db data/spy_truth.db --bars-table spy_bars_15m
       - name: Build liquidity regime (daily)
         run: python scripts/build_liquidity_regime_daily.py
       - name: FINRA darkpool overlay
