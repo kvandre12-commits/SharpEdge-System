@@ -1,2 +1,2 @@
 date,symbol,close,gap_open_pct,true_range_pct,intraday_range_pct,compression_flag,trigger_cluster,permission_strength,trade_permission,permission_reason,feature_version
-2026-02-02,SPY,695.4099731445312,-0.003453840071777625,0.010853086237245128,0.010853086237245128,0,3,1,0,cluster_only,v2_triggers_permission_strength
+2026-02-03,SPY,688.1599731445312,0.001150470742470544,0.013013976183289614,0.013013976183289614,0,2,1,0,cluster_only,v2_triggers_permission_strength
