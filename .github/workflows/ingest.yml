@@ -32,6 +32,13 @@ jobs:
           # If you need IEX feed, you can set env and read it in code (optional)
           INTRADAY_TIMEFRAME: "15Min"
           INTRADAY_BARS_TABLE: "spy_bars_15m"
+      - name: TEMP Backfill SPY 15m
+        if: false   # 👈 prevents accidental runs
+        run: python scripts/ingest_spy_intraday_alpaca.py --mode backfill --start 2025-01-01T00:00:00Z
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+          ALPACA_DATA_FEED: "iex"
       - name: Build liquidity regime (daily)
         run: python scripts/build_liquidity_regime_daily.py
       - name: FINRA darkpool overlay
