@@ -41,6 +41,14 @@ jobs:
         env:
           FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
           FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
+      - name: Ingest FRED macro overlays
+        env:
+          SPY_DB_PATH: data/spy_truth.db
+          SYMBOL: SPY
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          FRED_START: "2000-01-01"
+        run: |
+          python scripts/ingest_fred_overlays.py
       - run: python scripts/build_regime_spy_daily.py
       - name: Backtest FAILED inside favorable slow regime
         run: python scripts/backtest_failed_inside_slow_regime.py
