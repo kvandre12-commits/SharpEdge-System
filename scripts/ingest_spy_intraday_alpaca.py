@@ -125,24 +125,33 @@ def upsert(con: sqlite3.Connection, df: pd.DataFrame) -> int:
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--mode", default=os.getenv("MODE", "incremental"), choices=["incremental", "backfill"])
+    ap.add_argument("--start", default=os.getenv("START_ISO"), help="ISO start, e.g. 2025-01-01T00:00:00Z")
+    ap.add_argument("--end", default=os.getenv("END_ISO"), help="ISO end, e.g. 2025-02-01T00:00:00Z")
+    args = ap.parse_args()
+
     con = sqlite3.connect(DB_PATH)
     try:
         ensure_table(con)
 
-        # Continue from last timestamp
-        last = last_ts(con)
-        start = None
-        if last:
-            # add 1 second to avoid re-pulling last bar
-            dt = datetime.fromisoformat(last.replace("Z","+00:00")).astimezone(timezone.utc)
-            start = (dt + pd.Timedelta(seconds=1)).isoformat().replace("+00:00","Z")
+        if args.mode == "incremental":
+            last = last_ts(con)
+            start = None
+            if last:
+                dt = datetime.fromisoformat(last.replace("Z", "+00:00")).astimezone(timezone.utc)
+                start = (dt + pd.Timedelta(seconds=1)).isoformat().replace("+00:00", "Z")
+            df = fetch_bars(start_iso=start)
 
-        df = fetch_bars(start_iso=start)
+        else:  # backfill
+            if not args.start:
+                raise RuntimeError("Backfill mode requires --start (or START_ISO env var).")
+            df = fetch_bars(start_iso=args.start, end_iso=args.end)
+
         n = upsert(con, df)
         print(f"OK: wrote {n} bars into {BARS_TABLE} (timeframe={TIMEFRAME})")
     finally:
         con.close()
-
 
 if __name__ == "__main__":
     main()
