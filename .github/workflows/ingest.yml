@@ -32,6 +32,8 @@ jobs:
           FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
           FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
       - run: python scripts/build_regime_spy_daily.py
+      - name: Backtest FAILED inside favorable slow regime
+        run: python scripts/backtest_failed_inside_slow_regime.py
       - run: |
           git config user.name github-actions
           git config user.email actions@github.com
