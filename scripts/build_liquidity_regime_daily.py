@@ -225,22 +225,30 @@ def upsert(con: sqlite3.Connection, event: Dict) -> None:
 
 
 def main():
+    # ---- parse args FIRST (outside try) ----
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--bars-table", default="bars_daily")
+    args = ap.parse_args()
+    bars_table = args.bars_table
+
+    # ---- then do DB work ----
     con = sqlite3.connect(DB_PATH)
     try:
         ensure_table(con)
-        ap = argparse.ArgumentParser()
-ap.add_argument("--bars-table", default="bars_daily")
-args = ap.parse_args()
 
-days = fetch_bars(con, SYMBOL, args.bars_table)
+        days = fetch_bars(con, SYMBOL, bars_table)
         if len(days) < ATR_LOOKBACK + 1:
-            print(f"Not enough daily bars for ATR{ATR_LOOKBACK}. Have {len(days)}. Still writing when possible.")
+            print(f"Not enough bars for ATR{ATR_LOOKBACK}. Have {len(days)}. Still writing when possible.")
 
         # TR + ATR series
         trs: List[float] = []
         prev_close: Optional[float] = None
         for d in days:
-            tr = compute_true_range(prev_close, float(d["session_high"]), float(d["session_low"]))
+            tr = compute_true_range(
+                prev_close,
+                float(d["session_high"]),
+                float(d["session_low"]),
+            )
             trs.append(tr)
             prev_close = float(d["session_close"])
 
@@ -286,10 +294,8 @@ days = fetch_bars(con, SYMBOL, args.bars_table)
 
                 "broke_above_high": flags["broke_above_high"],
                 "broke_below_low": flags["broke_below_low"],
-
                 "failed_breakout": flags["failed_breakout"],
                 "failed_breakdown": flags["failed_breakdown"],
-
                 "reclaimed_level": flags["reclaimed_level"],
                 "rejected_level": flags["rejected_level"],
 
@@ -301,7 +307,7 @@ days = fetch_bars(con, SYMBOL, args.bars_table)
             upsert(con, event)
 
         con.commit()
-        print("OK: liquidity_regime_events updated from bars_daily.")
+        print(f"OK: liquidity_regime_events updated from {bars_table}.")
     finally:
         con.close()
 
