@@ -24,6 +24,14 @@ jobs:
 
       - run: python scripts/ingest_spy_daily.py
       - run: python scripts/build_features_spy_daily.py
+      - name: Ingest SPY intraday (15m) from Alpaca
+        run: python scripts/ingest_spy_intraday_alpaca.py
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+          # If you need IEX feed, you can set env and read it in code (optional)
+          INTRADAY_TIMEFRAME: "15Min"
+          INTRADAY_BARS_TABLE: "spy_bars_15m"
       - name: Build liquidity regime (daily)
         run: python scripts/build_liquidity_regime_daily.py
       - name: FINRA darkpool overlay
