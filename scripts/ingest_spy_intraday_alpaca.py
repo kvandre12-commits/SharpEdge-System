@@ -62,7 +62,7 @@ def fetch_bars(start_iso: str | None, end_iso: str | None = None) -> pd.DataFram
         "timeframe": TIMEFRAME,
         "limit": 10000,     # Alpaca paginates; we loop with next_page_token
         "adjustment": "raw",
-        "feed": "sip",      # if your plan allows; otherwise you may need "iex"
+        "feed": "iex",      # if your plan allows; otherwise you may need "iex"
         "sort": "asc",
     }
     if start_iso:
