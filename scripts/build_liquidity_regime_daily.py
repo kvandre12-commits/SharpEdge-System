@@ -71,17 +71,33 @@ def ensure_table(con: sqlite3.Connection) -> None:
 
 
 def fetch_bars(con: sqlite3.Connection, symbol: str, bars_table: str) -> List[Dict]:
+    """
+    Works for:
+    - daily bars (date)
+    - intraday bars (session_date)
+    """
+    # detect which date column exists
+    cols = [r[1] for r in con.execute(f"PRAGMA table_info({bars_table})").fetchall()]
+
+    if "session_date" in cols:
+        date_col = "session_date"
+    elif "date" in cols:
+        date_col = "date"
+    else:
+        raise RuntimeError(f"{bars_table} has no date/session_date column")
+
     q = f"""
     SELECT
-      date AS session_date,
+      {date_col} AS session_date,
       open  AS session_open,
       high  AS session_high,
       low   AS session_low,
       close AS session_close
     FROM {bars_table}
     WHERE symbol = ?
-    ORDER BY date ASC
+    ORDER BY {date_col} ASC
     """
+
     rows = con.execute(q, (symbol,)).fetchall()
     cols = [c[0] for c in con.execute(q, (symbol,)).description]
     return [dict(zip(cols, r)) for r in rows]
