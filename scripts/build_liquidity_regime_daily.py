@@ -228,7 +228,11 @@ def main():
     con = sqlite3.connect(DB_PATH)
     try:
         ensure_table(con)
-        days = fetch_daily(con, SYMBOL)
+        ap = argparse.ArgumentParser()
+ap.add_argument("--bars-table", default="bars_daily")
+args = ap.parse_args()
+
+days = fetch_bars(con, SYMBOL, args.bars_table)
         if len(days) < ATR_LOOKBACK + 1:
             print(f"Not enough daily bars for ATR{ATR_LOOKBACK}. Have {len(days)}. Still writing when possible.")
 
