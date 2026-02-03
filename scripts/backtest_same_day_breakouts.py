@@ -28,6 +28,10 @@ OVERLAY_WEIGHTS = {
     "fomc": 1.0,
     "tariff": 0.8,
     "darkpool": 1.2,
+    "vix": 1.0,
+    "vix9d": 1.0,
+    "vix_term": 1.2,
+    "rates10y": 0.6,
 }
 
 def connect():
