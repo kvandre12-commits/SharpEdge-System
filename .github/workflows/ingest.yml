@@ -33,7 +33,7 @@ jobs:
           INTRADAY_TIMEFRAME: "15Min"
           INTRADAY_BARS_TABLE: "spy_bars_15m"
       - name: TEMP Backfill SPY 15m
-        if: false   # 👈 prevents accidental runs
+        if: true  
         run: python scripts/ingest_spy_intraday_alpaca.py --mode backfill --start 2025-01-01T00:00:00Z
         env:
           ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
