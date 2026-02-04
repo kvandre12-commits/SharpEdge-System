@@ -108,3 +108,6 @@ jobs:
       - name: Build regime (daily)
         run: |
           python scripts/build_regime_spy_daily.py
+      - name: Run playbook (signals + auto DTE + trade cards)
+        run: |
+          python scripts/run_playbook.py
