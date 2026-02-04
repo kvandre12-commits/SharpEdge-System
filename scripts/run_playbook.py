@@ -71,20 +71,22 @@ def attach_dte_and_plan(con: sqlite3.Connection):
     rows = con.execute("""
       SELECT signal_id, rule_id, entry_ts, entry_price, sweep_low
       FROM trade_signals
-      WHERE dte_bucket is_slow = False  # default
-
-# OPTIONAL: infer slow regime if you want later
-# e.g. is_slow = (regime == 'slow')
-
-calibrated = get_calibrated_bucket(con, rule_id, is_slow)
-if calibrated:
-    bucket = calibrated
-    reason = f"calibrated ({'slow' if is_slow else 'default'})"
+      WHERE dte_bucket IS NULL OR dte_bucket = ''
+      ORDER BY signal_id ASC
     """).fetchall()
 
     for signal_id, rule_id, entry_ts, entry_price, sweep_low in rows:
-        risk = float(entry_price) - float(sweep_low)
-        bucket, reason = choose_dte_bucket(entry_ts, risk)
+        # For now, slow/fast is driven by calibration only
+        is_slow = False
+
+        calibrated = get_calibrated_bucket(con, rule_id, is_slow)
+        if calibrated:
+            bucket = calibrated
+            reason = f"calibrated ({'slow' if is_slow else 'default'})"
+        else:
+            # Fallback (should almost never happen)
+            bucket = "2-3"
+            reason = "fallback default"
 
         plan = con.execute("""
           SELECT entry_timing, strike_bias, stop_logic, profit_plan,
@@ -114,7 +116,6 @@ if calibrated:
         """, (bucket, reason, json.dumps(plan_obj) if plan_obj else None, signal_id))
 
     con.commit()
-
 
 def emit_trade_cards(con: sqlite3.Connection, limit: int = 5):
     cards = con.execute("""
