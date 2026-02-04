@@ -73,8 +73,15 @@ def attach_dte_and_plan(con: sqlite3.Connection):
     rows = con.execute("""
       SELECT signal_id, rule_id, entry_ts, entry_price, sweep_low
       FROM trade_signals
-      WHERE dte_bucket IS NULL OR dte_bucket = ''
-      ORDER BY signal_id ASC
+      WHERE dte_bucket is_slow = False  # default
+
+# OPTIONAL: infer slow regime if you want later
+# e.g. is_slow = (regime == 'slow')
+
+calibrated = get_calibrated_bucket(con, rule_id, is_slow)
+if calibrated:
+    bucket = calibrated
+    reason = f"calibrated ({'slow' if is_slow else 'default'})"
     """).fetchall()
 
     for signal_id, rule_id, entry_ts, entry_price, sweep_low in rows:
