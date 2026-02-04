@@ -109,24 +109,22 @@ jobs:
       - name: Build regime (daily)
         run: |
           python scripts/build_regime_spy_daily.py
+      
       - name: Run playbook (signals + auto DTE + trade cards)
         run: |
           python scripts/run_playbook.py
-      - name: Calibrate DTE thresholds from backtest (manual only)
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          python scripts/calibrate_dte_from_backtest.py
-          - name: Commit updated DB + outputs
+
       - name: Calibrate DTE from backtest (manual only)
         if: github.event_name == 'workflow_dispatch'
         run: |
           python scripts/calibrate_dte_from_backtest.py
+
+      - name: Commit updated DB + outputs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add data/ outputs/ sql/ scripts/ || true
-
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "Daily ingest + regime + playbook signals"
           git push
