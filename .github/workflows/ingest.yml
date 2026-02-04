@@ -111,3 +111,6 @@ jobs:
       - name: Run playbook (signals + auto DTE + trade cards)
         run: |
           python scripts/run_playbook.py
+      - name: Calibrate DTE thresholds from backtest (optional)
+        run: |
+          python scripts/calibrate_dte_from_backtest.py || echo "Calibration skipped/failed"
