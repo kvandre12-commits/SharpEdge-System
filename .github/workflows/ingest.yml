@@ -1,47 +1,61 @@
-- name: Ingest SPY intraday (15m) from Alpaca
-  env:
-    SPY_DB_PATH: data/spy_truth.db
-    SYMBOL: SPY
-    INTRADAY_TIMEFRAME: "15Min"
-    INTRADAY_BARS_TABLE: "spy_bars_15m"
-    ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
-    ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
-  run: |
-    python scripts/ingest_spy_intraday_alpaca.py
+name: Ingest SPY data
 
-- name: Debug intraday coverage
-  run: |
-    python - <<'PY'
-    import sqlite3
-    con = sqlite3.connect("data/spy_truth.db")
-    cur = con.cursor()
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
-    print("Tables:", cur.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-    ).fetchall())
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
 
-    try:
-        print("spy_bars_15m count:",
-              cur.execute("SELECT COUNT(*) FROM spy_bars_15m").fetchone())
-        print("min/max session_date:",
-              cur.execute("SELECT MIN(session_date), MAX(session_date) FROM spy_bars_15m").fetchone())
-    except Exception as e:
-        print("ERROR querying spy_bars_15m:", e)
+    env:
+      SPY_DB_PATH: data/spy_truth.db
+      SYMBOL: SPY
+      INTRADAY_TIMEFRAME: "15Min"
+      INTRADAY_BARS_TABLE: "spy_bars_15m"
+      ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+      ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
 
-    con.close()
-    PY
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-- name: Build features (ORB + trend)
-  env:
-    SPY_DB_PATH: data/spy_truth.db
-    SYMBOL: SPY
-    INTRADAY_BARS_TABLE: "spy_bars_15m"
-    ORB_BARS: "4"
-    EDGE_SHARE_FLAG: "0.60"
-    TREND_RANGE_PCT_MIN: "0.012"
-    TREND_CLOSE_POS_UP: "0.75"
-    TREND_CLOSE_POS_DN: "0.25"
-    TREND_MAX_WICK_PCT: "0.25"
-    TREND_EDGE_SHARE_MAX: "0.60"
-  run: |
-    python scripts/build_features_spy_daily.py
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ingest SPY intraday (15m) from Alpaca
+        run: |
+          python scripts/ingest_spy_intraday_alpaca.py
+
+      - name: Debug intraday coverage
+        run: |
+          python - <<'PY'
+          import sqlite3
+          con = sqlite3.connect("data/spy_truth.db")
+          cur = con.cursor()
+
+          print("Tables:",
+                cur.execute(
+                  "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall())
+
+          try:
+              print("spy_bars_15m count:",
+                    cur.execute(
+                      "SELECT COUNT(*) FROM spy_bars_15m"
+                    ).fetchone())
+          except Exception as e:
+              print("spy_bars_15m missing:", e)
+          PY
+
+      - name: Build daily features
+        run: |
+          python scripts/build_features_spy_daily.py
