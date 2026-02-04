@@ -1,6 +1,15 @@
+name: Ingest SPY data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 22 * * 1-5"   # Weekdays after market close (6:30pm ET)
+
 jobs:
   ingest:
     runs-on: ubuntu-latest
+
+    # ✅ Job-level env = secrets available to ALL steps
     env:
       SPY_DB_PATH: data/spy_truth.db
       SYMBOL: SPY
@@ -13,22 +22,7 @@ jobs:
       FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
       FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
 
-      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}name: Ingest SPY data
-
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "30 22 * * 1-5"   # Weekdays after market close (6:30pm ET)
-
-jobs:
-  ingest:
-    runs-on: ubuntu-latest
-
-    env:
-      SPY_DB_PATH: data/spy_truth.db
-      SYMBOL: SPY
-      INTRADAY_TIMEFRAME: "15Min"
-      INTRADAY_BARS_TABLE: spy_bars_15m
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
 
     steps:
       - name: Checkout repo
@@ -55,27 +49,23 @@ jobs:
       # INTRADAY (15m) — ORB SOURCE
       # -----------------------------
       - name: Ingest SPY intraday (15m) from Alpaca
-        env:
-          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
-          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
         run: |
+          if [ -z "$ALPACA_API_KEY" ] || [ -z "$ALPACA_API_SECRET" ]; then
+            echo "ALPACA creds missing — skipping intraday"
+            exit 0
+          fi
           python scripts/ingest_spy_intraday_alpaca.py
 
-      # Optional sanity check (you already used this)
+      # Optional sanity check
       - name: Debug intraday coverage
         run: |
           python - <<'PY'
           import sqlite3
           con = sqlite3.connect("data/spy_truth.db")
           cur = con.cursor()
-          print("Tables:", cur.execute(
-              "SELECT name FROM sqlite_master WHERE type='table'"
-          ).fetchall())
+          print("Tables:", cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall())
           try:
-              print(
-                  "spy_bars_15m count:",
-                  cur.execute("SELECT COUNT(*) FROM spy_bars_15m").fetchone()
-              )
+              print("spy_bars_15m count:", cur.execute("SELECT COUNT(*) FROM spy_bars_15m").fetchone())
           except Exception as e:
               print("spy_bars_15m missing:", e)
           PY
@@ -95,12 +85,9 @@ jobs:
           python scripts/build_liquidity_regime_daily.py
 
       # -----------------------------
-      # FINRA DARK POOL (SAFE)
+      # FINRA DARK POOL (GUARDED)
       # -----------------------------
       - name: FINRA darkpool overlay
-        env:
-          FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
-          FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
         run: |
           if [ -z "$FINRA_CLIENT_ID" ] || [ -z "$FINRA_CLIENT_SECRET" ]; then
             echo "FINRA creds missing — skipping FINRA overlay"
@@ -109,10 +96,14 @@ jobs:
           python scripts/ingest_finra_darkpool_overlay.py
 
       # -----------------------------
-      # FRED MACRO
+      # FRED MACRO (GUARDED) ✅ this is your missing guard today
       # -----------------------------
       - name: FRED macro overlays
         run: |
+          if [ -z "$FRED_API_KEY" ]; then
+            echo "FRED_API_KEY missing — skipping FRED overlays"
+            exit 0
+          fi
           python scripts/ingest_fred_overlays.py
 
       # -----------------------------
@@ -126,8 +117,6 @@ jobs:
       # OPTIONAL: COMMIT OUTPUTS
       # -----------------------------
       - name: Commit outputs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
