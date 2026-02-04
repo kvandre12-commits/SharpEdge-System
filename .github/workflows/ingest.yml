@@ -10,13 +10,12 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
 
+    # shared defaults (scripts can override per-step env if needed)
     env:
       SPY_DB_PATH: data/spy_truth.db
       SYMBOL: SPY
       INTRADAY_TIMEFRAME: "15Min"
       INTRADAY_BARS_TABLE: "spy_bars_15m"
-      ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
-      ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
 
     steps:
       - name: Checkout repo
@@ -32,7 +31,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # -----------------------
+      # Layer 1: Truth (daily)
+      # -----------------------
+      - name: Ingest SPY daily
+        run: |
+          python scripts/ingest_spy_daily.py
+
+      # ----------------------------
+      # Layer 1: Truth (intraday 15m)
+      # ----------------------------
       - name: Ingest SPY intraday (15m) from Alpaca
+        env:
+          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
         run: |
           python scripts/ingest_spy_intraday_alpaca.py
 
@@ -42,28 +54,61 @@ jobs:
           import sqlite3
           con = sqlite3.connect("data/spy_truth.db")
           cur = con.cursor()
-
           print("Tables:", cur.execute(
               "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
           ).fetchall())
-
           try:
               print("spy_bars_15m count:",
                     cur.execute("SELECT COUNT(*) FROM spy_bars_15m").fetchone())
+              print("min/max session_date:",
+                    cur.execute("SELECT MIN(session_date), MAX(session_date) FROM spy_bars_15m").fetchone())
           except Exception as e:
-              print("spy_bars_15m missing:", e)
-
+              print("intraday query error:", e)
           con.close()
           PY
 
-      - name: Build daily features
+      # -----------------------
+      # Layer 2: Features
+      # -----------------------
+      - name: Build daily features (ORB + trend)
         run: |
           python scripts/build_features_spy_daily.py
 
-      - name: Commit outputs
+      # -----------------------
+      # Layer 3: Slow regime
+      # -----------------------
+      - name: Build liquidity regime (daily)
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add outputs/*.csv data/spy_truth.db || true
-          git commit -m "Update outputs" || echo "Nothing to commit"
-          git push
+          python scripts/build_liquidity_regime_daily.py
+
+      # -----------------------
+      # Overlays
+      # -----------------------
+      - name: FINRA darkpool overlay
+        run: |
+          python scripts/ingest_finra_darkpool_overlay.py
+
+      - name: FRED macro overlays
+        # only runs if you have FRED_API_KEY set as a secret; otherwise skip safely
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          python scripts/ingest_fred_overlays.py || echo "FRED step skipped/failed (check FRED_API_KEY + series ids)"
+
+      # -----------------------
+      # Layer 4: Final regime table
+      # -----------------------
+      - name: Build regime (daily)
+        run: |
+          python scripts/build_regime_spy_daily.py
+
+      # -----------------------
+      # Layer 4/5: Backtests
+      # -----------------------
+      - name: Backtest FAILED inside favorable slow regime
+        run: |
+          python scripts/backtest_failed_inside_slow_regime.py
+
+      - name: Backtest same day breakouts
+        run: |
+          python scripts/backtest_same_day_breakouts.py
