@@ -54,20 +54,18 @@ def parse_ts_utc(ts: str) -> datetime:
     return datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
 
-def choose_dte_bucket(entry_ts_utc: str, risk_per_share: float) -> tuple[str, str]:
-    dt_ny = parse_ts_utc(entry_ts_utc).astimezone(NY)
-    minutes = dt_ny.hour * 60 + dt_ny.minute
+def get_calibrated_bucket(con, rule_id, is_slow):
+    row = con.execute("""
+      SELECT default_bucket, slow_bucket
+      FROM dte_calibration
+      WHERE rule_id = ?
+    """, (rule_id,)).fetchone()
 
-    late_session = minutes >= (13 * 60 + 30)  # after 1:30pm NY
-    tight = risk_per_share <= 0.70
-    wide = risk_per_share >= 1.40
+    if not row:
+        return None
 
-    if wide:
-        return ("5-7", f"risk wide ({risk_per_share:.2f}) → buy time (less shakeouts)")
-    if late_session and tight:
-        return ("0-1", f"late session {dt_ny:%H:%M} NY + tight risk {risk_per_share:.2f} → gamma scalp")
-    return ("2-3", f"default balanced | time={dt_ny:%H:%M} NY risk={risk_per_share:.2f} (options-friendly)")
-
+    default_bucket, slow_bucket = row
+    return slow_bucket if is_slow else default_bucket
 
 def attach_dte_and_plan(con: sqlite3.Connection):
     rows = con.execute("""
