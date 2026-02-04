@@ -450,7 +450,7 @@ def main():
     con = connect(DB_PATH)
     try:
         truth = read_truth(con, SYMBOL)
-        feats = build_features(truth)
+        feats = build_features(truth, con=con)
         write_csv(feats)
         write_latest_signal(feats)
         print("OK: features + latest signal built from truth.")
