@@ -1,4 +1,19 @@
-name: Ingest SPY data
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    env:
+      SPY_DB_PATH: data/spy_truth.db
+      SYMBOL: SPY
+      INTRADAY_TIMEFRAME: "15Min"
+      INTRADAY_BARS_TABLE: spy_bars_15m
+
+      ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+      ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+
+      FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
+      FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
+
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}name: Ingest SPY data
 
 on:
   workflow_dispatch:
