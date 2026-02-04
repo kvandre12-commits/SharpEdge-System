@@ -30,6 +30,41 @@ jobs:
           INTRADAY_TIMEFRAME: "15Min"
           INTRADAY_BARS_TABLE: "spy_bars_15m"
       - run: python scripts/ingest_spy_daily.py
+      - name: Debug intraday coverage
+      run: |
+           python - <<'PY'
+           import sqlite3
+            con = sqlite3.connect("data/spy_truth.db")
+             cur = con.cursor()
+
+      print("DB file: data/spy_truth.db")
+
+    # 1) list tables
+    tables = cur.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
+    print("Tables:", tables)
+
+    # 2) try common intraday table names
+    candidates = ["spy_bars_15m", "bars_15m", "spy_intraday_15m", "spy_15m"]
+    for t in candidates:
+        try:
+            cnt = cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+            print(f"{t}: count={cnt}")
+            if cnt:
+                # show columns
+                cols = cur.execute(f"PRAGMA table_info({t})").fetchall()
+                print(f"{t} columns:", [c[1] for c in cols])
+
+                # show min/max dates if column exists
+                colnames = [c[1] for c in cols]
+                if "session_date" in colnames:
+                    print("min/max session_date:", cur.execute(f"SELECT MIN(session_date), MAX(session_date) FROM {t}").fetchone())
+                if "date" in colnames:
+                    print("min/max date:", cur.execute(f"SELECT MIN(date), MAX(date) FROM {t}").fetchone())
+        except Exception as e:
+            print(f"{t}: not found ({e})")
+
+    con.close()
+    PY
       - run: python scripts/build_features_spy_daily.py
       
       - name: Build liquidity regime (intraday 15m)
