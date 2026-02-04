@@ -48,6 +48,7 @@ jobs:
       # 🔁 ONE-TIME INTRADAY BACKFILL (RUN ONCE, THEN DELETE)
       # =====================================================
       - name: One-time BACKFILL intraday (15m) from Alpaca
+        if: github.event_name == 'workflow_dispatch'
         env:
           MODE: backfill
           START_ISO: "2025-04-01T00:00:00Z"
@@ -111,6 +112,17 @@ jobs:
       - name: Run playbook (signals + auto DTE + trade cards)
         run: |
           python scripts/run_playbook.py
-      - name: Calibrate DTE thresholds from backtest (optional)
+      - name: Calibrate DTE thresholds from backtest (manual only)
+        if: github.event_name == 'workflow_dispatch'
         run: |
-          python scripts/calibrate_dte_from_backtest.py || echo "Calibration skipped/failed"
+          python scripts/calibrate_dte_from_backtest.py
+          - name: Commit updated DB + outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add data/ outputs/ sql/ scripts/ || true
+
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Daily ingest + regime + playbook signals"
+          git push
