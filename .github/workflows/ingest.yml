@@ -1,97 +1,47 @@
-name: Ingest SPY
+- name: Ingest SPY intraday (15m) from Alpaca
+  env:
+    SPY_DB_PATH: data/spy_truth.db
+    SYMBOL: SPY
+    INTRADAY_TIMEFRAME: "15Min"
+    INTRADAY_BARS_TABLE: "spy_bars_15m"
+    ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+    ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+  run: |
+    python scripts/ingest_spy_intraday_alpaca.py
 
-on:
-  workflow_dispatch:
-  schedule:
-    - cron: "29 14 * * 1-5"
-    - cron: "30 15 * * 1-5"
+- name: Debug intraday coverage
+  run: |
+    python - <<'PY'
+    import sqlite3
+    con = sqlite3.connect("data/spy_truth.db")
+    cur = con.cursor()
 
-permissions:
-  contents: write
+    print("Tables:", cur.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+    ).fetchall())
 
-jobs:
-  ingest:
-    runs-on: ubuntu-latest
-    steps:
-
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - run: pip install -r requirements.txt
-      - name: Ingest SPY intraday (15m) from Alpaca
-        run: python scripts/ingest_spy_intraday_alpaca.py
-        env:
-          ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
-          ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
-          # If you need IEX feed, you can set env and read it in code (optional)
-          INTRADAY_TIMEFRAME: "15Min"
-          INTRADAY_BARS_TABLE: "spy_bars_15m"
-      - run: python scripts/ingest_spy_daily.py
-      - name: Debug intraday coverage
-      run: |
-           python - <<'PY'
-           import sqlite3
-            con = sqlite3.connect("data/spy_truth.db")
-             cur = con.cursor()
-
-      print("DB file: data/spy_truth.db")
-
-    # 1) list tables
-    tables = cur.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()
-    print("Tables:", tables)
-
-    # 2) try common intraday table names
-    candidates = ["spy_bars_15m", "bars_15m", "spy_intraday_15m", "spy_15m"]
-    for t in candidates:
-        try:
-            cnt = cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
-            print(f"{t}: count={cnt}")
-            if cnt:
-                # show columns
-                cols = cur.execute(f"PRAGMA table_info({t})").fetchall()
-                print(f"{t} columns:", [c[1] for c in cols])
-
-                # show min/max dates if column exists
-                colnames = [c[1] for c in cols]
-                if "session_date" in colnames:
-                    print("min/max session_date:", cur.execute(f"SELECT MIN(session_date), MAX(session_date) FROM {t}").fetchone())
-                if "date" in colnames:
-                    print("min/max date:", cur.execute(f"SELECT MIN(date), MAX(date) FROM {t}").fetchone())
-        except Exception as e:
-            print(f"{t}: not found ({e})")
+    try:
+        print("spy_bars_15m count:",
+              cur.execute("SELECT COUNT(*) FROM spy_bars_15m").fetchone())
+        print("min/max session_date:",
+              cur.execute("SELECT MIN(session_date), MAX(session_date) FROM spy_bars_15m").fetchone())
+    except Exception as e:
+        print("ERROR querying spy_bars_15m:", e)
 
     con.close()
     PY
-      - run: python scripts/build_features_spy_daily.py
-      
-      - name: Build liquidity regime (intraday 15m)
-        run: python scripts/build_liquidity_regime_daily.py --bars-table spy_bars_15m
-      - name: Build liquidity regime (daily)
-        run: python scripts/build_liquidity_regime_daily.py
-      - name: FINRA darkpool overlay
-        run: python scripts/ingest_finra_darkpool_overlay.py
-        env:
-          FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
-          FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
-      - name: Ingest FRED macro overlays
-        env:
-          SPY_DB_PATH: data/spy_truth.db
-          SYMBOL: SPY
-          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-          FRED_START: "2000-01-01"
-        run: |
-          python scripts/ingest_fred_overlays.py
-      - run: python scripts/build_regime_spy_daily.py
-      - name: Backtest FAILED inside favorable slow regime
-        run: python scripts/backtest_failed_inside_slow_regime.py
-      - name: Run playbook (auto DTE trade cards)
-        run: python scripts/run_playbook.py
-      - run: |
-          git config user.name github-actions
-          git config user.email actions@github.com
-          git add data outputs
-          git diff --cached --quiet || git commit -m "Update truth + features"
-          git push
+
+- name: Build features (ORB + trend)
+  env:
+    SPY_DB_PATH: data/spy_truth.db
+    SYMBOL: SPY
+    INTRADAY_BARS_TABLE: "spy_bars_15m"
+    ORB_BARS: "4"
+    EDGE_SHARE_FLAG: "0.60"
+    TREND_RANGE_PCT_MIN: "0.012"
+    TREND_CLOSE_POS_UP: "0.75"
+    TREND_CLOSE_POS_DN: "0.25"
+    TREND_MAX_WICK_PCT: "0.25"
+    TREND_EDGE_SHARE_MAX: "0.60"
+  run: |
+    python scripts/build_features_spy_daily.py
