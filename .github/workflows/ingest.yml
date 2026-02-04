@@ -59,3 +59,10 @@ jobs:
       - name: Build daily features
         run: |
           python scripts/build_features_spy_daily.py
+          - name: Commit outputs
+ run: |
+    git config user.name "github-actions"
+    git config user.email "github-actions@github.com"
+    git add outputs/*.csv data/spy_truth.db || true
+    git commit -m "Update outputs" || echo "Nothing to commit"
+    git push
