@@ -19,12 +19,11 @@ FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
 
 def fetch_series(series_id, start="2000-01-01"):
     params = {
-        "series_id": series_id,
-        "api_key": FRED_API_KEY,
-        "file_type": "json",
-        "frequency": "d",
-        "observation_start": start,
-    }
+    "series_id": series_id,
+    "api_key": FRED_API_KEY,
+    "file_type": "json",
+    "observation_start": start,
+}
     r = requests.get(FRED_URL, params=params, timeout=30)
     r.raise_for_status()
 
