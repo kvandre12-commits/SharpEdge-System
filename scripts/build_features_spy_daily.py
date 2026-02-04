@@ -259,7 +259,12 @@ def build_features(df: pd.DataFrame, con: sqlite3.Connection | None = None) -> p
         "trigger_tr_15",
         "trigger_any_15",
         "trigger_cluster",
-
+        "open_orb_range",
+        "close_orb_range",
+        "edge_orb_share",
+        "edge_orb_bias",
+        "edge_orb_flag",
+        "day_type",
         "compression_flag",
         "next_day_expansion",
 
