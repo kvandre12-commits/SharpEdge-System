@@ -152,10 +152,11 @@ def build_features(truth: pd.DataFrame, con: Optional[sqlite3.Connection] = None
         orb = compute_orb_features(con, date_min=date_min, date_max=date_max)
 
         if not orb.empty:
-            out = out.merge(orb, on="date", how="left")
+            out = out.merge(orb, on="date", how="left", suffixes=("", "_orb"))
+            if "open_orb_range" not in out.columns:  out["open_orb_range"] = 0.0
+            if "close_orb_range" not in out.columns: out["close_orb_range"] = 0.0
             out["open_orb_range"] = out["open_orb_range"].fillna(0.0)
             out["close_orb_range"] = out["close_orb_range"].fillna(0.0)
-
             out["open_orb_share"] = safe_div(out["open_orb_range"], out["intraday_range"])
             out["close_orb_share"] = safe_div(out["close_orb_range"], out["intraday_range"])
             out["edge_orb_share"] = safe_div(out["open_orb_range"] + out["close_orb_range"], out["intraday_range"])
