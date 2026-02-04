@@ -50,10 +50,9 @@ jobs:
       - name: One-time BACKFILL intraday (15m) from Alpaca
         env:
           MODE: backfill
-          START_ISO: "2024-01-01T00:00:00Z"
+          START_ISO: "2025-04-01T00:00:00Z"
         run: |
-            python scripts/ingest_spy_intraday_alpaca.py || echo 
-               "Backfill failed — safe to retry"
+             python scripts/ingest_spy_intraday_alpaca.py || echo "Backfill failed – safe to retry"
 
       # -----------------------------
       # NORMAL INTRADAY (INCREMENTAL)
