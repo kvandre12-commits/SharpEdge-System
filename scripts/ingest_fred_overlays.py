@@ -10,7 +10,7 @@ OUTPUT_PATH = "outputs/spy_macro_overlays_daily.csv"
 
 SERIES = {
     "VIXCLS": "vix",
-    "VIX9D": "vix9d",
+    "VIX9D": "vix3m",
     "DGS10": "rates10y",
 }
 
@@ -71,7 +71,7 @@ def main():
     # VIX level
     macro["vix_z"] = zscore(macro["VIXCLS"])
     # VIX9D level
-    macro["vix9d_z"] = zscore(macro["VIX9D"])
+    macro["vixCLS_z"] = zscore(macro["VIXCLS"])
     # Term structure
     macro["vix_term"] = macro["VIX9D"] / macro["VIXCLS"]
     macro["vix_term_z"] = zscore(macro["vix_term"])
@@ -94,11 +94,11 @@ def main():
             {
                 "date": date,
                 "symbol": SYMBOL,
-                "overlay_type": "vix9d",
-                "overlay_strength": z_to_strength(r["vix9d_z"]),
-                "raw_value": r["VIX9D"],
-                "z_score": r["vix9d_z"],
-                "notes": "9D VIX level",
+                "overlay_type": "vixCLS",
+                "overlay_strength": z_to_strength(r["vixCLS_z"]),
+                "raw_value": r["VIXCLS"],
+                "z_score": r["vixCLS_z"],
+                "notes": "3mon VIX level",
             },
             {
                 "date": date,
@@ -107,7 +107,7 @@ def main():
                 "overlay_strength": z_to_strength(r["vix_term_z"]),
                 "raw_value": r["vix_term"],
                 "z_score": r["vix_term_z"],
-                "notes": "VIX9D / VIX",
+                "notes": "VIX3MON / VIX",
             },
             {
                 "date": date,
