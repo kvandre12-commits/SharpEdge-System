@@ -3,13 +3,12 @@ name: Ingest SPY data
 on:
   workflow_dispatch:
   schedule:
-    - cron: "30 22 * * 1-5"   # Weekdays after market close (6:30pm ET)
+    - cron: "30 22 * * 1-5"
 
 jobs:
   ingest:
     runs-on: ubuntu-latest
 
-    # ✅ Job-level env = secrets available to ALL steps
     env:
       SPY_DB_PATH: data/spy_truth.db
       SYMBOL: SPY
@@ -22,24 +21,22 @@ jobs:
       FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
       FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
 
-      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}       
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-      - name: One-time BACKFILL intraday (15m) from Alpaca
-        env:
-       SPY_DB_PATH: data/spy_truth.db
-       SYMBOL: SPY
-    INTRADAY_TIMEFRAME: "15Min"
-    INTRADAY_BARS_TABLE: "spy_bars_15m"
-    MODE: backfill
-    START_ISO: "2024-01-01T00:00:00Z"
-    # END_ISO: "2024-12-31T23:59:59Z"   # optional
-    ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
-    ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
-  run: |
-    python scripts/ingest_spy_intraday_alpaca.py
+
       # -----------------------------
       # DAILY BARS
       # -----------------------------
@@ -47,8 +44,18 @@ jobs:
         run: |
           python scripts/ingest_spy_daily.py
 
+      # =====================================================
+      # 🔁 ONE-TIME INTRADAY BACKFILL (RUN ONCE, THEN DELETE)
+      # =====================================================
+      - name: One-time BACKFILL intraday (15m) from Alpaca
+        env:
+          MODE: backfill
+          START_ISO: "2024-01-01T00:00:00Z"
+        run: |
+          python scripts/ingest_spy_intraday_alpaca.py
+
       # -----------------------------
-      # INTRADAY (15m) — ORB SOURCE
+      # NORMAL INTRADAY (INCREMENTAL)
       # -----------------------------
       - name: Ingest SPY intraday (15m) from Alpaca
         run: |
@@ -58,37 +65,30 @@ jobs:
           fi
           python scripts/ingest_spy_intraday_alpaca.py
 
-      # Optional sanity check
       - name: Debug intraday coverage
         run: |
           python - <<'PY'
           import sqlite3
           con = sqlite3.connect("data/spy_truth.db")
           cur = con.cursor()
-          print("Tables:", cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall())
-          try:
-              print("spy_bars_15m count:", cur.execute("SELECT COUNT(*) FROM spy_bars_15m").fetchone())
-          except Exception as e:
-              print("spy_bars_15m missing:", e)
+          print(
+              "spy_bars_15m rows:",
+              cur.execute("SELECT COUNT(*) FROM spy_bars_15m").fetchone()
+          )
+          con.close()
           PY
 
       # -----------------------------
-      # DAILY FEATURES (ORB + TREND)
+      # FEATURES / REGIMES
       # -----------------------------
       - name: Build daily features (ORB + trend)
         run: |
           python scripts/build_features_spy_daily.py
 
-      # -----------------------------
-      # LIQUIDITY / REGIME
-      # -----------------------------
       - name: Build liquidity regime (daily)
         run: |
           python scripts/build_liquidity_regime_daily.py
 
-      # -----------------------------
-      # FINRA DARK POOL (GUARDED)
-      # -----------------------------
       - name: FINRA darkpool overlay
         run: |
           if [ -z "$FINRA_CLIENT_ID" ] || [ -z "$FINRA_CLIENT_SECRET" ]; then
@@ -97,9 +97,6 @@ jobs:
           fi
           python scripts/ingest_finra_darkpool_overlay.py
 
-      # -----------------------------
-      # FRED MACRO (GUARDED) ✅ this is your missing guard today
-      # -----------------------------
       - name: FRED macro overlays
         run: |
           if [ -z "$FRED_API_KEY" ]; then
@@ -108,20 +105,6 @@ jobs:
           fi
           python scripts/ingest_fred_overlays.py
 
-      # -----------------------------
-      # FINAL REGIME BUILD
-      # -----------------------------
       - name: Build regime (daily)
         run: |
           python scripts/build_regime_spy_daily.py
-
-      # -----------------------------
-      # OPTIONAL: COMMIT OUTPUTS
-      # -----------------------------
-      - name: Commit outputs
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add data/*.db outputs/*.csv || true
-          git commit -m "Update data outputs" || echo "Nothing to commit"
-          git push || echo "No write permission"
