@@ -25,6 +25,10 @@ TRIGGER_PCT = float(os.getenv("TRIGGER_PCT", "0.015"))
 # Permission knobs
 PERM_MIN_TRIGGERS_IN_WINDOW = int(os.getenv("PERM_MIN_TRIGGERS_IN_WINDOW", "2"))
 
+# Intraday ORB / edge volatility knobs (15m bars)
+INTRADAY_BARS_TABLE = os.getenv("INTRADAY_BARS_TABLE", "spy_bars_15m")
+ORB_BARS = int(os.getenv("ORB_BARS", "4"))  # 4 x 15m = 1 hour open + 1 hour close
+EDGE_SHARE_FLAG = float(os.getenv("EDGE_SHARE_FLAG", "0.60"))
 
 def connect(db_path: str) -> sqlite3.Connection:
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -56,8 +60,59 @@ def pct_rank_last(x: pd.Series) -> float:
     last = x.iloc[-1]
     return float((x <= last).mean())
 
+def compute_orb_features(
+    con: sqlite3.Connection,
+    symbol: str,
+    intraday_table: str,
+    orb_bars: int,
+    date_min: str,
+    date_max: str,
+) -> pd.DataFrame:
+    """
+    Computes open/close ORB ranges using intraday 15m bars table (spy_bars_15m).
+    Expects columns: session_date, ts, high, low, symbol
+    Returns: date, open_orb_range, close_orb_range
+    """
+    q = f"""
+    SELECT session_date, ts, high, low
+    FROM {intraday_table}
+    WHERE symbol = ?
+      AND session_date BETWEEN ? AND ?
+    ORDER BY session_date ASC, ts ASC
+    """
+    try:
+        intr = pd.read_sql_query(q, con, params=(symbol, date_min, date_max))
+    except Exception:
+        # table missing or schema mismatch
+        return pd.DataFrame(columns=["date", "open_orb_range", "close_orb_range"])
 
-def build_features(df: pd.DataFrame) -> pd.DataFrame:
+    if intr.empty:
+        return pd.DataFrame(columns=["date", "open_orb_range", "close_orb_range"])
+
+    # Ensure correct ordering
+    intr["ts"] = pd.to_datetime(intr["ts"], errors="coerce")
+    intr = intr.dropna(subset=["ts"]).sort_values(["session_date", "ts"])
+
+    rows = []
+    for d, g in intr.groupby("session_date", sort=True):
+        if len(g) < 2 * orb_bars:
+            continue
+
+        open_g = g.head(orb_bars)
+        close_g = g.tail(orb_bars)
+
+        open_range = float(open_g["high"].max() - open_g["low"].min())
+        close_range = float(close_g["high"].max() - close_g["low"].min())
+
+        rows.append({
+            "date": str(d),
+            "open_orb_range": open_range,
+            "close_orb_range": close_range,
+        })
+
+    return pd.DataFrame(rows)
+
+def build_features(df: pd.DataFrame, con: sqlite3.Connection | None = None) -> pd.DataFrame:
     out = df.copy()
 
     # Prev close + returns
@@ -100,7 +155,42 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     ).astype(int)
 
     out["trigger_cluster"] = out["trigger_any_15"].rolling(CLUSTER_WIN, min_periods=1).sum()
+    
+    # -----------------------------
+    # Edge volatility (open/close ORB)
+    # -----------------------------
+    out["open_orb_range"] = 0.0
+    out["close_orb_range"] = 0.0
+    out["open_orb_share"] = 0.0
+    out["close_orb_share"] = 0.0
+    out["edge_orb_share"] = 0.0
+    out["edge_orb_bias"] = 0.0
+    out["edge_orb_flag"] = 0
 
+    if con is not None and not out.empty:
+        date_min = str(out["date"].min())
+        date_max = str(out["date"].max())
+
+        orb = compute_orb_features(
+            con=con,
+            symbol=SYMBOL,
+            intraday_table=INTRADAY_BARS_TABLE,
+            orb_bars=ORB_BARS,
+            date_min=date_min,
+            date_max=date_max,
+        )
+
+        if not orb.empty:
+            out = out.merge(orb, on="date", how="left")
+            out["open_orb_range"] = out["open_orb_range"].fillna(0.0)
+            out["close_orb_range"] = out["close_orb_range"].fillna(0.0)
+
+            denom = out["intraday_range"].replace(0, np.nan)
+            out["open_orb_share"] = (out["open_orb_range"] / denom).fillna(0.0)
+            out["close_orb_share"] = (out["close_orb_range"] / denom).fillna(0.0)
+            out["edge_orb_share"] = ((out["open_orb_range"] + out["close_orb_range"]) / denom).fillna(0.0)
+            out["edge_orb_bias"] = (out["close_orb_share"] - out["open_orb_share"]).fillna(0.0)
+            out["edge_orb_flag"] = (out["edge_orb_share"] >= EDGE_SHARE_FLAG).astype(int)
     # -----------------------------
     # Compression + label (kept)
     # -----------------------------
@@ -225,6 +315,46 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     else:
         feats["ats_ratio"] = np.nan
         feats["ats_pressure_flag"] = 0
+    # -----------------------------
+    # Trend day vs non-trend day
+    # Uses: range size + close position + wick rejection + edge distribution
+    # -----------------------------
+    RANGE_PCT_MIN = float(os.getenv("TREND_RANGE_PCT_MIN", "0.012"))
+    CLOSE_STRONG_UP = float(os.getenv("TREND_CLOSE_POS_UP", "0.75"))
+    CLOSE_STRONG_DOWN = float(os.getenv("TREND_CLOSE_POS_DN", "0.25"))
+    MAX_WICK_PCT = float(os.getenv("TREND_MAX_WICK_PCT", "0.25"))
+    EDGE_SHARE_MAX = float(os.getenv("TREND_EDGE_SHARE_MAX", "0.60"))
+
+    denom = out["intraday_range"].replace(0, np.nan)
+
+    out["range_pct"] = (out["intraday_range"] / out["close"]).replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    out["close_pos"] = ((out["close"] - out["low"]) / denom).fillna(0.0)
+
+    out["upper_wick_pct"] = ((out["high"] - out[["open", "close"]].max(axis=1)) / denom).fillna(0.0)
+    out["lower_wick_pct"] = ((out[["open", "close"]].min(axis=1) - out["low"]) / denom).fillna(0.0)
+
+    def classify_day(r):
+        # Trend up
+        if (
+            r["range_pct"] >= RANGE_PCT_MIN
+            and r["close_pos"] >= CLOSE_STRONG_UP
+            and r["upper_wick_pct"] <= MAX_WICK_PCT
+            and r["edge_orb_share"] <= EDGE_SHARE_MAX
+        ):
+            return "trend_up"
+
+        # Trend down
+        if (
+            r["range_pct"] >= RANGE_PCT_MIN
+            and r["close_pos"] <= CLOSE_STRONG_DOWN
+            and r["lower_wick_pct"] <= MAX_WICK_PCT
+            and r["edge_orb_share"] <= EDGE_SHARE_MAX
+        ):
+            return "trend_down"
+
+        return "non_trend"
+
+    out["day_type"] = out.apply(classify_day, axis=1)
     return feats
 
 
