@@ -37,6 +37,18 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Ingest options chain snapshots (Alpaca)
+        run: |
+          python scripts/ingest_alpaca_options_chain_snapshots.py
+
+      - name: Aggregate options positioning metrics (0-1 DTE)
+        run: |
+          DTE_MIN=0 DTE_MAX=1 python scripts/aggregate_options_positioning_metrics.py
+
+      - name: Aggregate options positioning metrics (2-3 DTE)
+        run: |
+          DTE_MIN=2 DTE_MAX=3 python scripts/aggregate_options_positioning_metrics.py
+          
       # -----------------------------
       # DAILY BARS
       # -----------------------------
