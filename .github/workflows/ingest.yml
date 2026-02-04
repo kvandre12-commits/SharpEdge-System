@@ -21,9 +21,6 @@ jobs:
           python-version: "3.11"
 
       - run: pip install -r requirements.txt
-
-      - run: python scripts/ingest_spy_daily.py
-      - run: python scripts/build_features_spy_daily.py
       - name: Ingest SPY intraday (15m) from Alpaca
         run: python scripts/ingest_spy_intraday_alpaca.py
         env:
@@ -32,6 +29,9 @@ jobs:
           # If you need IEX feed, you can set env and read it in code (optional)
           INTRADAY_TIMEFRAME: "15Min"
           INTRADAY_BARS_TABLE: "spy_bars_15m"
+      - run: python scripts/ingest_spy_daily.py
+      - run: python scripts/build_features_spy_daily.py
+      
       - name: Build liquidity regime (intraday 15m)
         run: python scripts/build_liquidity_regime_daily.py --bars-table spy_bars_15m
       - name: Build liquidity regime (daily)
