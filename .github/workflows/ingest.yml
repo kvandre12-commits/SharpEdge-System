@@ -37,7 +37,19 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-
+      - name: One-time BACKFILL intraday (15m) from Alpaca
+        env:
+       SPY_DB_PATH: data/spy_truth.db
+       SYMBOL: SPY
+    INTRADAY_TIMEFRAME: "15Min"
+    INTRADAY_BARS_TABLE: "spy_bars_15m"
+    MODE: backfill
+    START_ISO: "2024-01-01T00:00:00Z"
+    # END_ISO: "2024-12-31T23:59:59Z"   # optional
+    ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+    ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+  run: |
+    python scripts/ingest_spy_intraday_alpaca.py
       # -----------------------------
       # DAILY BARS
       # -----------------------------
