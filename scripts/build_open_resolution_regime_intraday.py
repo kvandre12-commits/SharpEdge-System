@@ -387,7 +387,8 @@ cls = classify(session_date, pm, keys, rths)
                 "failed_breakdown_open": cls["failed_breakdown_open"],
                 "accepted_breakdown_open": cls["accepted_breakdown_open"],
                 "open_regime_label": cls["open_regime_label"],
-                "regime_confidence": cls["regime_confidence"],
+                "regime_confidence": cls["regime_confidence"],"setup_dir": cls.get("setup_dir"),
+"key_source": cls.get("key_source"),
                 "notes": cls["notes"],
             }
 
