@@ -102,6 +102,10 @@ jobs:
         run: |
           python scripts/build_liquidity_regime_daily.py
 
+      - name: Build open resolution regime (intraday)
+        run: |
+          python scripts/build_open_resolution_regime_intraday.py
+          
       - name: FINRA darkpool overlay
         run: |
           if [ -z "$FINRA_CLIENT_ID" ] || [ -z "$FINRA_CLIENT_SECRET" ]; then
