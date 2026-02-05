@@ -358,8 +358,8 @@ def main():
 
             pm = compute_premarket_stats(bars)
             keys = get_true_key_levels(con, session_date)
-rths = first_rth_n_bars(bars, n=2)
-cls = classify(session_date, pm, keys, rths)
+            rths = first_rth_n_bars(bars, n=2)
+            cls = classify(session_date, pm, keys, rths)
 
             row = {
                 "snapshot_ts": snapshot_ts,
@@ -388,7 +388,7 @@ cls = classify(session_date, pm, keys, rths)
                 "accepted_breakdown_open": cls["accepted_breakdown_open"],
                 "open_regime_label": cls["open_regime_label"],
                 "regime_confidence": cls["regime_confidence"],"setup_dir": cls.get("setup_dir"),
-"key_source": cls.get("key_source"),
+                "key_source": cls.get("key_source"),
                 "notes": cls["notes"],
             }
 
