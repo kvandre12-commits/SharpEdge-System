@@ -92,19 +92,28 @@ def fetch_bars_for_session(con: sqlite3.Connection, session_date: str) -> List[D
         out.append({"ts": ts, "open": o, "high": h, "low": l, "close": c, "volume": v})
     return out
 
-def get_true_key_level(con: sqlite3.Connection, session_date: str) -> Optional[float]:
+PM_UP_RETURN_THRESH = float(os.getenv("PM_UP_RETURN_THRESH", "0.003"))  # +0.30%
+
+def get_true_key_levels(con: sqlite3.Connection, session_date: str) -> Dict[str, Optional[float]]:
     row = con.execute(
         """
-        SELECT prior_key_low
+        SELECT prior_key_low, prior_key_high
         FROM liquidity_regime_events
         WHERE underlying = ? AND session_date = ?
         """,
         (SYMBOL, session_date),
     ).fetchone()
     if not row:
-        return None
-    return float(row[0]) if row[0] is not None else None
+        return {"prior_key_low": None, "prior_key_high": None}
+    return {
+        "prior_key_low": float(row[0]) if row[0] is not None else None,
+        "prior_key_high": float(row[1]) if row[1] is not None else None,
+    }
 
+def first_rth_n_bars(bars: List[Dict[str, Any]], n: int = 2) -> List[Dict[str, Any]]:
+    rth = [b for b in bars if in_ny_time(b["ts"], "09:30", "10:00")]
+    return rth[:n]
+    
 def in_ny_time(ts_text: str, start_hhmm: str, end_hhmm: str) -> bool:
     dt_utc = parse_ts_utc(ts_text)
     dt_ny = dt_utc.astimezone(NY)
@@ -144,99 +153,150 @@ def first_rth_bar(bars: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     # With 15m bars, there should be exactly one bar. Return the first.
     return rth[0]
 
-def classify(session_date: str, pm: Dict[str, Optional[float]], break_level: Optional[float], rth: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    notes = []
-    conf = 0.0
+def classify(session_date: str,
+             pm: Dict[str, Optional[float]],
+             keys: Dict[str, Optional[float]],
+             rths: List[Dict[str, Any]]) -> Dict[str, Any]:
 
+    notes = []
     pm_return = pm["pm_return"]
     pm_rr = pm["pm_range_ratio"]
 
-    pm_initiative_flush = int(
-        (pm_return is not None and pm_return <= PM_RETURN_THRESH) and
-        (pm_rr is not None and pm_rr >= PM_RANGE_RATIO_THRESH)
-    )
+    # Setup qualifier: same as before, but direction-aware
+    has_range = (pm_rr is not None and pm_rr >= PM_RANGE_RATIO_THRESH)
+    flush_down = (pm_return is not None and pm_return <= PM_RETURN_THRESH)
+    rip_up     = (pm_return is not None and pm_return >= PM_UP_RETURN_THRESH)
 
-    flush_low = pm["pm_low"]
+    setup_dir = "NONE"
+    if has_range and flush_down:
+        setup_dir = "DOWN"
+    elif has_range and rip_up:
+        setup_dir = "UP"
 
-    # If no break_level from true key levels, fall back to pm_open (not ideal but safe)
-    if break_level is None:
-        break_level = pm["pm_open"]
-        notes.append("break_level fallback=pm_open (true key level missing)")
-
-    if pm_initiative_flush == 0:
+    if setup_dir == "NONE":
         return {
             "pm_initiative_flush": 0,
+            "setup_dir": "NONE",
+            "key_source": None,
             "failed_breakdown_open": 0,
             "accepted_breakdown_open": 0,
             "open_regime_label": "NO_SETUP",
             "regime_confidence": 10.0,
-            "notes": "no initiative flush setup",
-            "break_level": break_level,
-            "flush_low": flush_low,
+            "notes": "no initiative flush/rip setup",
+            "break_level": None,
+            "flush_low": pm["pm_low"],
         }
 
-    if rth is None:
+    # Choose true key level based on setup direction
+    break_level = None
+    key_source = None
+
+    if setup_dir == "DOWN":
+        break_level = keys.get("prior_key_low")
+        key_source = "PRIOR_KEY_LOW"
+    else:
+        break_level = keys.get("prior_key_high")
+        key_source = "PRIOR_KEY_HIGH"
+
+    if break_level is None:
+        break_level = pm["pm_open"]
+        key_source = "FALLBACK_PM_OPEN"
+        notes.append("break_level fallback=pm_open (true key missing)")
+
+    # Need at least the first bar
+    if not rths:
         return {
             "pm_initiative_flush": 1,
+            "setup_dir": setup_dir,
+            "key_source": key_source,
             "failed_breakdown_open": 0,
             "accepted_breakdown_open": 0,
             "open_regime_label": "MISSING_RTH",
             "regime_confidence": 0.0,
-            "notes": "missing first RTH bar (intraday coverage?)",
+            "notes": "missing first RTH bar",
             "break_level": break_level,
-            "flush_low": flush_low,
+            "flush_low": pm["pm_low"],
         }
 
-    o = float(rth["open"])
-    h = float(rth["high"])
-    l = float(rth["low"])
-    c = float(rth["close"])
+    b1 = rths[0]
+    b2 = rths[1] if len(rths) > 1 else None
 
-    swept_break = (l < break_level) if break_level is not None else False
-    reclaimed = swept_break and (c > break_level) if break_level is not None else False
+    o1, h1, l1, c1 = map(float, (b1["open"], b1["high"], b1["low"], b1["close"]))
+    c2 = float(b2["close"]) if b2 else None
 
-    close_below_break = (c < break_level) if break_level is not None else False
-    close_below_flush = (flush_low is not None and c < flush_low)
+    flush_low = pm["pm_low"]
+    flush_high = pm["pm_high"]
 
-    failed = int(reclaimed)
+    # Direction-specific logic
+    failed = 0
     accepted = 0
     label = "UNRESOLVED_OPEN"
+    conf = 35.0
 
-    if failed:
-        label = "FAILED_BREAKDOWN_OPEN"
-        conf = 70.0
-        if close_below_flush:
-            conf += 5.0  # means big range; still reclaimed key
-        if (c - break_level) / max(1e-6, (h - l)) > 0.25:
-            conf += 10.0
-        notes.append("swept below true key level and closed back above")
-    else:
-        # acceptance logic: strongest is acceptance below flush low
-        if close_below_flush:
+    if setup_dir == "DOWN":
+        swept = (l1 < break_level)
+        reclaimed = swept and (c1 > break_level)
+
+        # Acceptance now requires 2 bars (reduces fake opens)
+        accept_close_1 = (c1 < break_level)
+        accept_close_2 = (c2 is not None and c2 < break_level)
+
+        if reclaimed:
+            failed = 1
+            label = "FAILED_BREAKDOWN_OPEN"
+            conf = 72.0
+            notes.append("swept below prior_key_low and closed back above")
+        elif accept_close_1 and accept_close_2:
+            accepted = 1
+            label = "ACCEPTED_BREAKDOWN_OPEN_2BAR"
+            conf = 70.0
+            notes.append("accepted below prior_key_low for 2 bars")
+        elif flush_low is not None and c1 < float(flush_low) and (c2 is None or c2 < float(flush_low)):
             accepted = 1
             label = "ACCEPTED_BREAKDOWN_OPEN_STRONG"
-            conf = 70.0
-            notes.append("closed below premarket flush low")
-        elif close_below_break:
-            accepted = 1
-            label = "ACCEPTED_BREAKDOWN_OPEN"
-            conf = 55.0
-            notes.append("closed below true key level")
+            conf = 75.0
+            notes.append("accepted below premarket flush low")
         else:
-            conf = 35.0
-            notes.append("did not reclaim or accept; wait for resolution")
+            notes.append("no reclaim/accept yet (down setup)")
+
+    else:  # UP setup
+        swept = (h1 > break_level)
+        rejected = swept and (c1 < break_level)
+
+        accept_close_1 = (c1 > break_level)
+        accept_close_2 = (c2 is not None and c2 > break_level)
+
+        if rejected:
+            failed = 1
+            label = "FAILED_BREAKOUT_OPEN"
+            conf = 72.0
+            notes.append("swept above prior_key_high and closed back below")
+        elif accept_close_1 and accept_close_2:
+            accepted = 1
+            label = "ACCEPTED_BREAKOUT_OPEN_2BAR"
+            conf = 70.0
+            notes.append("accepted above prior_key_high for 2 bars")
+        elif flush_high is not None and c1 > float(flush_high) and (c2 is None or c2 > float(flush_high)):
+            accepted = 1
+            label = "ACCEPTED_BREAKOUT_OPEN_STRONG"
+            conf = 75.0
+            notes.append("accepted above premarket high")
+        else:
+            notes.append("no reject/accept yet (up setup)")
 
     return {
         "pm_initiative_flush": 1,
+        "setup_dir": setup_dir,
+        "key_source": key_source,
         "failed_breakdown_open": failed,
         "accepted_breakdown_open": accepted,
         "open_regime_label": label,
         "regime_confidence": float(min(conf, 100.0)),
         "notes": "; ".join(notes),
         "break_level": break_level,
-        "flush_low": flush_low,
+        "flush_low": float(flush_low) if flush_low is not None else None,
     }
-
+                 
 def upsert(con: sqlite3.Connection, row: Dict[str, Any]) -> None:
     con.execute(
         """
@@ -297,10 +357,9 @@ def main():
                 continue
 
             pm = compute_premarket_stats(bars)
-            true_key = get_true_key_level(con, session_date)
-            rth = first_rth_bar(bars)
-
-            cls = classify(session_date, pm, true_key, rth)
+            keys = get_true_key_levels(con, session_date)
+rths = first_rth_n_bars(bars, n=2)
+cls = classify(session_date, pm, keys, rths)
 
             row = {
                 "snapshot_ts": snapshot_ts,
