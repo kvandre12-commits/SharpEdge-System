@@ -361,6 +361,8 @@ def main():
             rths = first_rth_n_bars(bars, n=2)
             cls = classify(session_date, pm, keys, rths)
 
+            rth = rths[0] if rths else None
+
             row = {
                 "snapshot_ts": snapshot_ts,
                 "session_date": session_date,
