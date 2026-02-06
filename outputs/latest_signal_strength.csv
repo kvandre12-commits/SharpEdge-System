@@ -1,2 +1,2 @@
-date,symbol,early_score,early_bucket,readiness_score,ignition_score,dp_strength,transition_flag,compression_flag,trigger_cluster,trade_permission,tr_lift,cluster_slope,signal_version
-2026-01-30,SPY,20.829670747057378,quiet,0.0,20.829670747057378,0.0,0,0,3.0,0,1.3207417686764344,0.2,v1_early_readiness_ignition
+date,symbol,early_score,early_bucket,readiness_score,ignition_score,dp_strength,transition_flag,compression_flag,trigger_cluster,trade_permission,tr_lift,cluster_slope,signal_version,tr_lift_fast,cluster_slope_fast,pressure_state,trade_gate,pressure_reason
+2026-01-30,SPY,20.829670747057378,quiet,0.0,20.829670747057378,0.0,0,0,3.0,0,1.3207417686764344,0.2,v1_early_readiness_ignition,1.436909146668427,0.0,UNRESOLVED_PRESSURE,0,tr_lift_fast=1.44 >= 1.15 but early_bucket=quiet
