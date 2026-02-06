@@ -4,7 +4,7 @@
  
  import numpy as np
  import pandas as pd
-@@
+
  EDGE_SHARE_FLAG = float(os.getenv("EDGE_SHARE_FLAG", "0.60"))
  
  def connect(db_path: str) -> sqlite3.Connection:
@@ -17,7 +17,7 @@
 +    return (a / b2).replace([np.inf, -np.inf], np.nan)
  
  def read_truth(con: sqlite3.Connection, symbol: str) -> pd.DataFrame:
-@@
+
  def build_features(df: pd.DataFrame, con: sqlite3.Connection | None = None) -> pd.DataFrame:
      out = df.copy()
  
@@ -48,7 +48,7 @@
  
      # Vol
      out["vol20"] = out["ret_1d"].rolling(VOL_WIN, min_periods=max(5, VOL_WIN // 2)).std()
-@@
+
      out["trigger_gap_15"] = (out["gap_abs_pct"] >= TRIGGER_PCT).astype(int)
      out["trigger_range_15"] = (out["intraday_range_pct"].abs() >= TRIGGER_PCT).astype(int)
 -    out["trigger_tr_15"] = (out["true_range_pct"].abs() >= TRIGGER_PCT).astype(int)
@@ -62,19 +62,19 @@
      ).astype(int)
  
      out["trigger_cluster"] = out["trigger_any_15"].rolling(CLUSTER_WIN, min_periods=1).sum()
-@@
+
      out["tr_pct_rank"] = out["true_range_pct"].rolling(
          LOOKBACK_COMPRESSION, min_periods=max(5, LOOKBACK_COMPRESSION // 2)
      ).apply(pct_rank_last, raw=False)
      out["compression_flag"] = (out["tr_pct_rank"] <= COMP_PCTL).astype(int)
-@@
+
      out["next_tr_pct_rank"] = out["next_tr_pct"].rolling(
          LOOKBACK_EXPANSION, min_periods=max(5, LOOKBACK_EXPANSION // 2)
      ).apply(pct_rank_last, raw=False)
 -    out["next_day_expansion"] = (out["next_tr_pct_rank"] >= EXP_PCTL).astype(int)
 +    # LABEL (uses future data) — keep clearly separated from causal features
 +    out["label_next_day_expansion"] = (out["next_tr_pct_rank"] >= EXP_PCTL).astype(int)
-@@
+
      cols = [
          "date", "symbol",
          "open", "high", "low", "close", "volume",
@@ -115,14 +115,14 @@
      feats["feature_version"] = "v2_triggers_permission_strength"
  
      feats = feats.dropna(subset=["prev_close"]).reset_index(drop=True)
-@@
+
              feats["ats_pressure_flag"] = (
                  feats["ats_ratio"]
                  >= feats["ats_ratio"]
                  .rolling(20, min_periods=5)
                  .quantile(0.80)
              ).astype(int)
-@@
+
      else:
          feats["ats_ratio"] = np.nan
          feats["ats_pressure_flag"] = 0
@@ -132,7 +132,7 @@
  
      # -----------------------------
      # Trend day vs non-trend day
-@@
+
      out["day_type"] = out.apply(classify_day, axis=1)
 -    return feats
 +    # Bring day_type into feats (computed on 'out' but must be published)
@@ -192,7 +192,7 @@
      )
      """)
      con.commit()
-@@
+
      adds = {
          "trigger_gap_15": "INTEGER",
          "trigger_range_15": "INTEGER",
@@ -245,7 +245,7 @@
 +    """
 +    con.executemany(sql, feats2[out_cols].to_records(index=False).tolist())
 +    con.commit()
-@@
+
  def main():
      con = connect(DB_PATH)
      try:
