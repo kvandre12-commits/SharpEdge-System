@@ -1,6 +1,3 @@
---- a/scripts/build_features_spy_daily.py
-+++ b/scripts/build_features_spy_daily.py
-@@
  import os
  import sqlite3
  from datetime import datetime, timezone
