@@ -145,6 +145,46 @@ def main():
         ])
 
     out = pd.DataFrame(overlays)
+    # 7) Upsert into SQLite overlays_daily (same schema as FINRA)
+    con = sqlite3.connect(DB_PATH)
+    try:
+        con.execute("""
+        CREATE TABLE IF NOT EXISTS overlays_daily (
+          date TEXT NOT NULL,
+          symbol TEXT NOT NULL,
+          overlay_type TEXT NOT NULL,
+          overlay_strength REAL NOT NULL,
+          notes TEXT,
+          PRIMARY KEY (symbol, date, overlay_type)
+        )
+        """)
+        con.commit()
+
+        write_overlay = """
+        INSERT INTO overlays_daily (date, symbol, overlay_type, overlay_strength, notes)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(symbol, date, overlay_type) DO UPDATE SET
+          overlay_strength=excluded.overlay_strength,
+          notes=excluded.notes
+        """
+
+        rows = [
+            (
+                str(r["date"]),
+                str(r["symbol"]),
+                str(r["overlay_type"]),
+                float(r["overlay_strength"]) if pd.notna(r["overlay_strength"]) else 0.0,
+                # pack useful debug info in notes without bloating schema
+                f'{r.get("notes","")}|raw={r.get("raw_value","")}|z={r.get("z_score","")}'
+            )
+            for _, r in out.iterrows()
+        ]
+
+        con.executemany(write_overlay, rows)
+        con.commit()
+        print(f"OK: upserted overlays_daily macro rows={len(rows)}")
+    finally:
+        con.close()
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     out.to_csv(OUTPUT_PATH, index=False)
     print(f"OK: wrote {OUTPUT_PATH} ({len(out):,} rows)")
