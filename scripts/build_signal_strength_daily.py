@@ -310,6 +310,23 @@ def main():
         df["early_score"] = (df["readiness_score"] + df["ignition_score"]).clip(lower=0, upper=100)
         df["early_bucket"] = df["early_score"].apply(bucket)
 
+        def pressure_state_row(r) -> tuple[str, str]:
+    # 1) Unresolved pressure: you FEEL it, but structure hasn't confirmed
+    if (pd.notna(r["tr_lift_fast"]) and r["tr_lift_fast"] >= PRESSURE_TR_ON) and (r["early_bucket"] in ["quiet", "watch", "unknown"]):
+        reason = f"tr_lift_fast={r['tr_lift_fast']:.2f} >= {PRESSURE_TR_ON} but early_bucket={r['early_bucket']}"
+        return "UNRESOLVED_PRESSURE", reason
+
+    # 2) Release: expansion + positive follow-through building
+    if (pd.notna(r["tr_lift_fast"]) and r["tr_lift_fast"] >= RELEASE_TR_ON) and (pd.notna(r["cluster_slope_fast"]) and r["cluster_slope_fast"] > 0):
+        reason = f"tr_lift_fast={r['tr_lift_fast']:.2f} >= {RELEASE_TR_ON} and cluster_slope_fast={r['cluster_slope_fast']:.2f} > 0"
+        return "RELEASE", reason
+
+    # 3) Coiled: compression flag present (your existing concept)
+    if int(r.get("compression_flag", 0) or 0) == 1:
+        return "COILED", "compression_flag=1"
+
+    return "NORMAL", "default"
+
         # Minimum history guard (avoid noisy early window)
         # If vol/tr baselines aren’t mature yet, mark bucket unknown but keep score computed.
         df["rows_seen"] = np.arange(1, len(df) + 1)
