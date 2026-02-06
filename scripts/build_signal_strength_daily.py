@@ -311,18 +311,18 @@ def main():
         df["early_bucket"] = df["early_score"].apply(bucket)
 
         def pressure_state_row(r) -> tuple[str, str]:
-    # 1) Unresolved pressure: you FEEL it, but structure hasn't confirmed
-    if (pd.notna(r["tr_lift_fast"]) and r["tr_lift_fast"] >= PRESSURE_TR_ON) and (r["early_bucket"] in ["quiet", "watch", "unknown"]):
+        # 1) Unresolved pressure: you FEEL it, but structure hasn't confirmed
+        if (pd.notna(r["tr_lift_fast"]) and r["tr_lift_fast"] >= PRESSURE_TR_ON) and (r["early_bucket"] in ["quiet", "watch", "unknown"]):
         reason = f"tr_lift_fast={r['tr_lift_fast']:.2f} >= {PRESSURE_TR_ON} but early_bucket={r['early_bucket']}"
         return "UNRESOLVED_PRESSURE", reason
 
-    # 2) Release: expansion + positive follow-through building
-    if (pd.notna(r["tr_lift_fast"]) and r["tr_lift_fast"] >= RELEASE_TR_ON) and (pd.notna(r["cluster_slope_fast"]) and r["cluster_slope_fast"] > 0):
+        # 2) Release: expansion + positive follow-through building
+        if (pd.notna(r["tr_lift_fast"]) and r["tr_lift_fast"] >= RELEASE_TR_ON) and (pd.notna(r["cluster_slope_fast"]) and r["cluster_slope_fast"] > 0):
         reason = f"tr_lift_fast={r['tr_lift_fast']:.2f} >= {RELEASE_TR_ON} and cluster_slope_fast={r['cluster_slope_fast']:.2f} > 0"
         return "RELEASE", reason
 
-    # 3) Coiled: compression flag present (your existing concept)
-    if int(r.get("compression_flag", 0) or 0) == 1:
+        # 3) Coiled: compression flag present (your existing concept)
+        if int(r.get("compression_flag", 0) or 0) == 1:
         return "COILED", "compression_flag=1"
 
     return "NORMAL", "default"
@@ -344,6 +344,8 @@ def main():
             "dp_strength","transition_flag","compression_flag",
             "trigger_cluster","trade_permission",
             "tr_lift","cluster_slope",
+            "tr_lift_fast","cluster_slope_fast",
+            "pressure_state","trade_gate","pressure_reason",
             "signal_ts","signal_version",
         ]
 
@@ -367,6 +369,11 @@ def main():
           cluster_slope=excluded.cluster_slope,
           signal_ts=excluded.signal_ts,
           signal_version=excluded.signal_version
+          tr_lift_fast=excluded.tr_lift_fast,
+          cluster_slope_fast=excluded.cluster_slope_fast,
+          pressure_state=excluded.pressure_state,
+          trade_gate=excluded.trade_gate,
+          pressure_reason=excluded.pressure_reason,
         """
         con.executemany(upsert, df[out_cols].to_records(index=False).tolist())
         con.commit()
@@ -392,7 +399,11 @@ def main():
             "trade_permission": int(last["trade_permission"]),
             "tr_lift": (None if pd.isna(last["tr_lift"]) else float(last["tr_lift"])),
             "cluster_slope": (None if pd.isna(last["cluster_slope"]) else float(last["cluster_slope"])),
-            "signal_version": last["signal_version"],
+            "signal_version": last["signal_version"],"tr_lift_fast": (None if pd.isna(last["tr_lift_fast"]) else float(last["tr_lift_fast"])),
+            "cluster_slope_fast": (None if pd.isna(last["cluster_slope_fast"]) else float(last["cluster_slope_fast"])),
+            "pressure_state": str(last.get("pressure_state", "")),
+            "trade_gate": int(last.get("trade_gate", 0)),
+            "pressure_reason": str(last.get("pressure_reason", "")),
         }])
         latest_path = "outputs/latest_signal_strength.csv"
         latest.to_csv(latest_path, index=False)
