@@ -447,6 +447,8 @@ def write_latest_features(feats: pd.DataFrame) -> None:
 
 def main() -> None:
     con = connect(DB_PATH)
+    con.execute("DROP TABLE IF EXISTS features_daily")
+    con.commit()
     try:
         ensure_features_table(con)
         truth = read_daily_truth(con, SYMBOL)
