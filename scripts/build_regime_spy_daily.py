@@ -79,8 +79,8 @@ def ensure_regime_table(con: sqlite3.Connection):
         "transition_label": "TEXT",
         "transition_score": "INTEGER",
         "transition_flag": "INTEGER",
-        "regime_ts": "TEXT",
-    }
+        "regime_ts": "TEXT","macro_stress",
+        "macro_state"}
     for c, typ in adds.items():
         if c not in cols:
             con.execute(f"ALTER TABLE regime_daily ADD COLUMN {c} {typ}")
