@@ -158,22 +158,6 @@ def main():
         else:
             dp = pd.DataFrame(columns=["date", "symbol", "dp_strength"])
             
-        # Merge
-        df = feats.merge(dp, on=["date", "symbol"], how="left")
-# --- read darkpool overlay (optional) ---
-        ocols = existing_cols(con, "overlays_daily")
-        has_overlays = {"date", "symbol", "overlay_type", "overlay_strength"}.issubset(ocols)
-
-        if has_overlays:
-            dp = pd.read_sql_query("""
-                SELECT date, symbol, overlay_strength AS dp_strength
-                FROM overlays_daily
-                WHERE symbol = ? AND overlay_type = 'darkpool'
-                ORDER BY date ASC
-            """, con, params=(SYMBOL,))
-        else:
-            dp = pd.DataFrame(columns=["date", "symbol", "dp_strength"])
-
         # Merge DP first (df is born here)
         df = feats.merge(dp, on=["date", "symbol"], how="left")
 
