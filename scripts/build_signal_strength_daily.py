@@ -325,7 +325,7 @@ def main():
         if int(r.get("compression_flag", 0) or 0) == 1:
         return "COILED", "compression_flag=1"
 
-    return "NORMAL", "default"
+        return "NORMAL", "default"
 
         # Minimum history guard (avoid noisy early window)
         # If vol/tr baselines aren’t mature yet, mark bucket unknown but keep score computed.
