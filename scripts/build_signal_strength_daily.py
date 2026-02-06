@@ -80,6 +80,13 @@ def ensure_signals_table(con: sqlite3.Connection):
       signal_ts TEXT,
       signal_version TEXT,
 
+      tr_lift_fast REAL,
+      cluster_slope_fast REAL,
+
+      pressure_state TEXT,
+      trade_gate INTEGER,
+      pressure_reason TEXT,
+
       PRIMARY KEY (symbol, date)
     )
     """)
@@ -100,8 +107,12 @@ def ensure_signals_table(con: sqlite3.Connection):
         "tr_lift": "REAL",
         "cluster_slope": "REAL",
         "signal_ts": "TEXT",
-        "signal_version": "TEXT",
-    }
+        "signal_version": "TEXT","tr_lift_fast": "REAL",
+        "cluster_slope_fast": "REAL",
+        "pressure_state": "TEXT",
+        "trade_gate": "INTEGER",
+        "pressure_reason": "TEXT",}
+   
     for c, typ in adds.items():
         if c not in cols:
             con.execute(f"ALTER TABLE signals_daily ADD COLUMN {c} {typ}")
@@ -256,6 +267,17 @@ def main():
             CLUSTER_SLOPE_WIN, min_periods=1
         ).mean()
 
+        # ---------------------------
+        # FAST ignition metrics (leading / protective)
+        # ---------------------------
+        df["tr_base_med_fast"] = df["true_range_pct"].rolling(
+        TR_FAST_WIN, min_periods=max(3, TR_FAST_WIN // 2)).median()
+
+        df["tr_lift_fast"] = df["true_range_pct"] / df["tr_base_med_fast"].replace(0, np.nan)
+
+        df["cluster_slope_fast"] = df["cluster_delta"].rolling(
+        CLUSTER_FAST_WIN, min_periods=1).mean()
+        
         # ---------------------------
         # Readiness score (0..60)
         # ---------------------------
