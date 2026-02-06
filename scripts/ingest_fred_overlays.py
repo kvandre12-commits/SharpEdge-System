@@ -1,11 +1,13 @@
 import os
 import requests
 import pandas as pd
+import sqlite3
 
 FRED_API_KEY = os.getenv("FRED_API_KEY")
 SYMBOL = "SPY"
 
 OUTPUT_PATH = "outputs/spy_macro_overlays_daily.csv"
+DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 
 # FRED-valid series:
 # - VIXCLS: CBOE VIX close
