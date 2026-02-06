@@ -157,7 +157,27 @@ def main():
             """, con, params=(SYMBOL,))
         else:
             dp = pd.DataFrame(columns=["date", "symbol", "dp_strength"])
-# --- read macro overlays (optional, from overlays_daily) ---
+            
+        # Merge
+        df = feats.merge(dp, on=["date", "symbol"], how="left")
+# --- read darkpool overlay (optional) ---
+        ocols = existing_cols(con, "overlays_daily")
+        has_overlays = {"date", "symbol", "overlay_type", "overlay_strength"}.issubset(ocols)
+
+        if has_overlays:
+            dp = pd.read_sql_query("""
+                SELECT date, symbol, overlay_strength AS dp_strength
+                FROM overlays_daily
+                WHERE symbol = ? AND overlay_type = 'darkpool'
+                ORDER BY date ASC
+            """, con, params=(SYMBOL,))
+        else:
+            dp = pd.DataFrame(columns=["date", "symbol", "dp_strength"])
+
+        # Merge DP first (df is born here)
+        df = feats.merge(dp, on=["date", "symbol"], how="left")
+
+        # --- read macro overlays (optional, from overlays_daily) ---
         if has_overlays:
             macro = pd.read_sql_query("""
                 SELECT date, symbol, overlay_type, overlay_strength
@@ -182,7 +202,7 @@ def main():
         else:
             macro_wide = pd.DataFrame(columns=["date","symbol","vix","vix3m","vix_term","rates10y"])
 
-        # Merge macro into df (same pattern as dp)
+        # Merge macro into df
         df = df.merge(macro_wide, on=["date","symbol"], how="left")
 
         for c in ["vix","vix3m","vix_term","rates10y"]:
@@ -190,7 +210,7 @@ def main():
                 df[c] = np.nan
             df[c] = df[c].fillna(0.0)
 
-        # Macro stress: conservative max-of (so any stress dimension can elevate state)
+        # Macro stress + bucket
         df["macro_stress"] = df[["vix","vix_term","rates10y"]].max(axis=1)
 
         def bucket_macro(x: float) -> str:
@@ -203,9 +223,6 @@ def main():
             return "normal"
 
         df["macro_state"] = df["macro_stress"].apply(bucket_macro)
-        # Merge
-        df = feats.merge(dp, on=["date", "symbol"], how="left")
-
         # Vol rank over trailing window (causal)
         df["vol_rank_252"] = (
             df["vol20"]
