@@ -43,6 +43,9 @@ def ensure_regime_table(con: sqlite3.Connection):
       regime_label TEXT,
       regime_id TEXT,
 
+      "macro_stress": "REAL",
+      "macro_state": "TEXT",
+
       -- transitions
       vol_state_prev TEXT,
       vol_trend_state_prev TEXT,
