@@ -157,7 +157,52 @@ def main():
             """, con, params=(SYMBOL,))
         else:
             dp = pd.DataFrame(columns=["date", "symbol", "dp_strength"])
+# --- read macro overlays (optional, from overlays_daily) ---
+        if has_overlays:
+            macro = pd.read_sql_query("""
+                SELECT date, symbol, overlay_type, overlay_strength
+                FROM overlays_daily
+                WHERE symbol = ?
+                  AND overlay_type IN ('vix','vix3m','vix_term','rates10y')
+                ORDER BY date ASC
+            """, con, params=(SYMBOL,))
+        else:
+            macro = pd.DataFrame(columns=["date","symbol","overlay_type","overlay_strength"])
 
+        if not macro.empty:
+            macro_wide = (
+                macro.pivot_table(
+                    index=["date","symbol"],
+                    columns="overlay_type",
+                    values="overlay_strength",
+                    aggfunc="last",
+                )
+                .reset_index()
+            )
+        else:
+            macro_wide = pd.DataFrame(columns=["date","symbol","vix","vix3m","vix_term","rates10y"])
+
+        # Merge macro into df (same pattern as dp)
+        df = df.merge(macro_wide, on=["date","symbol"], how="left")
+
+        for c in ["vix","vix3m","vix_term","rates10y"]:
+            if c not in df.columns:
+                df[c] = np.nan
+            df[c] = df[c].fillna(0.0)
+
+        # Macro stress: conservative max-of (so any stress dimension can elevate state)
+        df["macro_stress"] = df[["vix","vix_term","rates10y"]].max(axis=1)
+
+        def bucket_macro(x: float) -> str:
+            if pd.isna(x):
+                return "unknown"
+            if x >= 0.70:
+                return "high"
+            if x <= 0.30:
+                return "low"
+            return "normal"
+
+        df["macro_state"] = df["macro_stress"].apply(bucket_macro)
         # Merge
         df = feats.merge(dp, on=["date", "symbol"], how="left")
 
