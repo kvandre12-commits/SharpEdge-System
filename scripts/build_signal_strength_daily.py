@@ -25,6 +25,13 @@ TR_BASE_WIN = int(os.getenv("SIG_TR_BASE_WIN", "10"))          # baseline for TR
 CLUSTER_SLOPE_WIN = int(os.getenv("SIG_CLUSTER_SLOPE_WIN", "5"))  # smooth cluster slope
 MIN_PERIODS = int(os.getenv("SIG_MIN_PERIODS", "20"))
 
+# --- FAST knobs (leading / protective) ---
+TR_FAST_WIN = int(os.getenv("SIG_TR_FAST_WIN", "5"))
+CLUSTER_FAST_WIN = int(os.getenv("SIG_CLUSTER_FAST_WIN", "1"))
+
+PRESSURE_TR_ON = float(os.getenv("SIG_PRESSURE_TR_ON", "1.15"))
+RELEASE_TR_ON  = float(os.getenv("SIG_RELEASE_TR_ON", "1.25"))
+
 # Thresholds for buckets
 LOUD_THRESH = float(os.getenv("SIG_LOUD_THRESH", "70"))
 WATCH_THRESH = float(os.getenv("SIG_WATCH_THRESH", "50"))
