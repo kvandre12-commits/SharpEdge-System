@@ -125,6 +125,8 @@ jobs:
       - name: Build regime (daily)
         run: |
           python scripts/build_regime_spy_daily.py
+      - name: build_signal_strength_daily.py 
+        run: python scripts/build_signal_strength_daily.py
       
       - name: Run playbook (signals + auto DTE + trade cards)
         run: |
@@ -142,5 +144,5 @@ jobs:
 
           git add data/ outputs/ sql/ scripts/ || true
           git diff --staged --quiet && echo "No changes to commit" && exit 0
-          git commit -m "Daily ingest + regime + playbook signals"
+          git commit -m "Daily ingest + regime + playbook signals + update truth + features"
           git push
