@@ -10,6 +10,25 @@ DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 MIGRATIONS_DIR = Path("sql/migrations")
 NY = ZoneInfo("America/New_York")
 
+def get_latest_trade_gate(con: sqlite3.Connection, symbol: str = "SPY"):
+    """
+    Returns (trade_gate:int, pressure_state:str, pressure_reason:str)
+    from the most recent signals_daily row.
+    """
+    row = con.execute("""
+        SELECT trade_gate, pressure_state, pressure_reason
+        FROM signals_daily
+        WHERE symbol = ?
+        ORDER BY date DESC
+        LIMIT 1
+    """, (symbol,)).fetchone()
+
+    if not row:
+        # Fail closed (institutional default)
+        return 0, "UNKNOWN", "no signals_daily row found"
+
+    trade_gate, pressure_state, pressure_reason = row
+    return int(trade_gate or 0), pressure_state or "", pressure_reason or ""
 
 def ensure_migrations_table(con: sqlite3.Connection):
     con.execute("""
@@ -147,9 +166,27 @@ def main():
     con = sqlite3.connect(DB_PATH)
     try:
         apply_migrations(con)
+
+        # -----------------------------
+        # INSTITUTIONAL HARD GATE
+        # -----------------------------
+        trade_gate, pressure_state, pressure_reason = get_latest_trade_gate(con)
+
+        if trade_gate != 1:
+            print("\n=== NO TRADE STATE ===")
+            print(f"trade_gate:     {trade_gate}")
+            print(f"pressure_state:{pressure_state}")
+            print(f"reason:         {pressure_reason}")
+            print("Action:         Stand down. No signals generated.")
+            return
+
+        # -----------------------------
+        # Only proceed if gate is open
+        # -----------------------------
         generate_signals(con)
         attach_dte_and_plan(con)
         emit_trade_cards(con, limit=5)
+
     finally:
         con.close()
 
