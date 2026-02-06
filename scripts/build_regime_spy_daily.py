@@ -43,8 +43,8 @@ def ensure_regime_table(con: sqlite3.Connection):
       regime_label TEXT,
       regime_id TEXT,
 
-      "macro_stress": "REAL",
-      "macro_state": "TEXT",
+      macro_stress REAL,
+      macro_state TEXT,
 
       -- transitions
       vol_state_prev TEXT,
@@ -79,8 +79,10 @@ def ensure_regime_table(con: sqlite3.Connection):
         "transition_label": "TEXT",
         "transition_score": "INTEGER",
         "transition_flag": "INTEGER",
-        "regime_ts": "TEXT","macro_stress",
-        "macro_state"}
+        "regime_ts": "TEXT",
+        "macro_stress": "REAL",
+        "macro_state": "TEXT",}
+   
     for c, typ in adds.items():
         if c not in cols:
             con.execute(f"ALTER TABLE regime_daily ADD COLUMN {c} {typ}")
@@ -228,20 +230,20 @@ def main():
         df["dp_state"] = df["dp_strength"].apply(bucket_dp)
 
         # Composite label (slow state)
-        df["regime_label"] = (
-            df["vol_state"].astype(str) + "_vol"
-            + "|" + df["vol_trend_state"].astype(str) + "_voltrend"
-            + "|" + df["dp_state"].astype(str) + "_dp"
-            + "|" + df["compression_flag"].fillna(0).astype(int).astype(str) + "_comp"
-        )
+        df["regime_label"] = (df["vol_state"].astype(str) + "_vol"+ 
+        "|" + df["vol_trend_state"].astype(str) + "_voltrend"+ 
+        "|" + df["dp_state"].astype(str) + "_dp"+ 
+        "|" + df["macro_state"].astype(str) + "_macro"+ 
+        "|" + df["compression_flag"].fillna(0).astype(int).astype(str) + "_comp")
 
         # Compact stable key
         df["regime_id"] = (
-            df["vol_state"].astype(str).str[:1]          # l/m/h/u
-            + df["vol_trend_state"].astype(str).str[:1]  # r/f/f/u (we remap flat below)
-            + df["dp_state"].astype(str).str[:1]         # h/n/l/u
-            + df["compression_flag"].fillna(0).astype(int).astype(str)
-        )
+       df["vol_state"].astype(str).str[:1]          # l/m/h/u
+        + df["vol_trend_state"].astype(str).str[:1]  # r/f/t/u
+        + df["dp_state"].astype(str).str[:1]         # h/n/l/u
+        + df["macro_state"].astype(str).str[:1]      # h/n/l/u
+        + df["compression_flag"].fillna(0).astype(int).astype(str)
+)
         # make flat explicitly "t" (for "flat")
         df.loc[df["vol_trend_state"] == "flat", "regime_id"] = (
             df.loc[df["vol_trend_state"] == "flat", "regime_id"].str.slice(0, 1) + "t"
@@ -287,6 +289,7 @@ def main():
             "vol20","vol_rank_252","vol_state",
             "vol_trend_10","vol_trend_state",
             "dp_strength","dp_state",
+            "macro_stress","macro_state",
             "compression_flag",
             "regime_label","regime_id",
             "vol_state_prev","vol_trend_state_prev","dp_state_prev",
