@@ -22,6 +22,7 @@ jobs:
       FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
 
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
     steps:
       - name: Checkout repo
