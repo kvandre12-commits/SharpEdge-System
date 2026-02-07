@@ -55,7 +55,10 @@ jobs:
       - name: Ingest SPY daily bars
         run: |
           python scripts/ingest_spy_daily.py
-
+       
+       - name: Show DB file size
+        run: |
+          ls -lh data/
       # =====================================================
       # 🔁 ONE-TIME INTRADAY BACKFILL (RUN ONCE, THEN DELETE)
       # =====================================================
