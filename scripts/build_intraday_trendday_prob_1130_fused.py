@@ -262,7 +262,7 @@ def upsert(conn, df):
           hhll_persistence, vwap_proxy,
           model_version
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(session_date, symbol, cutoff_ny) DO UPDATE SET
           prob_trend=excluded.prob_trend,
           prob_range=excluded.prob_range,
