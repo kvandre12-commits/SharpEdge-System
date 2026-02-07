@@ -9,7 +9,7 @@ import pandas as pd
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 SYMBOL = os.getenv("SYMBOL", "SPY")
 
-INTRADAY_TABLE = os.getenv("INTRADAY_TABLE", "spy_intraday_15m")
+INTRADAY_TABLE = os.getenv("INTRADAY_BARS_TABLE", "spy_bars_15m")
 INTRADAY_TS_COL = os.getenv("INTRADAY_TS_COL", "ts")
 
 CUTOFF_HHMM = os.getenv("CUTOFF_HHMM", "11:30")
