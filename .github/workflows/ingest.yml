@@ -113,6 +113,10 @@ jobs:
         run: |
           python scripts/send_trade_card_to_discord.py
 
+      - name: Validate DB (truth + features)
+        run: |
+          python scripts/utils/validate_spy_truth_db.py
+
       - name: Build liquidity regime (daily)
         run: |
           python scripts/build_liquidity_regime_daily.py
