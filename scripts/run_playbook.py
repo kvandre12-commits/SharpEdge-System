@@ -53,6 +53,12 @@ def apply_migrations(con: sqlite3.Connection):
         con.commit()
         print(f"applied migration: {mid}")
 
+def is_slow_from_spy_regime(vol_state, vol_trend_state, regime_label) -> bool:
+    for v in (vol_state, vol_trend_state, regime_label):
+        if isinstance(v, str) and "slow" in v.lower():
+            return True
+    return False
+
 def infer_is_slow(reg_row: dict) -> bool:
     """
     Robust 'slow' detector across different regime schemas.
@@ -124,8 +130,8 @@ def get_calibrated_bucket(con, rule_id: str, is_slow: bool):
         reason = f"calibrated:{'slow' if is_slow else 'default'}:{chosen}"
         return chosen, reason
 
-    # safe fallback
     return "2-3", "fallback:2-3 (no calibration)"
+    
 def attach_dte_and_plan 
     for signal_id, rule_id, entry_ts, entry_price, sweep_low in rows:
         # For now, slow/fast is driven by calibration only
