@@ -6,7 +6,7 @@ import pandas as pd
 
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 SYMBOL = os.getenv("SYMBOL", "SPY")
-WEBHOOK = os.getenv("https://discord.com/api/webhooks/1469503730671161521/J2BMgumg1jYYWk2M_GpIgw2bLdEkxIcGM3dpMrWAboIlZGrxWL6BFTZCykiBtbJpYSR-")
+DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}")
 
 if not WEBHOOK:
     raise RuntimeError("Set DISCORD_WEBHOOK_URL environment variable")
