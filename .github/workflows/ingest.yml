@@ -48,7 +48,7 @@ jobs:
       - name: Aggregate options positioning metrics (2-3 DTE)
         run: |
           DTE_MIN=2 DTE_MAX=3 python scripts/aggregate_options_positioning_metrics.py
-          
+      
       # -----------------------------
       # DAILY BARS
       # -----------------------------
@@ -97,6 +97,14 @@ jobs:
       - name: Build daily features (ORB + trend)
         run: |
           python scripts/build_features_spy_daily.py
+
+      - name: Build fused intraday trend probability (11:30)
+        run: |
+          python scripts/build_intraday_trendday_prob_1130_fused.py
+
+      - name: Build execution state daily (final bias)
+        run: |
+          python scripts/build_execution_state_daily.py
 
       - name: Build liquidity regime (daily)
         run: |
