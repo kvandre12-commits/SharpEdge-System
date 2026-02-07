@@ -101,20 +101,10 @@ def parse_ts_utc(ts: str) -> datetime:
     return datetime.fromisoformat(ts.replace("Z", "+00:00"))
 
 
-def get_calibrated_bucket(con, rule_id, is_slow):
-    row = con.execute("""
-      SELECT default_bucket, slow_bucket
-      FROM dte_calibration
-      WHERE rule_id = ?
-    """, (rule_id,)).fetchone()
-
-    if not row:
-        return None
-
-    default_bucket, slow_bucket = row
-    return slow_bucket if is_slow else default_bucket
-
-def get_calibrated_bucket(con, rule_id: str, is_slow: bool):
+def get_calibrated_bucket(con: sqlite3.Connection, rule_id: str, is_slow: bool):
+    """
+    Returns (bucket, reason). Always returns a safe fallback if no calibration.
+    """
     cur = con.cursor()
     row = cur.execute("""
         SELECT default_bucket, slow_bucket
@@ -131,49 +121,42 @@ def get_calibrated_bucket(con, rule_id: str, is_slow: bool):
         return chosen, reason
 
     return "2-3", "fallback:2-3 (no calibration)"
-    
-def attach_dte_and_plan 
-    for signal_id, rule_id, entry_ts, entry_price, sweep_low in rows:
-        # For now, slow/fast is driven by calibration only
-        is_slow = False
 
-        calibrated = get_calibrated_bucket(con, rule_id, is_slow)
-        if calibrated:
-            bucket = calibrated
-            reason = f"calibrated ({'slow' if is_slow else 'default'})"
-        else:
-            # Fallback (should almost never happen)
-            bucket = "2-3"
-            reason = "fallback default"
 
-        cur = con.cursor()
+def attach_dte_and_plan(con: sqlite3.Connection):
+    """
+    Attaches DTE bucket + reason to trade_signals using spy_regime_daily context.
+    Closes the loop: (spy_regime_daily -> is_slow) + (dte_calibration -> bucket).
+    """
 
-     rows = cur.execute("""
-    SELECT
-      s.signal_id,
-      s.session_date,
-      s.rule_id,
-      r.vol_state,
-      r.vol_trend_state,
-      r.regime_label
-    FROM trade_signals s
-    LEFT JOIN spy_regime_daily r
-      ON r.date = s.session_date
-    WHERE COALESCE(s.dte_bucket, '') = ''
-""").fetchall()
+    cur = con.cursor()
 
-for signal_id, session_date, rule_id, vol_state, vol_trend_state, regime_label in rows:
-    slow = is_slow_from_spy_regime(vol_state, vol_trend_state, regime_label)
+    # Pull signals missing DTE; derive a date if session_date isn't populated.
+    rows = cur.execute("""
+        SELECT
+          s.signal_id,
+          COALESCE(s.session_date, date(s.entry_ts)) AS session_date,
+          s.rule_id,
+          r.vol_state,
+          r.vol_trend_state,
+          r.regime_label
+        FROM trade_signals s
+        LEFT JOIN spy_regime_daily r
+          ON r.date = COALESCE(s.session_date, date(s.entry_ts))
+        WHERE COALESCE(s.dte_bucket, '') = ''
+    """).fetchall()
 
-    bucket, reason = get_calibrated_bucket(con, rule_id, slow)
+    for signal_id, session_date, rule_id, vol_state, vol_trend_state, regime_label in rows:
+        slow = is_slow_from_spy_regime(vol_state, vol_trend_state, regime_label)
+        bucket, reason = get_calibrated_bucket(con, rule_id, slow)
 
-    cur.execute("""
-        UPDATE trade_signals
-        SET dte_bucket = ?, dte_reason = ?
-        WHERE signal_id = ?
-    """, (bucket, reason, signal_id))
+        cur.execute("""
+            UPDATE trade_signals
+            SET dte_bucket = ?, dte_reason = ?
+            WHERE signal_id = ?
+        """, (bucket, reason, signal_id))
 
-con.commit()
+    con.commit()
 def emit_trade_cards(con: sqlite3.Connection, limit: int = 5):
     cards = con.execute("""
       SELECT
