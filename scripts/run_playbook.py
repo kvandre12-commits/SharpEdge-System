@@ -108,6 +108,24 @@ def get_calibrated_bucket(con, rule_id, is_slow):
     default_bucket, slow_bucket = row
     return slow_bucket if is_slow else default_bucket
 
+def get_calibrated_bucket(con, rule_id: str, is_slow: bool):
+    cur = con.cursor()
+    row = cur.execute("""
+        SELECT default_bucket, slow_bucket
+        FROM dte_calibration
+        WHERE rule_id = ?
+        ORDER BY updated_at DESC
+        LIMIT 1
+    """, (rule_id,)).fetchone()
+
+    if row:
+        default_bucket, slow_bucket = row
+        chosen = slow_bucket if (is_slow and slow_bucket) else default_bucket
+        reason = f"calibrated:{'slow' if is_slow else 'default'}:{chosen}"
+        return chosen, reason
+
+    # safe fallback
+    return "2-3", "fallback:2-3 (no calibration)"
 def attach_dte_and_plan 
     for signal_id, rule_id, entry_ts, entry_price, sweep_low in rows:
         # For now, slow/fast is driven by calibration only
