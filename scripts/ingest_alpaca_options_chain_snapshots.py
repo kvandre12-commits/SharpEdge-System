@@ -152,10 +152,12 @@ def main():
             greeks = (blob.get("greeks") or {})
             gamma = greeks.get("gamma")
 
-            # Volume/OI: may or may not exist in snapshot payload; keep nullable.
-            # If your payload includes daily volume, you can map it here.
-            vol = None
-            oi = None
+            stats = blob.get("daily") or blob.get("day") or {}
+            vol = stats.get("volume")
+
+            oi = blob.get("open_interest") \
+            or stats.get("open_interest") \
+            or blob.get("oi")
 
             if key not in agg:
                 agg[key] = {
