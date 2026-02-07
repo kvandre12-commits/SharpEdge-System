@@ -56,7 +56,7 @@ jobs:
         run: |
           python scripts/ingest_spy_daily.py
        
-       - name: Show DB file size
+      - name: Show DB file size
         run: |
           ls -lh data/
       # =====================================================
