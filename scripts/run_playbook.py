@@ -146,35 +146,34 @@ def attach_dte_and_plan
             bucket = "2-3"
             reason = "fallback default"
 
-        plan = con.execute("""
-          SELECT entry_timing, strike_bias, stop_logic, profit_plan,
-                 expected_behavior, sizing_guidance, notes
-          FROM options_playbook
-          WHERE rule_id = ? AND dte_bucket = ?
-          LIMIT 1
-        """, (rule_id, bucket)).fetchone()
+        cur = con.cursor()
 
-        plan_obj = None
-        if plan:
-            plan_obj = {
-                "dte_bucket": bucket,
-                "entry_timing": plan[0],
-                "strike_bias": plan[1],
-                "stop_logic": plan[2],
-                "profit_plan": plan[3],
-                "expected_behavior": plan[4],
-                "sizing_guidance": plan[5],
-                "notes": plan[6],
-            }
+     rows = cur.execute("""
+    SELECT
+      s.signal_id,
+      s.session_date,
+      s.rule_id,
+      r.vol_state,
+      r.vol_trend_state,
+      r.regime_label
+    FROM trade_signals s
+    LEFT JOIN spy_regime_daily r
+      ON r.date = s.session_date
+    WHERE COALESCE(s.dte_bucket, '') = ''
+""").fetchall()
 
-        con.execute("""
-          UPDATE trade_signals
-          SET dte_bucket = ?, dte_reason = ?, plan_json = ?
-          WHERE signal_id = ?
-        """, (bucket, reason, json.dumps(plan_obj) if plan_obj else None, signal_id))
+for signal_id, session_date, rule_id, vol_state, vol_trend_state, regime_label in rows:
+    slow = is_slow_from_spy_regime(vol_state, vol_trend_state, regime_label)
 
-    con.commit()
+    bucket, reason = get_calibrated_bucket(con, rule_id, slow)
 
+    cur.execute("""
+        UPDATE trade_signals
+        SET dte_bucket = ?, dte_reason = ?
+        WHERE signal_id = ?
+    """, (bucket, reason, signal_id))
+
+con.commit()
 def emit_trade_cards(con: sqlite3.Connection, limit: int = 5):
     cards = con.execute("""
       SELECT
