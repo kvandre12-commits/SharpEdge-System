@@ -5,6 +5,7 @@ import sqlite3
 import pandas as pd
 
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
+SYMBOL = os.getenv("SYMBOL", "SPY")
 WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")
 if not WEBHOOK:
     raise RuntimeError("DISCORD_WEBHOOK_URL environment variable not set")
