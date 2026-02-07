@@ -144,6 +144,19 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: |
           python scripts/calibrate_dte_from_backtest.py
+      
+      - name: Debug SQLite tables
+        run: |
+          python - <<'PY'
+          import sqlite3
+          conn = sqlite3.connect("data/spy_truth.db")
+          rows = conn.execute(
+              "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
+          ).fetchall()
+          print("TABLES IN DB:")
+          for r in rows:
+              print("-", r[0])
+          PY
 
       - name: Commit updated DB + outputs
         run: |
