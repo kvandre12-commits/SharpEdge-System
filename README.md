@@ -37,3 +37,13 @@ SharpEdge Systems is both:
 - A production-style data engineering portfolio project  
 
 It represents the transition from physical precision craft → data system design.
+
+## Results Summary
+
+| Metric | Value |
+|--------|-------|
+| Signals Generated | TBD |
+| Win Rate | TBD |
+| Avg Expectancy (R) | TBD |
+| Max Drawdown | TBD |
+| Latest Data Date | 2026-02-06 |
