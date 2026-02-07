@@ -53,6 +53,28 @@ def apply_migrations(con: sqlite3.Connection):
         con.commit()
         print(f"applied migration: {mid}")
 
+def infer_is_slow(reg_row: dict) -> bool:
+    """
+    Robust 'slow' detector across different regime schemas.
+    We don't assume a single column name.
+    """
+    if not reg_row:
+        return False
+
+    # common boolean flags
+    for k in ("is_slow", "slow_flag", "slow_regime_flag"):
+        v = reg_row.get(k)
+        if v in (1, True, "1", "true", "TRUE", "True"):
+            return True
+
+    # common string labels
+    for k in ("vol_state", "speed_state", "regime", "regime_label", "state"):
+        v = reg_row.get(k)
+        if isinstance(v, str) and "slow" in v.lower():
+            return True
+
+    return False
+
 
 def generate_signals(con: sqlite3.Connection):
     # Insert new signals from the view into trade_signals (dedupe by entry_ts+rule_id)
@@ -86,14 +108,7 @@ def get_calibrated_bucket(con, rule_id, is_slow):
     default_bucket, slow_bucket = row
     return slow_bucket if is_slow else default_bucket
 
-def attach_dte_and_plan(con: sqlite3.Connection):
-    rows = con.execute("""
-      SELECT signal_id, rule_id, entry_ts, entry_price, sweep_low
-      FROM trade_signals
-      WHERE dte_bucket IS NULL OR dte_bucket = ''
-      ORDER BY signal_id ASC
-    """).fetchall()
-
+def attach_dte_and_plan 
     for signal_id, rule_id, entry_ts, entry_price, sweep_low in rows:
         # For now, slow/fast is driven by calibration only
         is_slow = False
