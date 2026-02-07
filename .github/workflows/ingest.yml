@@ -109,6 +109,9 @@ jobs:
       - name: Build execution state daily (final bias)
         run: |
           python scripts/build_execution_state_daily.py
+      - name: Post trade card to Discord
+        run: |
+          python scripts/send_trade_card_to_discord.py
 
       - name: Build liquidity regime (daily)
         run: |
