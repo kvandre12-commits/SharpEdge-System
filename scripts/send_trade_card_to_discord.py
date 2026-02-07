@@ -73,8 +73,18 @@ def build_message(r):
 _This is decision support — not financial advice._
 """.strip()
 
-def send(msg):
-    requests.post(WEBHOOK, json={"content": msg}, timeout=10)
+def send(msg: str):
+    payload = json.dumps({"content": msg}).encode("utf-8")
+
+    req = urllib.request.Request(
+        WEBHOOK,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        resp.read()
 
 def main():
     conn = sqlite3.connect(DB_PATH)
