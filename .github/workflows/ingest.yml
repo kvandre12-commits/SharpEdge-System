@@ -27,16 +27,15 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
+      
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
+            python -m pip install --upgrade pip
+            pip install -r requirements.txt
 
       - name: Ingest options chain snapshots (Alpaca)
         run: |
