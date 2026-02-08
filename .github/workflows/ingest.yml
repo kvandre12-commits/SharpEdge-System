@@ -172,7 +172,10 @@ jobs:
 
              con.close()
              PY
-             
+          
+      - name: Calibrate trade gate (scientific sweep)
+        run: python scripts/analysis/calibrate_trade_gate_sweep.py     
+     
       # -----------------------------
       # SIGNALS / PLAYBOOK
       # -----------------------------
