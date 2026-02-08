@@ -294,7 +294,7 @@ def main():
             f.write(f"- {k}: {int(v)}\n")
 
         f.write("\n## Top gates\n\n")
-        f.write(top.to_markdown(index=False))
+        f.write(top.to_string(index=False))
 
     print("\n=== GATE SWEEP DONE ===")
     print(f"wrote: {csv_path}")
