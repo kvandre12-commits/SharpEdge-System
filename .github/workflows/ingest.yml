@@ -165,8 +165,8 @@ jobs:
 
       - name: Validate full pipeline outputs
         run: |
-          python scripts/utils/validate_pipeline_outputs.py
-
+          python scripts/utils/validate_spy_truth_db.py
+     
       - name: Audit pipeline contracts
         run: |
           python scripts/utils/audit_pipeline.py
