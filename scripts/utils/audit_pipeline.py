@@ -6,7 +6,7 @@ DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 
 CONTRACT = {
     "features_daily": ["date", "symbol", "ret_1d"],
-    "spy_regime_daily": ["date", "symbol", "vol_state", "regime_label"],
+    "regime_daily": ["date", "symbol", "vol_state", "regime_label"],
     "signals_daily": ["date", "symbol", "trade_gate", "pressure_state"],
     "execution_state_daily": ["date", "symbol", "trade_gate"],
     "liquidity_regime_events": ["session_date", "underlying", "regime_type"],
