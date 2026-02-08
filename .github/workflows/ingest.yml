@@ -109,17 +109,16 @@ jobs:
       - name: Build execution state daily (final bias)
         run: |
           python scripts/build_execution_state_daily.py
-      - name: Post trade card to Discord
-        run: |
-          python scripts/send_trade_card_to_discord.py
-
-      - name: Validate DB (truth + features)
-        run: |
-          python scripts/utils/validate_spy_truth_db.py
-
+      # -----------------------------
+      # CONTEXT / REGIMES
+      # -----------------------------
       - name: Build liquidity regime (daily)
         run: |
           python scripts/build_liquidity_regime_daily.py
+
+      - name: Export liquidity regime CSV
+        run: |
+          python scripts/exports/export_liquidity_regime_csv.py
 
       - name: Build open resolution regime (intraday)
         run: |
@@ -144,31 +143,40 @@ jobs:
       - name: Build regime (daily)
         run: |
           python scripts/build_regime_spy_daily.py
-      - name: build_signal_strength_daily.py 
-        run: python scripts/build_signal_strength_daily.py
+
+      # -----------------------------
+      # SIGNALS / PLAYBOOK
+      # -----------------------------
+      - name: Build signal strength (daily)
+        run: |
+          python scripts/build_signal_strength_daily.py
       
       - name: Run playbook (signals + auto DTE + trade cards)
         run: |
           python scripts/run_playbook.py
 
+      # -----------------------------
+      # PROOF OF EDGE
+      # -----------------------------
+      - name: Evaluate trade-gate edge
+        run: |
+          python scripts/analysis/evaluate_trade_gate_edge.py
+
+      - name: Validate full pipeline outputs
+        run: |
+          python scripts/utils/validate_pipeline_outputs.py
+
+      # -----------------------------
+      # OPTIONAL MANUAL CALIBRATION
+      # -----------------------------
       - name: Calibrate DTE from backtest (manual only)
         if: github.event_name == 'workflow_dispatch'
         run: |
           python scripts/calibrate_dte_from_backtest.py
-      
-      - name: Debug SQLite tables
-        run: |
-          python - <<'PY'
-          import sqlite3
-          conn = sqlite3.connect("data/spy_truth.db")
-          rows = conn.execute(
-              "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
-          ).fetchall()
-          print("TABLES IN DB:")
-          for r in rows:
-              print("-", r[0])
-          PY
 
+      # -----------------------------
+      # COMMIT ARTIFACTS
+      # -----------------------------
       - name: Commit updated DB + outputs
         run: |
           git config user.name "github-actions[bot]"
@@ -176,5 +184,12 @@ jobs:
 
           git add data/ outputs/ sql/ scripts/ || true
           git diff --staged --quiet && echo "No changes to commit" && exit 0
-          git commit -m "Daily ingest + regime + playbook signals + update truth + features"
+          git commit -m "Daily pipeline + regimes + signals + proof-of-edge artifacts"
           git push
+
+      # -----------------------------
+      # FINAL PUBLISHED ARTIFACT
+      # -----------------------------
+      - name: Post FINAL trade card to Discord
+        run: |
+          python scripts/send_trade_card_to_discord.py
