@@ -149,29 +149,30 @@ jobs:
       
       - name: Debug trade gate frequency
         run: |
-              <<'PY'
-                import sqlite3, os
+             python - <<'PY'
+             import sqlite3, os
 
-                db = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
-                con = sqlite3.connect(db)
+             db = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
+             con = sqlite3.connect(db)
 
-                row = con.execute("""
-              SELECT
-              COUNT(*) AS total_days,
-              SUM(CASE WHEN trade_gate = 1 THEN 1 ELSE 0 END) AS gated_days,
-              1.0 * SUM(CASE WHEN trade_gate = 1 THEN 1 ELSE 0 END) / COUNT(*) AS gated_pct
-              FROM signals_daily
-              WHERE symbol = 'SPY';
-              """).fetchone()
+             row = con.execute("""
+             SELECT
+             COUNT(*) AS total_days,
+             SUM(CASE WHEN trade_gate = 1 THEN 1 ELSE 0 END) AS gated_days,
+             1.0 * SUM(CASE WHEN trade_gate = 1 THEN 1 ELSE 0 END) / COUNT(*) AS gated_pct
+             FROM signals_daily
+             WHERE symbol = 'SPY';
+             """).fetchone()
 
-              print("\n=== TRADE GATE STATS ===")
-              print(f"total_days: {row[0]}")
-              print(f"gated_days: {row[1]}")
-              print(f"gated_pct : {row[2]:.4%}" if row[2] is not None else "gated_pct : NULL")
-              print("========================\n")
+             print("\n=== TRADE GATE STATS ===")
+             print(f"total_days: {row[0]}")
+             print(f"gated_days: {row[1]}")
+             print(f"gated_pct : {row[2]:.2%}" if row[2] is not None else "gated_pct : NULL")
+             print("========================\n")
 
-              con.close()
-              PY
+             con.close()
+             PY
+             
       # -----------------------------
       # SIGNALS / PLAYBOOK
       # -----------------------------
