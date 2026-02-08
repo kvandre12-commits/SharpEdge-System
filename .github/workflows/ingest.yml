@@ -158,6 +158,7 @@ jobs:
       # -----------------------------
       # PROOF OF EDGE
       # -----------------------------
+      
       - name: Evaluate trade-gate edge
         run: |
           python scripts/analysis/evaluate_trade_gate_edge.py
@@ -165,6 +166,10 @@ jobs:
       - name: Validate full pipeline outputs
         run: |
           python scripts/utils/validate_pipeline_outputs.py
+
+      - name: Audit pipeline contracts
+        run: |
+          python scripts/utils/audit_pipeline.py
 
       # -----------------------------
       # OPTIONAL MANUAL CALIBRATION
