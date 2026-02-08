@@ -1,0 +1,1 @@
+No gated trades with usable ret_1d; equity curve not generated.
