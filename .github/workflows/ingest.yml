@@ -175,7 +175,16 @@ jobs:
           
       - name: Calibrate trade gate (scientific sweep)
         run: python scripts/analysis/calibrate_trade_gate_sweep.py     
-     
+       continue-on-error: 
+      - name: OOS validate trade gate (walkforward)
+        run: |
+         python scripts/analysis/oos_validate_trade_gate.py \
+         --mode walkforward \
+         --wf-start 2024-01-01 \
+         --wf-train-lookback-days 252 \
+         --wf-step-days 21 \
+         --cost-bps 2 \
+         --min-n 50
       # -----------------------------
       # SIGNALS / PLAYBOOK
       # -----------------------------
