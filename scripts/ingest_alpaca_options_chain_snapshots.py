@@ -5,6 +5,11 @@ import sqlite3
 import urllib.request
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
+import time
+import random
+import socket
+import gzip
+import urllib.error
 
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 UNDERLYING = os.getenv("SYMBOL", "SPY")
@@ -12,6 +17,9 @@ FEED = os.getenv("ALPACA_DATA_FEED", "").strip()  # optional: "sip" etc.
 
 ALPACA_API_KEY = os.getenv("ALPACA_API_KEY", "").strip()
 ALPACA_API_SECRET = os.getenv("ALPACA_API_SECRET", "").strip()
+ALPACA_TIMEOUT = int(os.getenv("ALPACA_TIMEOUT", "120"))
+ALPACA_RETRIES = int(os.getenv("ALPACA_RETRIES", "6"))
+ALPACA_FAIL_OPEN = os.getenv("ALPACA_FAIL_OPEN", "1").strip() == "1"  # 1 = don't fail workflow
 
 NY = ZoneInfo("America/New_York")
 
@@ -61,10 +69,36 @@ def alpaca_get_chain_snapshots(underlying: str) -> dict:
     req = urllib.request.Request(url)
     req.add_header("APCA-API-KEY-ID", ALPACA_API_KEY)
     req.add_header("APCA-API-SECRET-KEY", ALPACA_API_SECRET)
+    req.add_header("Accept", "application/json")
+    req.add_header("Accept-Encoding", "gzip")  # helps a lot
 
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    last_err = None
+    for attempt in range(ALPACA_RETRIES):
+        try:
+            with urllib.request.urlopen(req, timeout=ALPACA_TIMEOUT) as resp:
+                raw = resp.read()
+                enc = (resp.headers.get("Content-Encoding") or "").lower()
+                if "gzip" in enc:
+                    raw = gzip.decompress(raw)
+                return json.loads(raw.decode("utf-8"))
 
+        except (TimeoutError, socket.timeout) as e:
+            last_err = e
+        except urllib.error.HTTPError as e:
+            # Retry only transient statuses
+            if e.code in (429, 500, 502, 503, 504):
+                last_err = e
+            else:
+                raise
+        except urllib.error.URLError as e:
+            last_err = e
+
+        # exponential backoff + jitter
+        sleep_s = min(2 ** attempt, 30) + random.random()
+        print(f"[alpaca] fetch failed attempt {attempt+1}/{ALPACA_RETRIES}: {last_err} — sleeping {sleep_s:.1f}s")
+        time.sleep(sleep_s)
+
+    raise RuntimeError(f"Alpaca snapshot fetch failed after {ALPACA_RETRIES} retries: {last_err}")
 def parse_contract_symbol(sym: str):
     """
     Alpaca uses OCC-style option symbols (e.g. SPY240119C00450000).
@@ -129,67 +163,15 @@ def main():
     try:
         ensure_table(con)
 
-        payload = alpaca_get_chain_snapshots(UNDERLYING)
-
-        # Docs describe "snapshots" response; fields can vary a bit.
-        # We'll look for a dict of contract_symbol -> snapshot blob.
-        snaps = payload.get("snapshots") or payload.get("option_snapshots") or payload
-        if not isinstance(snaps, dict):
-            raise RuntimeError("Unexpected Alpaca response shape for option chain snapshots")
-
-        # We'll aggregate to strike-level rows with call/put columns on same (expiry,strike).
-        # Start with empty containers.
-        agg = {}  # (expiry, strike) -> dict
-
-        for contract_sym, blob in snaps.items():
-            parsed = parse_contract_symbol(contract_sym)
-            if not parsed:
-                continue
-            expiry, strike, opt_type = parsed
-            key = (expiry, strike)
-
-            # Greeks (if present)
-            greeks = (blob.get("greeks") or {})
-            gamma = greeks.get("gamma")
-
-            stats = blob.get("daily") or blob.get("day") or {}
-            vol = stats.get("volume")
-
-            oi = blob.get("open_interest") \
-            or stats.get("open_interest") \
-            or blob.get("oi")
-
-            if key not in agg:
-                agg[key] = {
-                    "call_gamma": None, "put_gamma": None,
-                    "call_volume": None, "put_volume": None,
-                    "call_oi": None, "put_oi": None,
-                }
-
-            if opt_type == "call":
-                agg[key]["call_gamma"] = gamma
-                agg[key]["call_volume"] = vol
-                agg[key]["call_oi"] = oi
-            else:
-                agg[key]["put_gamma"] = gamma
-                agg[key]["put_volume"] = vol
-                agg[key]["put_oi"] = oi
-
-        n = 0
-        for (expiry, strike), vals in agg.items():
-            row = (
-                snap_ts, session, UNDERLYING,
-                expiry, dte(session, expiry), float(strike),
-                vals["call_oi"], vals["put_oi"], vals["call_volume"], vals["put_volume"],
-                vals["call_gamma"], vals["put_gamma"],
-            )
-            upsert_row(con, row)
-            n += 1
-
-        con.commit()
-        print(f"OK: ingested option chain snapshots underlying={UNDERLYING} rows={n} snapshot_ts={snap_ts}")
-
-    finally:
+        
+    finally:try:
+            payload = alpaca_get_chain_snapshots(UNDERLYING)
+        except Exception as e:
+            if ALPACA_FAIL_OPEN:
+                print(f"[alpaca] WARNING: options snapshot ingest failed: {e}")
+                print("[alpaca] Continuing workflow without fresh options snapshots.")
+                return
+            raise
         con.close()
 
 if __name__ == "__main__":
