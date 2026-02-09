@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import sqlite3
+import numpy 
 from datetime import datetime, timezone
 from typing import Optional, Tuple, List
 
@@ -33,6 +34,95 @@ def column_names(con: sqlite3.Connection, table: str) -> set:
     rows = con.execute(f"PRAGMA table_info({table})").fetchall()
     # row: cid, name, type, notnull, dflt_value, pk
     return {r[1] for r in rows}
+
+def pick_daily_table(con: sqlite3.Connection) -> Optional[str]:
+    # Prefer bars_daily (your current code), then fall back to other common tables.
+    candidates = ["bars_daily", "truth_daily", "ohlc_daily", "spy_daily"]
+    for t in candidates:
+        if table_exists(con, t):
+            cols = column_names(con, t)
+            if {"date", "symbol", "close"}.issubset(cols):
+                return t
+    return None
+
+def get_spot_for_session(con: sqlite3.Connection, session_date: str, underlying: str) -> Optional[float]:
+    # Uses daily close as "spot" proxy. Later you can switch to bars_15m or 1m.
+    t = pick_daily_table(con)
+    if not t:
+        return None
+    row = con.execute(
+        f"""
+        SELECT close
+        FROM {t}
+        WHERE symbol = ? AND date = ?
+        LIMIT 1
+        """,
+        (underlying, session_date),
+    ).fetchone()
+    if not row:
+        return None
+    try:
+        return float(row[0]) if row[0] is not None else None
+    except Exception:
+        return None
+
+def compute_flip_strike(strikes: List[float], net_gex: List[float], spot: float) -> Optional[float]:
+    if spot is None or not np.isfinite(spot) or len(strikes) < 2:
+        return None
+
+    s = np.array(strikes, dtype=float)
+    g = np.array(net_gex, dtype=float)
+
+    # sort by strike
+    order = np.argsort(s)
+    s = s[order]
+    g = g[order]
+
+    # first bracket around spot
+    idx = np.searchsorted(s, spot)
+    candidates = []
+
+    if 0 < idx < len(s):
+        candidates.append((idx - 1, idx))
+
+    # search outward for nearest sign change
+    for r in range(1, len(s)):
+        lo = idx - r
+        hi = idx + r
+        if 0 <= lo < len(s) - 1:
+            candidates.append((lo, lo + 1))
+        if 1 <= hi < len(s):
+            candidates.append((hi - 1, hi))
+
+    seen = set()
+    for a, b in candidates:
+        if (a, b) in seen:
+            continue
+        seen.add((a, b))
+
+        g1, g2 = g[a], g[b]
+        if not (np.isfinite(g1) and np.isfinite(g2)):
+            continue
+
+        # exact hits
+        if g1 == 0:
+            return float(s[a])
+        if g2 == 0:
+            return float(s[b])
+
+        # need a sign change
+        if np.sign(g1) == np.sign(g2):
+            continue
+
+        x1, x2 = s[a], s[b]
+        if g2 == g1:
+            return float((x1 + x2) / 2.0)
+
+        # linear interpolation to g=0
+        x0 = x1 + (0.0 - g1) * (x2 - x1) / (g2 - g1)
+        return float(x0)
+
+    return None
 
 def ensure_metrics_table(con: sqlite3.Connection):
     con.execute(
