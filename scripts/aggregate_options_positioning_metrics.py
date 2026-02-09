@@ -153,6 +153,10 @@ def ensure_metrics_table(con: sqlite3.Connection):
 
           gamma_proxy       REAL,
           dealer_state_hint TEXT,
+          gamma_wall_strike      REAL,
+          gamma_pos_wall_strike  REAL,
+          gamma_neg_wall_strike  REAL,
+          gamma_flip_strike      REAL,
 
           UNIQUE (snapshot_ts, underlying, dte_min, dte_max)
         );
@@ -306,6 +310,40 @@ def compute_metrics_for_snapshot(con: sqlite3.Connection, snapshot_ts: str) -> O
             # crude: negative net gamma => chase-y; positive => unwind-y
             dealer_state_hint = "chase" if gamma_proxy < 0 else "unwind"
 
+    gamma_wall_strike = None
+    gamma_pos_wall_strike = None
+    gamma_neg_wall_strike = None
+    gamma_flip_strike = None
+
+    if has_gamma:
+        # Build strike-level net gex: (call_gamma*call_oi - put_gamma*put_oi)
+        by_strike = {}
+        for r in rows:
+            k = float(r[idx["strike"]])
+            co = float(r[idx["call_oi"]] or 0)
+            po = float(r[idx["put_oi"]] or 0)
+            cg = float(r[idx["call_gamma"]] or 0.0)
+            pg = float(r[idx["put_gamma"]] or 0.0)
+
+            net = (cg * co) - (pg * po)
+            by_strike[k] = by_strike.get(k, 0.0) + net
+
+        strikes = sorted(by_strike.keys())
+        net_list = [by_strike[k] for k in strikes]
+
+        if strikes:
+            # wall = max abs(net)
+            k_wall = max(strikes, key=lambda k: abs(by_strike[k]))
+            gamma_wall_strike = float(k_wall)
+
+            # pos / neg walls
+            k_pos = max(strikes, key=lambda k: by_strike[k])
+            k_neg = min(strikes, key=lambda k: by_strike[k])
+            gamma_pos_wall_strike = float(k_pos)
+            gamma_neg_wall_strike = float(k_neg)
+
+            if spot is not None:
+                gamma_flip_strike = compute_flip_strike(strikes, net_list, float(spot))
     return {
         "snapshot_ts": snapshot_ts,
         "session_date": session_date,
@@ -324,7 +362,10 @@ def compute_metrics_for_snapshot(con: sqlite3.Connection, snapshot_ts: str) -> O
         "total_put_vol": total_put_vol,
         "pcr_vol": pcr_vol,
         "gamma_proxy": gamma_proxy,
-        "dealer_state_hint": dealer_state_hint,
+        "dealer_state_hint": dealer_state_hint,"gamma_wall_strike": gamma_wall_strike,
+        "gamma_pos_wall_strike": gamma_pos_wall_strike,
+        "gamma_neg_wall_strike": gamma_neg_wall_strike,
+        "gamma_flip_strike": gamma_flip_strike,
     }
 
 def upsert_metrics(con: sqlite3.Connection, m: dict):
@@ -337,7 +378,7 @@ def upsert_metrics(con: sqlite3.Connection, m: dict):
           max_total_oi_strike, max_call_oi_strike, max_put_oi_strike,
           total_call_oi, total_put_oi, pcr_oi,
           total_call_vol, total_put_vol, pcr_vol,
-          gamma_proxy, dealer_state_hint
+          gamma_proxy, dealer_state_hint, gamma_wall_strike, gamma_pos_wall_strike, gamma_neg_wall_strike, gamma_flip_strike
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(snapshot_ts, underlying, dte_min, dte_max) DO UPDATE SET
@@ -363,7 +404,7 @@ def upsert_metrics(con: sqlite3.Connection, m: dict):
             m["max_total_oi_strike"], m["max_call_oi_strike"], m["max_put_oi_strike"],
             m["total_call_oi"], m["total_put_oi"], m["pcr_oi"],
             m["total_call_vol"], m["total_put_vol"], m["pcr_vol"],
-            m["gamma_proxy"], m["dealer_state_hint"],
+            m["gamma_proxy"], m["dealer_state_hint"], m["gamma_wall_strike"], m["gamma_pos_wall_strike"], m["gamma_neg_wall_strike"], m["gamma_flip_strike"],
         ),
     )
 
