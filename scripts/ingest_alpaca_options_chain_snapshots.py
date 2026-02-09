@@ -164,7 +164,8 @@ def main():
         ensure_table(con)
 
         
-    finally:try:
+    finally:
+        try:
             payload = alpaca_get_chain_snapshots(UNDERLYING)
         except Exception as e:
             if ALPACA_FAIL_OPEN:
