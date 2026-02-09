@@ -150,10 +150,7 @@ def compute_metrics(con, snapshot_ts: str):
     )
 
 
-# ---------------- upsert ----------------
-
 def upsert(con, row):
-
     con.execute(
         """
         INSERT INTO options_positioning_metrics (
@@ -168,15 +165,27 @@ def upsert(con, row):
         )
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(snapshot_ts, underlying, dte_min, dte_max) DO UPDATE SET
-          gamma_wall_strike=excluded.gamma_wall_strike,
-          gamma_pos_wall_strike=excluded.gamma_pos_wall_strike,
-          gamma_neg_wall_strike=excluded.gamma_neg_wall_strike,
-          gamma_flip_strike=excluded.gamma_flip_strike
+          session_date        = excluded.session_date,
+          spot                = excluded.spot,
+          atm_strike          = excluded.atm_strike,
+          max_total_oi_strike = excluded.max_total_oi_strike,
+          max_call_oi_strike  = excluded.max_call_oi_strike,
+          max_put_oi_strike   = excluded.max_put_oi_strike,
+          gamma_wall_strike     = excluded.gamma_wall_strike,
+          gamma_pos_wall_strike = excluded.gamma_pos_wall_strike,
+          gamma_neg_wall_strike = excluded.gamma_neg_wall_strike,
+          gamma_flip_strike     = excluded.gamma_flip_strike,
+          total_call_oi       = excluded.total_call_oi,
+          total_put_oi        = excluded.total_put_oi,
+          pcr_oi              = excluded.pcr_oi,
+          total_call_vol      = excluded.total_call_vol,
+          total_put_vol       = excluded.total_put_vol,
+          pcr_vol             = excluded.pcr_vol,
+          gamma_proxy         = excluded.gamma_proxy,
+          dealer_state_hint   = excluded.dealer_state_hint
         """,
         row,
     )
-
-
 # ---------------- main ----------------
 
 def main():
