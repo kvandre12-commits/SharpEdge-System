@@ -247,6 +247,55 @@ def main():
         else:
             df["transition_flag"] = 0
 
+        # ---------------------------
+        # gamma overlay from options_positioning_metrics
+        # ---------------------------
+        gamma = None
+        if table_exists(con, "options_positioning_metrics"):
+            gcols = existing_cols(con, "options_positioning_metrics")
+            needed = {
+                "session_date","underlying","snapshot_ts",
+                "spot","gamma_proxy","dealer_state_hint",
+                "gamma_wall_strike","gamma_flip_strike"
+            }
+            if needed.issubset(gcols):
+                g = pd.read_sql_query("""
+                    WITH latest AS (
+                      SELECT session_date, underlying, MAX(snapshot_ts) AS snapshot_ts
+                      FROM options_positioning_metrics
+                      WHERE underlying = ?
+                      GROUP BY session_date, underlying
+                    )
+                    SELECT
+                      m.session_date AS date,
+                      m.underlying AS symbol,
+                      m.spot,
+                      m.gamma_proxy,
+                      m.dealer_state_hint,
+                      m.gamma_wall_strike,
+                      m.gamma_flip_strike
+                    FROM options_positioning_metrics m
+                    JOIN latest l
+                      ON m.session_date = l.session_date
+                     AND m.underlying  = l.underlying
+                     AND m.snapshot_ts = l.snapshot_ts
+                    WHERE m.underlying = ?
+                    ORDER BY m.session_date ASC
+                """, con, params=(SYMBOL, SYMBOL))
+
+                if not g.empty:
+                    g["date"] = pd.to_datetime(g["date"])
+                    gamma = g
+
+        if gamma is not None:
+            df = df.merge(gamma, on=["date","symbol"], how="left")
+        else:
+            df["spot"] = np.nan
+            df["gamma_proxy"] = np.nan
+            df["dealer_state_hint"] = None
+            df["gamma_wall_strike"] = np.nan
+            df["gamma_flip_strike"] = np.nan
+        
         df["compression_flag"] = df["compression_flag"].fillna(0).astype(int)
         df["transition_flag"] = df["transition_flag"].fillna(0).astype(int)
         df["trade_permission"] = df["trade_permission"].fillna(0).astype(int)
