@@ -17,7 +17,9 @@ jobs:
 
       ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
       ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
-
+      ALPACA_TIMEOUT: 120
+      ALPACA_RETRIES: 6
+      ALPACA_FAIL_OPEN: 1
       FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
       FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
 
