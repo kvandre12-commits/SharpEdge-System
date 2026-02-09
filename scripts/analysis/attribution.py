@@ -272,4 +272,104 @@ def write_report(report_path: Path, by_group: pd.DataFrame, group_cols: List[str
     lines.append("")
 
     if by_group.empty:
-        lines.append
+        lines.append("No groups produced (missing data or empty returns).")
+        report_path.write_text("\n".join(lines))
+        return
+
+    usable = by_group[by_group["meets_min_n"] == True].copy()
+    if usable.empty:
+        lines.append("No groups met min_n. Try lowering --min-n or collecting more history.")
+        report_path.write_text("\n".join(lines))
+        return
+
+    top = usable.head(10)
+    bot = usable.tail(10).sort_values("total_contribution", ascending=True)
+
+    def fmt_df(d: pd.DataFrame) -> str:
+        # Markdown table without tabulate
+        cols = group_cols + ["n","expectancy","sharpe_ann","t_stat","max_dd","total_contribution"]
+        d2 = d[cols].copy()
+        for c in ["expectancy","sharpe_ann","t_stat","max_dd","total_contribution"]:
+            d2[c] = d2[c].map(lambda v: "" if pd.isna(v) else f"{v:.6f}")
+        d2["n"] = d2["n"].astype(int).astype(str)
+        header = "| " + " | ".join(cols) + " |"
+        sep = "| " + " | ".join(["---"] * len(cols)) + " |"
+        rows = ["| " + " | ".join(map(str, r)) + " |" for r in d2.values.tolist()]
+        return "\n".join([header, sep] + rows)
+
+    lines.append("## Top contributing groups")
+    lines.append("")
+    lines.append(fmt_df(top))
+    lines.append("")
+    lines.append("## Bottom contributing groups")
+    lines.append("")
+    lines.append(fmt_df(bot))
+    lines.append("")
+    report_path.write_text("\n".join(lines))
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--db", default=os.getenv("SPY_DB_PATH", "data/spy_truth.db"))
+    ap.add_argument("--symbol", default=os.getenv("SYMBOL", "SPY"))
+    ap.add_argument("--outputs", default="outputs")
+    ap.add_argument("--min-n", type=int, default=30)
+    ap.add_argument(
+        "--group-cols",
+        default="regime_label,pressure_state",
+        help="Comma-separated grouping columns for attribution (must exist after join).",
+    )
+    args = ap.parse_args()
+
+    outputs_dir = Path(args.outputs)
+    outputs_dir.mkdir(parents=True, exist_ok=True)
+
+    con = sqlite3.connect(args.db)
+
+    # 1) load walkforward equity if available
+    wf = load_walkforward_equity(outputs_dir)
+    if wf.empty:
+        # 2) fallback to DB gated returns
+        wf = build_fallback_equity_from_db(con, args.symbol)
+
+    if wf.empty:
+        raise SystemExit("No strategy equity found (no outputs/walkforward_equity.csv and DB fallback empty).")
+
+    # 3) join context
+    df = join_context(con, wf, args.symbol)
+
+    # normalize some types
+    df["ret_1d_net"] = pd.to_numeric(df["ret_1d_net"], errors="coerce")
+    if "trade_gate" in df.columns:
+        df["trade_gate"] = pd.to_numeric(df["trade_gate"], errors="coerce").fillna(0).astype(int)
+
+    # 4) resolve grouping columns (only keep ones that exist)
+    requested = [c.strip() for c in args.group_cols.split(",") if c.strip()]
+    group_cols = [c for c in requested if c in df.columns]
+    if not group_cols:
+        # always give something
+        group_cols = ["pressure_state"] if "pressure_state" in df.columns else []
+
+    # 5) write daily attribution
+    daily_path = outputs_dir / "attribution_daily.csv"
+    df_out = df.copy()
+    df_out["date"] = df_out["date"].dt.strftime("%Y-%m-%d")
+    df_out.to_csv(daily_path, index=False)
+
+    # 6) group stats
+    by_group = group_stats(df, group_cols, args.min_n)
+    by_group_path = outputs_dir / "attribution_by_group.csv"
+    by_group.to_csv(by_group_path, index=False)
+
+    # 7) report
+    report_path = outputs_dir / "attribution_report.md"
+    write_report(report_path, by_group, group_cols, args.min_n)
+
+    con.close()
+    print(f"OK: wrote {daily_path}")
+    print(f"OK: wrote {by_group_path}")
+    print(f"OK: wrote {report_path}")
+
+
+if __name__ == "__main__":
+    main()
