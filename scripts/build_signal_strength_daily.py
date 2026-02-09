@@ -317,6 +317,19 @@ def main():
         ).mean()
 
         # ---------------------------
+        # Gamma regime interpretation
+        # ---------------------------
+        df["gamma_wall_dist_pct"] = (df["spot"] - df["gamma_wall_strike"]).abs() / df["spot"]
+        df["gamma_flip_dist_pct"] = (df["spot"] - df["gamma_flip_strike"]).abs() / df["spot"]
+
+        df["gamma_pin_flag"] = (
+            (df["dealer_state_hint"] == "pin") |
+            (df["gamma_wall_dist_pct"] <= 0.0025)
+        ).astype(int)
+
+        df["gamma_chase_flag"] = (df["gamma_proxy"] < 0).astype(int)
+        
+        # ---------------------------
         # FAST ignition metrics (leading / protective)
         # ---------------------------
         df["tr_base_med_fast"] = df["true_range_pct"].rolling(
@@ -392,8 +405,20 @@ def main():
         tmp = df.apply(pressure_state_row, axis=1, result_type="expand")
         df["pressure_state"] = tmp[0]
         df["pressure_reason"] = tmp[1]
-        df["trade_gate"] = (df["pressure_state"] == "RELEASE").astype(int)
+        
+        # ---------------------------
+        # Gamma permission layer
+        # ---------------------------
+        df["gamma_permission"] = (
+            (df["gamma_chase_flag"] == 1) |
+            ((df["gamma_pin_flag"] == 1) & (df["trade_permission"] == 1)) |
+            ((df["gamma_flip_dist_pct"] <= 0.003) & (df["trade_permission"] == 1))
+        ).astype(int)
 
+        df["trade_gate"] = (
+            (df["pressure_state"] == "RELEASE") &
+            (df["gamma_permission"] == 1)
+        ).astype(int)
         # Minimum history guard (avoid noisy early window)
         # If vol/tr baselines aren’t mature yet, mark bucket unknown but keep score computed.
         df["rows_seen"] = np.arange(1, len(df) + 1)
