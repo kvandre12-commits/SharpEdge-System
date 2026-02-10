@@ -52,6 +52,25 @@ jobs:
         run: |
           DTE_MIN=2 DTE_MAX=3 python scripts/aggregate_options_positioning_metrics.py
       
+      - name: Debug OI walls (latest)
+        run: |
+          python - <<'PY'
+          import sqlite3, os, pandas as pd
+          db = os.getenv("SPY_DB_PATH","data/spy_truth.db")
+          con = sqlite3.connect(db)
+          q = """
+          SELECT session_date, underlying, spot,
+           max_total_oi_strike, max_call_oi_strike, max_put_oi_strike,
+           gamma_wall_strike, gamma_flip_strike,
+           total_call_oi, total_put_oi, pcr_oi
+          FROM options_positioning_metrics
+          WHERE underlying='SPY'
+          ORDER BY session_date DESC, snapshot_ts DESC
+          LIMIT 10
+          """
+          df = pd.read_sql_query(q, con)
+          print(df.to_string(index=False))
+          PY
       # -----------------------------
       # DAILY BARS
       # -----------------------------
