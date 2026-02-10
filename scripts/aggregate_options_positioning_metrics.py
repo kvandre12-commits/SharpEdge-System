@@ -162,8 +162,8 @@ def compute_metrics(con, snapshot_ts: str):
         DTE_MIN,
         DTE_MAX,
         spot,
-        None,  # atm placeholder
-        None, None, None,  # OI walls placeholder
+        atm_strike,
+        max_total_oi_strike, max_call_oi_strike, max_put_oi_strike,
         gamma_wall,
         gamma_pos,
         gamma_neg,
