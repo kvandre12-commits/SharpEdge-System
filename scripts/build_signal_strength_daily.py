@@ -405,7 +405,39 @@ def main():
         tmp = df.apply(pressure_state_row, axis=1, result_type="expand")
         df["pressure_state"] = tmp[0]
         df["pressure_reason"] = tmp[1]
-        
+        # ---------------------------
+        # Intraday TR gate (hard lock)
+        # ---------------------------
+        intraday_gate = None
+        if table_exists(con, "intraday_tr_gate"):
+            ig = pd.read_sql_query("""
+                WITH latest AS (
+                  SELECT session_date, symbol, MAX(ts) AS ts
+                  FROM intraday_tr_gate
+                  WHERE symbol = ?
+                  GROUP BY session_date, symbol
+                )
+                SELECT
+                  g.session_date AS date,
+                  g.symbol,
+                  g.tr_lift_gate_75
+                FROM intraday_tr_gate g
+                JOIN latest l
+                  ON g.session_date = l.session_date
+                 AND g.symbol = l.symbol
+                 AND g.ts = l.ts
+                WHERE g.symbol = ?
+                ORDER BY g.session_date ASC
+            """, con, params=(SYMBOL, SYMBOL))
+
+            if not ig.empty:
+                ig["date"] = pd.to_datetime(ig["date"])
+                intraday_gate = ig
+            if.       intraday_gate is not None:
+            df = df.merge(intraday_gate, on=["date","symbol"], how="left")
+            df["tr_lift_gate_75"] = df["tr_lift_gate_75"].fillna(0).astype(int)ls.       e:
+            # safest default: closed (forces you to actually build the intraday table)
+            df["tr_lift_gate_75"] = 0
         # ---------------------------
         # Gamma permission layer
         # ---------------------------
