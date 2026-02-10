@@ -233,7 +233,7 @@ def upsert(con, row):
 
 def main():
     con = sqlite3.connect(DB_PATH)
-ensure_schema(con)
+    ensure_schema(con)
 
     snaps = [
         r[0]
