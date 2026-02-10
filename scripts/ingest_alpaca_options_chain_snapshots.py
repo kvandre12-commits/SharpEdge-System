@@ -99,6 +99,8 @@ def alpaca_get_chain_snapshots(underlying: str) -> dict:
         time.sleep(sleep_s)
 
     raise RuntimeError(f"Alpaca snapshot fetch failed after {ALPACA_RETRIES} retries: {last_err}")
+    finally
+    
 def parse_contract_symbol(sym: str):
     """
     Alpaca uses OCC-style option symbols (e.g. SPY240119C00450000).
