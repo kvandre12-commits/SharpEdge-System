@@ -149,7 +149,50 @@ def compute_metrics(con, snapshot_ts: str):
         None,  # dealer hint placeholder
     )
 
+def ensure_schema(con):
+    # Ensure base table exists (keep your existing CREATE TABLE if you already have one)
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS options_positioning_metrics (
+      snapshot_ts TEXT NOT NULL,
+      session_date TEXT NOT NULL,
+      underlying TEXT NOT NULL,
+      dte_min INTEGER NOT NULL,
+      dte_max INTEGER NOT NULL,
+      PRIMARY KEY (snapshot_ts, underlying, dte_min, dte_max)
+    );
+    """)
 
+    # Add missing columns safely (idempotent migration)
+    want = {
+        "spot": "REAL",
+        "atm_strike": "REAL",
+
+        "max_total_oi_strike": "REAL",
+        "max_call_oi_strike": "REAL",
+        "max_put_oi_strike": "REAL",
+
+        "gamma_wall_strike": "REAL",
+        "gamma_pos_wall_strike": "REAL",
+        "gamma_neg_wall_strike": "REAL",
+        "gamma_flip_strike": "REAL",
+
+        "total_call_oi": "REAL",
+        "total_put_oi": "REAL",
+        "pcr_oi": "REAL",
+
+        "total_call_vol": "REAL",
+        "total_put_vol": "REAL",
+        "pcr_vol": "REAL",
+
+        "gamma_proxy": "REAL",
+        "dealer_state_hint": "TEXT",
+    }
+
+    have = {r[1] for r in con.execute("PRAGMA table_info(options_positioning_metrics)")}
+    for col, typ in want.items():
+        if col not in have:
+            con.execute(f"ALTER TABLE options_positioning_metrics ADD COLUMN {col} {typ};")
+            
 def upsert(con, row):
     con.execute(
         """
@@ -189,7 +232,8 @@ def upsert(con, row):
 # ---------------- main ----------------
 
 def main():
-    con = connect()
+    con = sqlite3.connect(DB_PATH)
+ensure_schema(con)
 
     snaps = [
         r[0]
