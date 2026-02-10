@@ -164,15 +164,9 @@ def main():
 
     try:
         payload = alpaca_get_chain_snapshots(UNDERLYING)
-         print("[DEBUG] payload keys:", list(payload.keys()))
-         print("[DEBUG] snapshots type:", type(payload.get("snapshots")))
-         print("[DEBUG] snapshots sample:", str(payload.get("snapshots"))[:500])
-    except Exception as e:
-        if ALPACA_FAIL_OPEN:
-            print(f"[alpaca] WARNING: options snapshot ingest failed: {e}")
-            print("[alpaca] Continuing workflow without fresh options snapshots.")
-            return
-        raise
+        print("[DEBUG] payload keys:", list(payload.keys()))
+        print("[DEBUG] snapshots type:", type(payload.get("snapshots")))
+        print("[DEBUG] snapshots sample:", str(payload.get("snapshots"))[:500])
 
     # -------- parse contracts and insert --------
     count = 0
