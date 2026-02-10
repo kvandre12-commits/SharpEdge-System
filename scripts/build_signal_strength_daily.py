@@ -434,10 +434,10 @@ def main():
                 ig["date"] = pd.to_datetime(ig["date"])
                 intraday_gate = ig
             if intraday_gate is not None:
-            df = df.merge(intraday_gate, on=["date","symbol"], how="left")
-            df["tr_lift_gate_75"] = df["tr_lift_gate_75"].fillna(0).astype(int)ls.       e:
-            # safest default: closed (forces you to actually build the intraday table)
-            df["tr_lift_gate_75"] = 0
+                df = df.merge(intraday_gate, on=["date","symbol"], how="left")
+                df["tr_lift_gate_75"] = df["tr_lift_gate_75"].fillna(0).astype(int)ls.       e:
+                # safest default: closed (forces you to actually build the intraday table)
+                df["tr_lift_gate_75"] = 0
         # ---------------------------
         # Gamma permission layer
         # ---------------------------
