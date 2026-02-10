@@ -160,20 +160,66 @@ def main():
     session = ny_session_date(now_utc)
 
     con = connect()
+    ensure_table(con)
+
     try:
-        ensure_table(con)
+        payload = alpaca_get_chain_snapshots(UNDERLYING)
+    except Exception as e:
+        if ALPACA_FAIL_OPEN:
+            print(f"[alpaca] WARNING: options snapshot ingest failed: {e}")
+            print("[alpaca] Continuing workflow without fresh options snapshots.")
+            return
+        raise
 
-        
-    finally:
-        try:
-            payload = alpaca_get_chain_snapshots(UNDERLYING)
-        except Exception as e:
-            if ALPACA_FAIL_OPEN:
-                print(f"[alpaca] WARNING: options snapshot ingest failed: {e}")
-                print("[alpaca] Continuing workflow without fresh options snapshots.")
-                return
-            raise
-        con.close()
+    # -------- parse contracts and insert --------
+    count = 0
 
+    # Alpaca snapshot payload shape:
+    # { "snapshots": { "OCC_SYMBOL": { ... } } }
+    snaps = payload.get("snapshots", {})
+
+    for sym, snap in snaps.items():
+        parsed = parse_contract_symbol(sym)
+        if not parsed:
+            continue
+
+        expiry, strike, opt_type = parsed
+        dte_val = dte(session, expiry)
+
+        # pull metrics safely
+        oi = (snap.get("open_interest") or 0)
+        vol = (snap.get("latest_trade", {}) or {}).get("size") or 0
+        gamma = (snap.get("greeks", {}) or {}).get("gamma")
+
+        # build row with call/put separation
+        call_oi = oi if opt_type == "call" else None
+        put_oi = oi if opt_type == "put" else None
+        call_vol = vol if opt_type == "call" else None
+        put_vol = vol if opt_type == "put" else None
+        call_gamma = gamma if opt_type == "call" else None
+        put_gamma = gamma if opt_type == "put" else None
+
+        row = (
+            snap_ts,
+            session,
+            UNDERLYING,
+            expiry,
+            dte_val,
+            strike,
+            call_oi,
+            put_oi,
+            call_vol,
+            put_vol,
+            call_gamma,
+            put_gamma,
+        )
+
+        upsert_row(con, row)
+        count += 1
+
+    con.commit()
+    con.close()
+
+    print(f"[alpaca] inserted {count} option snapshot rows")
 if __name__ == "__main__":
     main()
