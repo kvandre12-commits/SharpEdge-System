@@ -7,8 +7,23 @@ DB_PATH = "data/spy_truth.db"
 CSV_PATH = "data/edge_regime_pressure_dte.csv"
 
 def main():
-    df = pd.read_csv(CSV_PATH)
+    con = sqlite3.connect(DB_PATH)
 
+    # If table already exists and has rows, do nothing
+    try:
+        existing = pd.read_sql_query(
+            "SELECT COUNT(*) AS n FROM edge_regime_pressure_dte_lut",
+            con
+        )
+        if existing["n"].iloc[0] > 0:
+            print("edge_regime_pressure_dte_lut already populated; skipping reload")
+            con.close()
+            return
+    except Exception:
+        pass  # table doesn't exist yet
+
+    # Fallback: load from CSV
+    df = pd.read_csv(CSV_PATH)
     # normalize
     df.columns = [c.strip().lower() for c in df.columns]
     df["regime"] = df["regime"].str.strip()
