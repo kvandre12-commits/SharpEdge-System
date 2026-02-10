@@ -164,9 +164,9 @@ def main():
 
     try:
         payload = alpaca_get_chain_snapshots(UNDERLYING)
-        print("[DEBUG] payload keys:", list(payload.keys()))
-        print("[DEBUG] snapshots type:", type(payload.get("snapshots")))
-        print("[DEBUG] snapshots sample:", str(payload.get("snapshots"))[:500])
+    print("[DEBUG] payload keys:", list(payload.keys()))
+    print("[DEBUG] snapshots type:", type(payload.get("snapshots")))
+    print("[DEBUG] snapshots sample:", str(payload.get("snapshots"))[:500])
 
     # -------- parse contracts and insert --------
     count = 0
