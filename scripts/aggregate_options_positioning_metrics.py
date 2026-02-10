@@ -112,6 +112,35 @@ def compute_metrics(con, snapshot_ts: str):
     pcr_oi = (total_put_oi / total_call_oi) if total_call_oi else None
     pcr_vol = (total_put_vol / total_call_vol) if total_call_vol else None
 
+    # -------- OI walls (max OI by strike) --------
+    call_oi_by = {}
+    put_oi_by = {}
+
+    for _, k, co, po, *_ in rows:
+        k = float(k)
+        call_oi_by[k] = call_oi_by.get(k, 0) + (co or 0)
+        put_oi_by[k]  = put_oi_by.get(k, 0) + (po or 0)
+
+    strikes_oi = sorted(set(call_oi_by.keys()) | set(put_oi_by.keys()))
+
+    def argmax(d):
+        if not d:
+            return None
+        # Only choose a wall if it's actually > 0 OI
+        k = max(d.keys(), key=lambda x: d[x])
+        return float(k) if d[k] > 0 else None
+
+    max_call_oi_strike = argmax(call_oi_by)
+    max_put_oi_strike  = argmax(put_oi_by)
+
+    total_oi_by = {k: call_oi_by.get(k, 0) + put_oi_by.get(k, 0) for k in strikes_oi}
+    max_total_oi_strike = argmax(total_oi_by)
+
+    # Optional but useful: ATM strike = closest listed strike to spot
+    atm_strike = None
+    if spot is not None and strikes_oi:
+        atm_strike = float(min(strikes_oi, key=lambda s: abs(s - spot)))
+        
     # -------- gamma geometry --------
     by_strike = {}
     for _, k, co, po, _, _, cg, pg in rows:
