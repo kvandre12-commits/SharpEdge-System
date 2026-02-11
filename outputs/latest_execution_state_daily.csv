@@ -1,2 +1,2 @@
 session_date,symbol,cluster_score,compression_flag,prob_trend_fused,prob_range_fused,dealer_state_hint,gamma_proxy,wall_strike,dist_to_wall_pct,signal_strength,execution_score,final_bias
-2026-02-10,SPY,0.3,0,0.287927727575201,0.712072272424799,,,,,,20.154940930264072,WHIP_WAIT
+2026-02-11,SPY,0.3,0,0.307569111766481,0.6924308882335191,,,,,,21.52983782365367,WHIP_WAIT
