@@ -24,6 +24,33 @@ def main():
 
     # Fallback: load from CSV
     df = pd.read_csv(CSV_PATH)
+
+# --- normalize column names ---
+df.columns = [c.strip().lower() for c in df.columns]
+
+# --- map possible upstream names to canonical schema ---
+rename_map = {
+    "regime_label": "regime",
+    "pressure_state": "pressure",
+    "maxdd": "maxdd",
+    "max_dd": "maxdd",
+}
+
+df = df.rename(columns=rename_map)
+
+# --- verify required columns exist ---
+required = {"regime", "pressure", "dte", "n", "win", "exp"}
+missing = required - set(df.columns)
+if missing:
+    raise RuntimeError(
+        f"LUT CSV missing required columns: {missing}. "
+        f"Have: {df.columns.tolist()}"
+    )
+
+# --- clean strings ---
+df["regime"] = df["regime"].astype(str).str.strip()
+df["pressure"] = df["pressure"].astype(str).str.strip()
+df["dte"] = df["dte"].astype(str).str.strip()
     # normalize
     df.columns = [c.strip().lower() for c in df.columns]
     df["regime"] = df["regime"].str.strip()
