@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 
 DB_PATH = "data/spy_truth.db"
-CSV_PATH = "data/edge_regime_pressure_dte.csv"
+CSV_PATH = "outputs/attribution_daily.csv"
 
 def main():
     con = sqlite3.connect(DB_PATH)
