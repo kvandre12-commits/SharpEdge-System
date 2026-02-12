@@ -63,6 +63,7 @@ ALL_DAYS,unknown_vol|rising_voltrend|normal_dp|normal_macro|0_comp,UNRESOLVED_PR
 ALL_DAYS,mid_vol|falling_voltrend|high_dp|low_macro|0_comp,UNRESOLVED_PRESSURE,NA,1,0.0,-0.011003536401451242,,,0.0,False
 ALL_DAYS,unknown_vol|falling_voltrend|low_dp|normal_macro|0_comp,UNRESOLVED_PRESSURE,NA,1,0.0,-0.012206091812080655,,,0.0,False
 ALL_DAYS,unknown_vol|rising_voltrend|low_dp|high_macro|0_comp,UNRESOLVED_PRESSURE,NA,1,0.0,-0.012528127278102708,,,0.0,False
+ALL_DAYS,mid_vol|rising_voltrend|low_dp|low_macro|0_comp,COILED,NA,1,0.0,-0.012760877521032055,,,0.0,False
 ALL_DAYS,mid_vol|falling_voltrend|low_dp|high_macro|0_comp,UNRESOLVED_PRESSURE,NA,2,0.0,-0.012935279519321607,-37.27964965993202,-3.321135155391174,-0.009040442689714157,False
 ALL_DAYS,high_vol|rising_voltrend|high_dp|high_macro|0_comp,NORMAL,NA,2,0.5,-0.012988089997804264,-4.728727173256585,-0.42126849899652763,0.0,False
 ALL_DAYS,unknown_vol|unknown_voltrend|low_dp|normal_macro|0_comp,UNRESOLVED_PRESSURE,NA,1,0.0,-0.01377305334094614,,,0.0,False
