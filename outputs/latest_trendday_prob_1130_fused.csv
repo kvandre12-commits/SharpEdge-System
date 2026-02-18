@@ -1,2 +1,2 @@
 session_date,symbol,cutoff_ny,ret_open_to_cutoff,orbrange_pct,orb_break_strength,range_pct_to_cutoff,true_range_pct_to_cutoff,hhll_persistence,vwap_proxy,prob_trend,prob_range,model_version,wall_strike,gamma_proxy,dealer_state_hint,spot,dist_to_wall_pct,prob_trend_fused,prob_range_fused
-2026-02-17,SPY,11:30,0.23818275380431686,1.0262442108358476,0.0,1.0894655590678648,1.0894655590678648,0.625,1.0,0.31879954890972223,0.6812004510902778,logreg_np_fused_cutoff_11:30_l21.0_lr0.2_steps400,,,,,,0.31879954890972223,0.6812004510902778
+2026-02-18,SPY,11:30,0.6433971368827285,0.8232558819658701,0.0,0.8232558819658701,0.8232558819658701,1.0,1.0,0.34817853837415647,0.6518214616258435,logreg_np_fused_cutoff_11:30_l21.0_lr0.2_steps400,,,,,,0.34817853837415647,0.6518214616258435
