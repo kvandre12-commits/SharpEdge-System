@@ -10,8 +10,8 @@ DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 UNDERLYING = os.getenv("UNDERLYING", "SPY")
 
 ALPACA_TRADING_BASE = os.getenv("ALPACA_TRADING_BASE", "https://paper-api.alpaca.markets")
-ALPACA_KEY = os.getenv("ALPACA_KEY_ID") or os.getenv("APCA_API_KEY_ID")
-ALPACA_SECRET = os.getenv("ALPACA_SECRET_KEY") or os.getenv("APCA_API_SECRET_KEY")
+ALPACA_KEY = os.getenv("ALPACA_API_KEY") or os.getenv("APCA_API_KEY_ID")
+ALPACA_SECRET = os.getenv("ALPACA_API_SECRET") or os.getenv("APCA_API_SECRET_KEY")
 
 ALPACA_RETRIES = int(os.getenv("ALPACA_RETRIES", "4"))
 ALPACA_TIMEOUT = int(os.getenv("ALPACA_TIMEOUT", "30"))
