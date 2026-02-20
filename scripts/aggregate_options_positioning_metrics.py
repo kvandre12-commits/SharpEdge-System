@@ -276,16 +276,14 @@ def main():
         if row:
             upsert(con, row)
 print("DEBUG positioning_metrics sample:")
-rows = con.execute("""
-    SELECT session_date, spot, max_total_oi_strike
-    FROM options_positioning_metrics
-    ORDER BY snapshot_ts DESC
-    LIMIT 5
-""").fetchall()
-
-for r in rows:
-    print(r)
-    
+        rows = con.execute("""
+        SELECT session_date, spot, max_total_oi_strike
+        FROM options_positioning_metrics
+        ORDER BY snapshot_ts DESC
+        LIMIT 5
+    """).fetchall()
+    for r in rows:
+        print(r)    
 con.commit()
 con.close()
 print("OK: gamma geometry integrated.")
