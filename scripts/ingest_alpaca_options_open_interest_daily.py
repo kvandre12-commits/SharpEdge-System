@@ -9,7 +9,7 @@ import pandas as pd
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 UNDERLYING = os.getenv("UNDERLYING", "SPY")
 
-ALPACA_DATA_BASE = os.getenv("ALPACA_DATA_BASE", "https://data.alpaca.markets")
+ALPACA_TRADING_BASE = os.getenv("ALPACA_TRADING_BASE", "https://paper-api.alpaca.markets")
 ALPACA_KEY = os.getenv("ALPACA_KEY_ID") or os.getenv("APCA_API_KEY_ID")
 ALPACA_SECRET = os.getenv("ALPACA_SECRET_KEY") or os.getenv("APCA_API_SECRET_KEY")
 
@@ -58,7 +58,7 @@ def upsert_row(con, row):
     """, row)
 
 def alpaca_get_contracts_page(underlying: str, page_token: str | None):
-    url = f"{ALPACA_DATA_BASE}/v2/options/contracts"
+    url = f"{ALPACA_TRADING_BASE}/v2/options/contracts"
     headers = {
         "APCA-API-KEY-ID": ALPACA_KEY or "",
         "APCA-API-SECRET-KEY": ALPACA_SECRET or "",
