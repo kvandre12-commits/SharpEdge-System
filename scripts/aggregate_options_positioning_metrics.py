@@ -276,7 +276,7 @@ def main():
         if row:
             upsert(con, row)
 print("DEBUG positioning_metrics sample:")
-        rows = con.execute("""
+    rows = con.execute("""
         SELECT session_date, spot, max_total_oi_strike
         FROM options_positioning_metrics
         ORDER BY snapshot_ts DESC
