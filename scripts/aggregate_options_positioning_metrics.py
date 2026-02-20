@@ -275,8 +275,8 @@ def main():
         row = compute_metrics(con, s)
         if row:
             upsert(con, row)
-print("DEBUG positioning_metrics sample:")
-    rows = con.execute("""
+    print("DEBUG positioning_metrics sample:")
+        rows = con.execute("""
         SELECT session_date, spot, max_total_oi_strike
         FROM options_positioning_metrics
         ORDER BY snapshot_ts DESC
