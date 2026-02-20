@@ -283,7 +283,7 @@ print("DEBUG positioning_metrics sample:")
         LIMIT 5
     """).fetchall()
     for r in rows:
-        print(r)    
+        print(r)
 con.commit()
 con.close()
 print("OK: gamma geometry integrated.")
