@@ -285,6 +285,7 @@ rows = con.execute("""
 
 for r in rows:
     print(r)
+    
 con.commit()
 con.close()
 print("OK: gamma geometry integrated.")
