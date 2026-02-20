@@ -109,24 +109,52 @@ def compute_metrics(con, snapshot_ts: str):
     total_call_vol = sum(r[4] or 0 for r in rows)
     total_put_vol = sum(r[5] or 0 for r in rows)
 
-    pcr_oi = (total_put_oi / total_call_oi) if total_call_oi else None
-    pcr_vol = (total_put_vol / total_call_vol) if total_call_vol else None
-
-    # -------- OI walls (max OI by strike) --------
+    # -------- OI walls (from contracts table) --------
     call_oi_by = {}
     put_oi_by = {}
 
-    for _, k, co, po, *_ in rows:
-        k = float(k)
-        call_oi_by[k] = call_oi_by.get(k, 0) + (co or 0)
-        put_oi_by[k]  = put_oi_by.get(k, 0) + (po or 0)
+    total_call_oi = 0
+    total_put_oi = 0
+
+    if table_exists(con, "options_open_interest_daily"):
+        oi_rows = con.execute(
+            """
+            SELECT
+              CAST(strike AS REAL) AS strike,
+              COALESCE(call_oi, 0) AS call_oi,
+              COALESCE(put_oi, 0)  AS put_oi
+            FROM options_open_interest_daily
+            WHERE session_date=? AND underlying=?
+              AND CAST((julianday(expiration_date) - julianday(?)) AS INT) BETWEEN ? AND ?
+            """,
+            (session_date, UNDERLYING, session_date, DTE_MIN, DTE_MAX),
+        ).fetchall()
+
+        for k, co, po in oi_rows:
+            k = float(k)
+            call_oi_by[k] = call_oi_by.get(k, 0) + int(co or 0)
+            put_oi_by[k]  = put_oi_by.get(k, 0) + int(po or 0)
+
+        total_call_oi = sum(call_oi_by.values())
+        total_put_oi  = sum(put_oi_by.values())
+
+    else:
+        # Fallback to snapshots if contracts table is missing (shouldn't happen now)
+        for _, k, co, po, *_ in rows:
+            k = float(k)
+            call_oi_by[k] = call_oi_by.get(k, 0) + (co or 0)
+            put_oi_by[k]  = put_oi_by.get(k, 0) + (po or 0)
+
+        total_call_oi = sum(call_oi_by.values())
+        total_put_oi  = sum(put_oi_by.values())
+
+    pcr_oi = (total_put_oi / total_call_oi) if total_call_oi else None
 
     strikes_oi = sorted(set(call_oi_by.keys()) | set(put_oi_by.keys()))
 
     def argmax(d):
         if not d:
             return None
-        # Only choose a wall if it's actually > 0 OI
         k = max(d.keys(), key=lambda x: d[x])
         return float(k) if d[k] > 0 else None
 
@@ -135,12 +163,6 @@ def compute_metrics(con, snapshot_ts: str):
 
     total_oi_by = {k: call_oi_by.get(k, 0) + put_oi_by.get(k, 0) for k in strikes_oi}
     max_total_oi_strike = argmax(total_oi_by)
-
-    # Optional but useful: ATM strike = closest listed strike to spot
-    atm_strike = None
-    if spot is not None and strikes_oi:
-        atm_strike = float(min(strikes_oi, key=lambda s: abs(s - spot)))
-        
     # -------- gamma geometry --------
     by_strike = {}
     for _, k, co, po, _, _, cg, pg in rows:
