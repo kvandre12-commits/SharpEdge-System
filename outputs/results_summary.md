@@ -1,7 +1,7 @@
 # Proof of Edge — trade_gate evaluation (SPY)
 
-- Date range: 2024-02-01 → 2026-03-02
-- Total rows (signals ⋈ features): 521
+- Date range: 2024-02-01 → 2026-03-03
+- Total rows (signals ⋈ features): 522
 
 ## Gated (trade_gate == 1)
 - Trades: 0
@@ -11,17 +11,17 @@
 - Max drawdown: NA
 
 ## Ungated baseline (trade_gate == 0)
-- Trades: 521
-- Win rate: 57.58%
+- Trades: 522
+- Win rate: 57.47%
 - Expectancy (mean ret_1d): 0.0007
-- Sharpe (ann): 1.13
+- Sharpe (ann): 1.10
 - Max drawdown: -19.00%
 
 ## All days baseline (ignoring gate)
-- Trades: 521
-- Win rate: 57.58%
+- Trades: 522
+- Win rate: 57.47%
 - Expectancy (mean ret_1d): 0.0007
-- Sharpe (ann): 1.13
+- Sharpe (ann): 1.10
 - Max drawdown: -19.00%
 
 ## Artifacts
