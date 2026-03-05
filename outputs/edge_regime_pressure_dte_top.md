@@ -7,7 +7,7 @@
 
 | view | regime | pressure | dte | n | win | exp | sharpe | t | maxDD |
 |---|---|---|---:|---:|---:|---:|---:|---:|---:|
-| ALL_DAYS | mid_vol|rising_voltrend|low_dp|low_macro|0_comp | NORMAL | NA | 43 | 72.09% | 0.0030 | 8.91 | 3.68 | -1.10% |
+| ALL_DAYS | mid_vol|rising_voltrend|low_dp|low_macro|0_comp | NORMAL | NA | 44 | 72.73% | 0.0031 | 9.23 | 3.86 | -1.10% |
 | ALL_DAYS | mid_vol|falling_voltrend|low_dp|low_macro|0_comp | NORMAL | NA | 42 | 66.67% | 0.0022 | 6.26 | 2.56 | -2.10% |
 | ALL_DAYS | low_vol|falling_voltrend|low_dp|low_macro|0_comp | NORMAL | NA | 38 | 63.16% | 0.0015 | 5.59 | 2.17 | -0.86% |
 | ALL_DAYS | low_vol|falling_voltrend|low_dp|low_macro|1_comp | COILED | NA | 37 | 62.16% | 0.0014 | 8.25 | 3.16 | -0.58% |
