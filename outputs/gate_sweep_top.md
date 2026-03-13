@@ -2,26 +2,26 @@
 
 - DB: `data/spy_truth.db`
 - Symbol: `SPY`
-- Days: 528
-- Baseline expectancy (all days): 0.000690
-- Baseline sharpe_ann (all days): 1.074
+- Days: 529
+- Baseline expectancy (all days): 0.000660
+- Baseline sharpe_ann (all days): 1.026
 - MIN_TRADES: 30
 
 ## pressure_state counts (top 20)
 
-- NORMAL: 272
+- NORMAL: 273
 - UNRESOLVED_PRESSURE: 151
 - COILED: 105
 
 ## Top gates
 
  total_days  trade_days  trade_freq  n_trades  win_rate  expectancy  sharpe_ann   t_stat    max_dd                                   gate_name                               notes  uplift_expectancy  uplift_sharpe  meets_min_trades  usable
-        528         272    0.515152       272  0.639706    0.002156    4.698978 4.881885 -0.060020                          PRESSURE_is_NORMAL          Only NORMAL pressure_state           0.001466       3.625343              True    True
-        528         377    0.714015       377  0.636605    0.001840    4.582886 5.605437 -0.057760                     PRESSURE_not_UNRESOLVED    Exclude only unresolved pressure           0.001151       3.509252              True    True
-        528         377    0.714015       377  0.636605    0.001840    4.582886 5.605437 -0.057760                   PRESSURE_NORMAL_or_COILED                     NORMAL + COILED           0.001151       3.509252              True    True
-        528         105    0.198864       105  0.628571    0.001023    5.835145 3.766570 -0.008737                          PRESSURE_is_COILED          Only COILED pressure_state           0.000333       4.761511              True    True
-        528         528    1.000000       528  0.571970    0.000690    1.073634 1.554079 -0.189989                           BASELINE_ALL_DAYS                No gating: every day           0.000000       0.000000              True    True
-        528         528    1.000000       528  0.571970    0.000690    1.073634 1.554079 -0.189989                          REGIME_not_UNKNOWN         Any day with a regime_label           0.000000       0.000000              True    True
-        528           0    0.000000         0       NaN         NaN         NaN      NaN       NaN                     CURRENT_trade_gate_eq_1 What your pipeline currently allows                NaN            NaN             False   False
-        528           0    0.000000         0       NaN         NaN         NaN      NaN       NaN           REGIME_COILED_and_PRESSURE_COILED              High selectivity combo                NaN            NaN             False   False
-        528           0    0.000000         0       NaN         NaN         NaN      NaN       NaN REGIME_COILED_and_PRESSURE_NORMAL_or_COILED  Coiled regime; pressure not broken                NaN            NaN             False   False
+        529         273    0.516068       273  0.637363    0.002093    4.522086 4.706737 -0.060020                          PRESSURE_is_NORMAL          Only NORMAL pressure_state           0.001433       3.496532              True    True
+        529         378    0.714556       378  0.634921    0.001795    4.434921 5.431646 -0.057760                     PRESSURE_not_UNRESOLVED    Exclude only unresolved pressure           0.001136       3.409366              True    True
+        529         378    0.714556       378  0.634921    0.001795    4.434921 5.431646 -0.057760                   PRESSURE_NORMAL_or_COILED                     NORMAL + COILED           0.001136       3.409366              True    True
+        529         105    0.198488       105  0.628571    0.001023    5.835145 3.766570 -0.008737                          PRESSURE_is_COILED          Only COILED pressure_state           0.000363       4.809590              True    True
+        529         529    1.000000       529  0.570888    0.000660    1.025555 1.485889 -0.189989                           BASELINE_ALL_DAYS                No gating: every day           0.000000       0.000000              True    True
+        529         529    1.000000       529  0.570888    0.000660    1.025555 1.485889 -0.189989                          REGIME_not_UNKNOWN         Any day with a regime_label           0.000000       0.000000              True    True
+        529           0    0.000000         0       NaN         NaN         NaN      NaN       NaN                     CURRENT_trade_gate_eq_1 What your pipeline currently allows                NaN            NaN             False   False
+        529           0    0.000000         0       NaN         NaN         NaN      NaN       NaN           REGIME_COILED_and_PRESSURE_COILED              High selectivity combo                NaN            NaN             False   False
+        529           0    0.000000         0       NaN         NaN         NaN      NaN       NaN REGIME_COILED_and_PRESSURE_NORMAL_or_COILED  Coiled regime; pressure not broken                NaN            NaN             False   False
