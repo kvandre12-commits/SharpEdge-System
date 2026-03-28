@@ -1,0 +1,123 @@
+You are a risk controller for a SPY trading pipeline.
+
+Your job is NOT to create a trade.
+Your job is to decide whether the finished pipeline output should be published to Discord.
+
+You must return ONLY valid JSON with this exact schema:
+{
+  "decision": "post" or "hold",
+  "confidence": 0.0 to 1.0,
+  "summary": "short summary",
+  "reasons": ["reason 1", "reason 2", "reason 3"],
+  "risk_flags": ["flag 1", "flag 2"]
+}
+
+Use conservative logic:
+- choose "hold" if evidence is mixed, incomplete, contradictory, or weak
+- choose "hold" if key fields are missing
+- choose "post" only if the signal/regime/positioning state is coherent
+- keep reasons short and concrete
+
+DATA:
+{
+  "latest_signal": {
+    "date": "2026-03-27",
+    "symbol": "SPY",
+    "readiness_score": 0.0,
+    "ignition_score": 11.882896804349139,
+    "early_score": 11.882896804349139,
+    "early_bucket": "quiet",
+    "dp_strength": 0.0,
+    "transition_flag": 0,
+    "compression_flag": 0,
+    "trigger_cluster": 3.0,
+    "trade_permission": 1,
+    "tr_lift": 1.2970724201087285,
+    "cluster_slope": 0.0,
+    "signal_ts": "2026-03-28T18:34:16.477857+00:00",
+    "signal_version": "v1_early_readiness_ignition",
+    "tr_lift_fast": 1.015655633555386,
+    "cluster_slope_fast": 0.0,
+    "pressure_state": "NORMAL",
+    "trade_gate": 0,
+    "pressure_reason": "default",
+    "fb_event": null,
+    "fb_conf": null
+  },
+  "latest_regime": {
+    "date": "2026-03-27",
+    "symbol": "SPY",
+    "vol20": 0.009558626806430602,
+    "vol_rank_252": 0.7857142857142857,
+    "vol_state": "mid",
+    "vol_trend_10": 0.002283253661089754,
+    "vol_trend_state": "rising",
+    "dp_strength": 0.0,
+    "dp_state": "low",
+    "compression_flag": 0,
+    "regime_label": "mid_vol|rising_voltrend|low_dp|low_macro|0_comp",
+    "regime_id": "mrll0",
+    "vol_state_prev": "mid",
+    "vol_trend_state_prev": "rising",
+    "dp_state_prev": "low",
+    "transition_label": "mid->mid | rising->rising | low->low",
+    "transition_score": 0,
+    "transition_flag": 0,
+    "regime_ts": "2026-03-28T18:34:13.747846+00:00",
+    "macro_stress": 0.0,
+    "macro_state": "low"
+  },
+  "latest_open_regime": {
+    "snapshot_ts": "2026-03-28T18:32:24+00:00",
+    "session_date": "2026-03-27",
+    "underlying": "SPY",
+    "pm_open": 642.3,
+    "pm_high": 642.83,
+    "pm_low": 641.22,
+    "pm_close": 641.22,
+    "pm_return": -0.0016814572629610947,
+    "pm_range": 1.6100000000000136,
+    "pm_range_ratio": 0.0025066168457107485,
+    "pm_initiative_flush": 0,
+    "break_level": null,
+    "flush_low": 641.22,
+    "rth_first_ts": "2026-03-27T13:30:00Z",
+    "rth_first_open": 642.475,
+    "rth_first_high": 642.61,
+    "rth_first_low": 639.81,
+    "rth_first_close": 641.06,
+    "failed_breakdown_open": 0,
+    "accepted_breakdown_open": 0,
+    "open_regime_label": "NO_SETUP",
+    "regime_confidence": 10.0,
+    "notes": "no initiative flush/rip setup",
+    "setup_dir": null,
+    "key_source": null
+  },
+  "latest_options_positioning": {
+    "metrics_id": 3092,
+    "snapshot_ts": "2026-03-28T18:32:13Z",
+    "session_date": "2026-03-28",
+    "underlying": "SPY",
+    "dte_min": 2,
+    "dte_max": 3,
+    "spot": null,
+    "atm_strike": null,
+    "max_total_oi_strike": 540.0,
+    "max_call_oi_strike": 713.0,
+    "max_put_oi_strike": 540.0,
+    "total_call_oi": 610268,
+    "total_put_oi": 1570306,
+    "pcr_oi": 2.573141636133633,
+    "total_call_vol": 0,
+    "total_put_vol": 0,
+    "pcr_vol": null,
+    "gamma_proxy": null,
+    "dealer_state_hint": null,
+    "gamma_wall_strike": 500.0,
+    "gamma_pos_wall_strike": 500.0,
+    "gamma_neg_wall_strike": 500.0,
+    "gamma_flip_strike": null
+  },
+  "latest_trade_card_artifact": "date,symbol,early_score,early_bucket,readiness_score,ignition_score,dp_strength,transition_flag,compression_flag,trigger_cluster,trade_permission,tr_lift,cluster_slope,signal_version,tr_lift_fast,cluster_slope_fast,pressure_state,trade_gate,pressure_reason\n2026-03-27,SPY,11.88289680434914,quiet,0.0,11.88289680434914,0.0,0,0,3.0,1,1.2970724201087285,0.0,v1_early_readiness_ignition,1.015655633555386,0.0,NORMAL,0,default\n"
+}

@@ -1,0 +1,13 @@
+{
+  "decision": "hold",
+  "confidence": 0.0,
+  "summary": "Controller failed: HTTPError",
+  "reasons": [
+    "429 Client Error: Too Many Requests for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDLQRhWFwYcZgsxrD46ELaxqBBeI6yUFsg"
+  ],
+  "risk_flags": [
+    "controller_error"
+  ],
+  "symbol": "SPY",
+  "ts_utc": "2026-03-28T18:34:17.116693+00:00"
+}
