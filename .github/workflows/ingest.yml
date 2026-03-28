@@ -230,6 +230,28 @@ jobs:
         run: |
           python scripts/run_playbook.py
 
+      - name: Controller agent (Gemini)
+        id: controller
+        run: |
+          python scripts/agents/controller_agent.py
+          decision=$(python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("outputs/agent_controller_decision.json")
+          if not p.exists():
+              print("hold")
+          else:
+              data = json.loads(p.read_text())
+              print(str(data.get("decision", "hold")).lower())
+          PY
+          )
+          echo "decision=$decision" >> "$GITHUB_OUTPUT"
+
+      - name: Post FINAL trade card to Discord
+        if: steps.controller.outputs.decision == 'post'
+        run: |
+          python scripts/send_trade_card_to_discord.py
       # -----------------------------
       # PROOF OF EDGE
       # -----------------------------
