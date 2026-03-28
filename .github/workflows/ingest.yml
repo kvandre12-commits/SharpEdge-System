@@ -289,10 +289,8 @@ jobs:
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "Daily pipeline + regimes + signals + proof-of-edge artifacts"
           git push
-
-      # -----------------------------
-      # FINAL PUBLISHED ARTIFACT
-      # -----------------------------
+          
       - name: Post FINAL trade card to Discord
+        if: steps.controller.outputs.decision == 'post'
         run: |
           python scripts/send_trade_card_to_discord.py
