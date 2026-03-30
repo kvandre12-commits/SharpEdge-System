@@ -8,6 +8,7 @@ low_vol|rising_voltrend|low_dp|low_macro|0_comp,NORMAL,low,rising,low,,5,0.02840
 unknown_vol|rising_voltrend|low_dp|normal_macro|0_comp,NORMAL,unknown,rising,low,,3,0.017045454545454544,0.6666666666666666,0.006667050952325767,16.2939364182711,1.7778142144172608,-0.0006746172990641994,False,0.0200011528569773
 high_vol|falling_voltrend|low_dp|low_macro|0_comp,NORMAL,high,falling,low,,8,0.045454545454545456,0.5,0.002291340549913025,4.365995736483878,0.777907628478021,-0.008558364343190999,False,0.0183307243993042
 low_vol|falling_voltrend|low_dp|low_macro|0_comp,NORMAL,low,falling,low,,22,0.125,0.5909090909090909,0.0007654940099302,2.705375019307915,0.7993528828482723,-0.013222953635897799,False,0.0168408682184644
+mid_vol|rising_voltrend|low_dp|low_macro|0_comp,NORMAL,mid,rising,low,low,4,0.022727272727272728,0.75,0.00360122298857755,13.013789588967535,1.639583374615694,-0.0028373655692836,False,0.0144048919543102
 high_vol|rising_voltrend|normal_dp|normal_macro|0_comp,NORMAL,high,rising,normal,,1,0.005681818181818182,1.0,0.0105478631981254,,,0.0,False,0.0105478631981254
 mid_vol|falling_voltrend|low_dp|normal_macro|0_comp,NORMAL,mid,falling,low,,1,0.005681818181818182,1.0,0.0079783189458035,,,0.0,False,0.0079783189458035
 high_vol|falling_voltrend|high_dp|normal_macro|0_comp,NORMAL,high,falling,high,,1,0.005681818181818182,1.0,0.006128411525621,,,0.0,False,0.006128411525621
@@ -18,7 +19,6 @@ mid_vol|falling_voltrend|low_dp|low_macro|0_comp,NORMAL,mid,falling,low,low,6,0.
 low_vol|falling_voltrend|low_dp|normal_macro|0_comp,NORMAL,low,falling,low,,4,0.022727272727272728,0.5,-8.683843242835004e-05,-0.5970023815735126,-0.07521523017889542,-0.0036238261358171003,False,-0.00034735372971340017
 high_vol|rising_voltrend|low_dp|high_macro|0_comp,NORMAL,high,rising,low,,4,0.022727272727272728,0.5,-0.0001624965393499751,-0.1290471577349752,-0.016258413655546172,-0.022428032463379,False,-0.0006499861573999004
 mid_vol|rising_voltrend|low_dp|normal_macro|0_comp,NORMAL,mid,rising,low,,2,0.011363636363636364,0.5,-0.00052614492234925,-0.9353112014726488,-0.0833241444267273,0.0,False,-0.0010522898446985
-mid_vol|rising_voltrend|low_dp|low_macro|0_comp,NORMAL,mid,rising,low,low,5,0.028409090909090908,0.6,-0.0005693983138035403,-0.8974387814437658,-0.12641236741592898,-0.0172518835233279,False,-0.002846991569017701
 unknown_vol|rising_voltrend|low_dp|low_macro|0_comp,UNRESOLVED_PRESSURE,unknown,rising,low,,1,0.005681818181818182,0.0,-0.0039989224863423,,,0.0,False,-0.0039989224863423
 mid_vol|falling_voltrend|high_dp|low_macro|0_comp,NORMAL,mid,falling,high,,6,0.03409090909090909,0.5,-0.0006902210265612335,-1.4845223198504505,-0.2290667670464206,-0.0085975032130402,False,-0.004141326159367401
 low_vol|falling_voltrend|high_dp|low_macro|0_comp,NORMAL,low,falling,high,,1,0.005681818181818182,0.0,-0.0043200416792106,,,0.0,False,-0.0043200416792106
@@ -28,6 +28,7 @@ mid_vol|rising_voltrend|normal_dp|low_macro|0_comp,NORMAL,mid,rising,normal,low,
 unknown_vol|rising_voltrend|low_dp|high_macro|0_comp,UNRESOLVED_PRESSURE,unknown,rising,low,,1,0.005681818181818182,0.0,-0.0127281272781027,,,0.0,False,-0.0127281272781027
 mid_vol|rising_voltrend|normal_dp|high_macro|0_comp,NORMAL,mid,rising,normal,low,1,0.005681818181818182,0.0,-0.0133070917904932,,,0.0,False,-0.0133070917904932
 unknown_vol|rising_voltrend|low_dp|normal_macro|0_comp,UNRESOLVED_PRESSURE,unknown,rising,low,,1,0.005681818181818182,0.0,-0.0160412473256882,,,0.0,False,-0.0160412473256882
+mid_vol|rising_voltrend|low_dp|high_macro|0_comp,NORMAL,mid,rising,low,low,1,0.005681818181818182,0.0,-0.0172518835233279,,,0.0,False,-0.0172518835233279
 unknown_vol|rising_voltrend|low_dp|high_macro|0_comp,NORMAL,unknown,rising,low,,4,0.022727272727272728,0.0,-0.00483202961642265,-23.14622676603614,-2.916150467258973,-0.0173043234305608,False,-0.0193281184656906
 mid_vol|rising_voltrend|low_dp|normal_macro|0_comp,NORMAL,mid,rising,low,low,2,0.011363636363636364,0.0,-0.01080779695520255,-16.731223734112174,-1.4905358779644835,-0.0180587441581387,False,-0.0216155939104051
 high_vol|rising_voltrend|normal_dp|high_macro|0_comp,NORMAL,high,rising,normal,,2,0.011363636363636364,0.0,-0.014994022373734598,-56.916193816056136,-5.070497548069137,-0.0179511330382382,False,-0.029988044747469196
