@@ -12,16 +12,16 @@
 
 ## Ungated baseline (trade_gate == 0)
 - Trades: 548
-- Win rate: 56.93%
+- Win rate: 57.12%
 - Expectancy (mean ret_1d): 0.0007
-- Sharpe (ann): 1.02
+- Sharpe (ann): 1.05
 - Max drawdown: -19.00%
 
 ## All days baseline (ignoring gate)
 - Trades: 548
-- Win rate: 56.93%
+- Win rate: 57.12%
 - Expectancy (mean ret_1d): 0.0007
-- Sharpe (ann): 1.02
+- Sharpe (ann): 1.05
 - Max drawdown: -19.00%
 
 ## Artifacts
