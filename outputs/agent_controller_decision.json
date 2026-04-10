@@ -3,11 +3,11 @@
   "confidence": 0.0,
   "summary": "Controller failed: HTTPError",
   "reasons": [
-    "429 Client Error: Too Many Requests for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDLQRhWFwYcZgsxrD46ELaxqBBeI6yUFsg"
+    "403 Client Error: Forbidden for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDLQRhWFwYcZgsxrD46ELaxqBBeI6yUFsg"
   ],
   "risk_flags": [
     "controller_error"
   ],
   "symbol": "SPY",
-  "ts_utc": "2026-04-09T23:10:47.407776+00:00"
+  "ts_utc": "2026-04-10T23:05:20.220690+00:00"
 }
