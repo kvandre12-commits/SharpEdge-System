@@ -14,14 +14,14 @@
 - Trades: 550
 - Win rate: 57.09%
 - Expectancy (mean ret_1d): 0.0007
-- Sharpe (ann): 1.04
+- Sharpe (ann): 1.07
 - Max drawdown: -19.00%
 
 ## All days baseline (ignoring gate)
 - Trades: 550
 - Win rate: 57.09%
 - Expectancy (mean ret_1d): 0.0007
-- Sharpe (ann): 1.04
+- Sharpe (ann): 1.07
 - Max drawdown: -19.00%
 
 ## Artifacts
