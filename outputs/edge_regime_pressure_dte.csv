@@ -1,5 +1,5 @@
 gate_view,regime_label,pressure_state,dte_bucket,n,win_rate,expectancy,sharpe_ann,t_stat,max_dd,meets_min_n
-ALL_DAYS,high_vol|rising_voltrend|low_dp|low_macro|0_comp,NORMAL,NA,26,0.8076923076923077,0.004947486525101852,9.817378010610394,3.1534207214330925,-0.020070303906898346,True
+ALL_DAYS,high_vol|rising_voltrend|low_dp|low_macro|0_comp,NORMAL,NA,27,0.8148148148148148,0.005126186942111109,10.301504760908543,3.3719589527722404,-0.020070303906898346,True
 ALL_DAYS,mid_vol|rising_voltrend|low_dp|low_macro|0_comp,NORMAL,NA,43,0.7209302325581395,0.0029594784355752436,8.90575947330535,3.678789336334208,-0.010998119550020391,True
 ALL_DAYS,mid_vol|falling_voltrend|low_dp|low_macro|0_comp,NORMAL,NA,44,0.6363636363636364,0.0019997399222508594,5.866780812534595,2.4514663189822135,-0.02097410816225387,True
 ALL_DAYS,low_vol|falling_voltrend|low_dp|low_macro|0_comp,NORMAL,NA,38,0.631578947368421,0.0015322083927561579,5.590415897274438,2.1708791434440307,-0.00860783851953062,True
@@ -11,7 +11,6 @@ ALL_DAYS,unknown_vol|unknown_voltrend|low_dp|low_macro|0_comp,UNRESOLVED_PRESSUR
 ALL_DAYS,unknown_vol|rising_voltrend|normal_dp|low_macro|0_comp,NORMAL,NA,1,1.0,0.010757374688447952,,,0.0,False
 ALL_DAYS,high_vol|rising_voltrend|normal_dp|normal_macro|0_comp,NORMAL,NA,1,1.0,0.010747863198125485,,,0.0,False
 ALL_DAYS,high_vol|falling_voltrend|low_dp|low_macro|0_comp,UNRESOLVED_PRESSURE,NA,4,0.75,0.010189767986066717,9.549452462025563,1.2031179224453863,0.0,False
-ALL_DAYS,high_vol|rising_voltrend|low_dp|low_macro|0_comp,COILED,NA,1,1.0,0.009772397784351794,,,0.0,False
 ALL_DAYS,unknown_vol|rising_voltrend|low_dp|normal_macro|0_comp,NORMAL,NA,5,0.8,0.00681823878540635,23.385668188278977,3.2940828281655494,-0.00047461729906439487,False
 ALL_DAYS,high_vol|rising_voltrend|high_dp|normal_macro|0_comp,UNRESOLVED_PRESSURE,NA,1,1.0,0.0067128130226792315,,,0.0,False
 ALL_DAYS,high_vol|rising_voltrend|low_dp|low_macro|0_comp,UNRESOLVED_PRESSURE,NA,10,0.7,0.0064899741841625835,5.844925126001965,1.1643369550024976,-0.026398903327660483,False
