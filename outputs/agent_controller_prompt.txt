@@ -32,9 +32,9 @@ DATA:
     "compression_flag": 0,
     "trigger_cluster": 0.0,
     "trade_permission": 0,
-    "tr_lift": 0.9233931447962437,
+    "tr_lift": 0.9761486279268556,
     "cluster_slope": -0.4,
-    "signal_ts": "2026-04-22T18:06:09.711355+00:00",
+    "signal_ts": "2026-04-22T23:27:20.801705+00:00",
     "signal_version": "v1_early_readiness_ignition",
     "tr_lift_fast": 1.0,
     "cluster_slope_fast": -1.0,
@@ -47,10 +47,10 @@ DATA:
   "latest_regime": {
     "date": "2026-04-22",
     "symbol": "SPY",
-    "vol20": 0.011418311607443813,
+    "vol20": 0.011454111961474328,
     "vol_rank_252": 0.8690476190476191,
     "vol_state": "high",
-    "vol_trend_10": -0.0015844488536353556,
+    "vol_trend_10": -0.0015486484996048398,
     "vol_trend_state": "falling",
     "dp_strength": 0.0,
     "dp_state": "low",
@@ -63,12 +63,12 @@ DATA:
     "transition_label": "high->high | falling->falling | low->low",
     "transition_score": 0,
     "transition_flag": 0,
-    "regime_ts": "2026-04-22T18:06:07.270937+00:00",
+    "regime_ts": "2026-04-22T23:27:18.375621+00:00",
     "macro_stress": 0.0,
     "macro_state": "low"
   },
   "latest_open_regime": {
-    "snapshot_ts": "2026-04-22T18:04:10+00:00",
+    "snapshot_ts": "2026-04-22T23:25:16+00:00",
     "session_date": "2026-04-22",
     "underlying": "SPY",
     "pm_open": 708.67,
@@ -95,14 +95,14 @@ DATA:
     "key_source": null
   },
   "latest_options_positioning": {
-    "metrics_id": 5221,
-    "snapshot_ts": "2026-04-22T18:03:47Z",
+    "metrics_id": 5326,
+    "snapshot_ts": "2026-04-22T23:25:09Z",
     "session_date": "2026-04-22",
     "underlying": "SPY",
     "dte_min": 0,
     "dte_max": 1,
-    "spot": null,
-    "atm_strike": null,
+    "spot": 710.1300048828125,
+    "atm_strike": 710.0,
     "max_total_oi_strike": 700.0,
     "max_call_oi_strike": 720.0,
     "max_put_oi_strike": 700.0,
@@ -119,5 +119,5 @@ DATA:
     "gamma_neg_wall_strike": 500.0,
     "gamma_flip_strike": null
   },
-  "latest_trade_card_artifact": "date,symbol,early_score,early_bucket,readiness_score,ignition_score,dp_strength,transition_flag,compression_flag,trigger_cluster,trade_permission,tr_lift,cluster_slope,signal_version,tr_lift_fast,cluster_slope_fast,pressure_state,trade_gate,pressure_reason\n2026-04-22,SPY,0.0,quiet,0.0,0.0,0.0,0,0,0.0,0,0.9233931447962436,-0.4,v1_early_readiness_ignition,1.0,-1.0,NORMAL,0,default\n"
+  "latest_trade_card_artifact": "date,symbol,early_score,early_bucket,readiness_score,ignition_score,dp_strength,transition_flag,compression_flag,trigger_cluster,trade_permission,tr_lift,cluster_slope,signal_version,tr_lift_fast,cluster_slope_fast,pressure_state,trade_gate,pressure_reason\n2026-04-22,SPY,0.0,quiet,0.0,0.0,0.0,0,0,0.0,0,0.9761486279268556,-0.4,v1_early_readiness_ignition,1.0,-1.0,NORMAL,0,default\n"
 }
