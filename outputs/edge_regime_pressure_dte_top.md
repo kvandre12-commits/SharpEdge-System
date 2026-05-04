@@ -13,5 +13,5 @@
 | ALL_DAYS | low_vol|falling_voltrend|low_dp|low_macro|0_comp | NORMAL | NA | 38 | 63.16% | 0.0015 | 5.59 | 2.17 | -0.86% |
 | ALL_DAYS | low_vol|falling_voltrend|low_dp|low_macro|1_comp | COILED | NA | 37 | 62.16% | 0.0014 | 8.25 | 3.16 | -0.58% |
 | ALL_DAYS | low_vol|falling_voltrend|low_dp|low_macro|0_comp | UNRESOLVED_PRESSURE | NA | 29 | 51.72% | 0.0012 | 3.24 | 1.10 | -1.85% |
-| ALL_DAYS | mid_vol|falling_voltrend|low_dp|low_macro|1_comp | COILED | NA | 29 | 68.97% | 0.0010 | 5.14 | 1.74 | -0.87% |
+| ALL_DAYS | mid_vol|falling_voltrend|low_dp|low_macro|1_comp | COILED | NA | 30 | 70.00% | 0.0010 | 5.53 | 1.91 | -0.87% |
 | ALL_DAYS | mid_vol|falling_voltrend|low_dp|low_macro|0_comp | UNRESOLVED_PRESSURE | NA | 32 | 46.88% | -0.0006 | -0.88 | -0.31 | -7.25% |
