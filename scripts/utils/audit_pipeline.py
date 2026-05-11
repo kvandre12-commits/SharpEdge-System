@@ -7,8 +7,22 @@ DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 CONTRACT = {
     "features_daily": ["date", "symbol", "ret_1d"],
     "regime_daily": ["date", "symbol", "vol_state", "regime_label"],
-    "signals_daily": ["date", "symbol", "trade_gate", "pressure_state"],
-    "execution_state_daily": ["date", "symbol", "trade_gate"],
+    "signals_daily": ["session_date", "symbol", "pressure_state"],
+    "execution_state_daily": [
+        "session_date",
+        "symbol",
+        "execution_score",
+        "final_bias",
+        "dealer_state_hint",
+        "wall_strike"
+    ],
+    "options_positioning_metrics": [
+        "session_date",
+        "underlying",
+        "gamma_proxy",
+        "dealer_state_hint",
+        "max_total_oi_strike"
+    ],
     "liquidity_regime_events": ["session_date", "underlying", "regime_type"],
 }
 
@@ -40,19 +54,35 @@ def main():
             n = cur.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
             print(f"  rows: {n}")
 
-            # best-effort latest date
-            date_col = "date" if "date" in c else ("session_date" if "session_date" in c else None)
+            date_col = None
+            for candidate in ["session_date", "date"]:
+                if candidate in c:
+                    date_col = candidate
+                    break
+
             if date_col:
                 latest = cur.execute(f"SELECT MAX({date_col}) FROM {t}").fetchone()[0]
                 print(f"  latest_{date_col}: {latest}")
 
-            # null-rate for required columns that exist
             for col in required:
                 if col not in c:
                     continue
                 nulls = cur.execute(f"SELECT SUM(CASE WHEN {col} IS NULL OR {col}='' THEN 1 ELSE 0 END) FROM {t}").fetchone()[0]
                 pct = (nulls / n * 100.0) if n else 0.0
                 print(f"  {col}: nulls={nulls} ({pct:.1f}%)")
+
+            if t == "options_positioning_metrics" and "dealer_state_hint" in c:
+                latest_non_null = cur.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM options_positioning_metrics
+                    WHERE dealer_state_hint IS NOT NULL
+                      AND dealer_state_hint != ''
+                    """
+                ).fetchone()[0]
+
+                if latest_non_null == 0:
+                    print("  WARNING: dealer_state_hint entirely NULL")
 
         print("\nDONE\n")
     finally:
