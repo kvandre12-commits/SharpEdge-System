@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """
 Aggregate options positioning metrics for SPY (or SYMBOL) into SQLite.
+
+Key design:
+- Gamma geometry + volumes come from options_chain_snapshots.
+- OI walls + PCR(OI) come from options_open_interest_daily because snapshot OI can be sparse.
+- Explicit dealer-state features are persisted for downstream execution-state logic.
 """
 
 import os
@@ -64,7 +69,6 @@ def compute_flip(strikes: List[float], net: List[float], spot: Optional[float]) 
 
     s = np.array(strikes, dtype=float)
     g = np.array(net, dtype=float)
-
     order = np.argsort(s)
     s, g = s[order], g[order]
 
@@ -86,7 +90,6 @@ def compute_dealer_state(
     pcr_oi: Optional[float],
     pcr_vol: Optional[float],
 ) -> Tuple[Optional[float], Optional[str]]:
-
     if spot is None:
         return None, None
 
@@ -95,19 +98,15 @@ def compute_dealer_state(
 
     if gamma_flip is not None:
         gamma_proxy = float(spot - gamma_flip)
-
-    wall_distance_pct = None
-    if max_total_oi_strike is not None:
-        wall_distance_pct = abs(spot - max_total_oi_strike) / spot
-
-    if gamma_proxy is not None:
         if gamma_proxy > 0:
             dealer_hint = "LONG_GAMMA"
         elif gamma_proxy < 0:
             dealer_hint = "SHORT_GAMMA"
 
-    if wall_distance_pct is not None and wall_distance_pct <= PIN_THRESH_PCT:
-        dealer_hint = "PINNED"
+    if max_total_oi_strike is not None:
+        wall_distance_pct = abs(spot - max_total_oi_strike) / spot
+        if wall_distance_pct <= PIN_THRESH_PCT:
+            dealer_hint = "PINNED"
 
     if pcr_oi is not None:
         if pcr_oi > 1.4:
@@ -117,6 +116,9 @@ def compute_dealer_state(
 
     if pcr_vol is not None and pcr_vol > 1.8:
         dealer_hint = "UNWIND_RISK"
+
+    if not COMPUTE_STATE:
+        dealer_hint = None
 
     return gamma_proxy, dealer_hint
 
@@ -140,8 +142,8 @@ def pick_oi_session_col(con: sqlite3.Connection) -> str:
 
 
 def fetch_oi_by_strike(con, session_date, dte_min, dte_max):
-    call_oi_by = {}
-    put_oi_by = {}
+    call_oi_by: Dict[float, int] = {}
+    put_oi_by: Dict[float, int] = {}
 
     if not table_exists(con, "options_open_interest_daily"):
         return call_oi_by, put_oi_by
@@ -220,8 +222,12 @@ def compute_metrics(con, snapshot_ts):
     if spot is not None:
         if strikes_oi:
             atm_strike = float(min(strikes_oi, key=lambda s: abs(s - spot)))
+        else:
+            snap_strikes = sorted({float(r[1]) for r in rows if r[1] is not None})
+            if snap_strikes:
+                atm_strike = float(min(snap_strikes, key=lambda s: abs(s - spot)))
 
-    by_strike = {}
+    by_strike: Dict[float, float] = {}
     for _, k, co, po, _, _, cg, pg in rows:
         if k is None:
             continue
@@ -238,11 +244,11 @@ def compute_metrics(con, snapshot_ts):
     gamma_flip = compute_flip(strikes, net, spot) if strikes else None
 
     gamma_proxy, dealer_hint = compute_dealer_state(
-        spot,
-        gamma_flip,
-        max_total_oi_strike,
-        pcr_oi,
-        pcr_vol,
+        spot=spot,
+        gamma_flip=gamma_flip,
+        max_total_oi_strike=max_total_oi_strike,
+        pcr_oi=pcr_oi,
+        pcr_vol=pcr_vol,
     )
 
     return (
@@ -269,3 +275,122 @@ def compute_metrics(con, snapshot_ts):
         gamma_proxy,
         dealer_hint,
     )
+
+
+def ensure_schema(con: sqlite3.Connection):
+    con.execute("""
+    CREATE TABLE IF NOT EXISTS options_positioning_metrics (
+      snapshot_ts TEXT NOT NULL,
+      session_date TEXT NOT NULL,
+      underlying TEXT NOT NULL,
+      dte_min INTEGER NOT NULL,
+      dte_max INTEGER NOT NULL,
+      PRIMARY KEY (snapshot_ts, underlying, dte_min, dte_max)
+    );
+    """)
+
+    want = {
+        "spot": "REAL",
+        "atm_strike": "REAL",
+        "max_total_oi_strike": "REAL",
+        "max_call_oi_strike": "REAL",
+        "max_put_oi_strike": "REAL",
+        "gamma_wall_strike": "REAL",
+        "gamma_pos_wall_strike": "REAL",
+        "gamma_neg_wall_strike": "REAL",
+        "gamma_flip_strike": "REAL",
+        "total_call_oi": "REAL",
+        "total_put_oi": "REAL",
+        "pcr_oi": "REAL",
+        "total_call_vol": "REAL",
+        "total_put_vol": "REAL",
+        "pcr_vol": "REAL",
+        "gamma_proxy": "REAL",
+        "dealer_state_hint": "TEXT",
+    }
+
+    have = {r[1] for r in con.execute("PRAGMA table_info(options_positioning_metrics)")}
+    for col, typ in want.items():
+        if col not in have:
+            con.execute(f"ALTER TABLE options_positioning_metrics ADD COLUMN {col} {typ};")
+
+
+def upsert(con: sqlite3.Connection, row):
+    con.execute(
+        """
+        INSERT INTO options_positioning_metrics (
+          snapshot_ts, session_date, underlying,
+          dte_min, dte_max,
+          spot, atm_strike,
+          max_total_oi_strike, max_call_oi_strike, max_put_oi_strike,
+          gamma_wall_strike, gamma_pos_wall_strike, gamma_neg_wall_strike, gamma_flip_strike,
+          total_call_oi, total_put_oi, pcr_oi,
+          total_call_vol, total_put_vol, pcr_vol,
+          gamma_proxy, dealer_state_hint
+        )
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(snapshot_ts, underlying, dte_min, dte_max) DO UPDATE SET
+          session_date           = excluded.session_date,
+          spot                   = excluded.spot,
+          atm_strike             = excluded.atm_strike,
+          max_total_oi_strike    = excluded.max_total_oi_strike,
+          max_call_oi_strike     = excluded.max_call_oi_strike,
+          max_put_oi_strike      = excluded.max_put_oi_strike,
+          gamma_wall_strike      = excluded.gamma_wall_strike,
+          gamma_pos_wall_strike  = excluded.gamma_pos_wall_strike,
+          gamma_neg_wall_strike  = excluded.gamma_neg_wall_strike,
+          gamma_flip_strike      = excluded.gamma_flip_strike,
+          total_call_oi          = excluded.total_call_oi,
+          total_put_oi           = excluded.total_put_oi,
+          pcr_oi                 = excluded.pcr_oi,
+          total_call_vol         = excluded.total_call_vol,
+          total_put_vol          = excluded.total_put_vol,
+          pcr_vol                = excluded.pcr_vol,
+          gamma_proxy            = excluded.gamma_proxy,
+          dealer_state_hint      = excluded.dealer_state_hint
+        """,
+        row,
+    )
+
+
+def main():
+    con = connect()
+    ensure_schema(con)
+
+    snaps_q = "SELECT DISTINCT snapshot_ts FROM options_chain_snapshots"
+    params = ()
+    if ONLY_SNAPSHOT_TS:
+        snaps_q += " WHERE snapshot_ts=?"
+        params = (ONLY_SNAPSHOT_TS,)
+    snaps_q += " ORDER BY snapshot_ts"
+
+    snaps = [r[0] for r in con.execute(snaps_q, params).fetchall()]
+
+    wrote = 0
+    for s in snaps:
+        row = compute_metrics(con, s)
+        if row:
+            upsert(con, row)
+            wrote += 1
+
+    con.commit()
+
+    sample = con.execute("""
+        SELECT session_date, spot, max_total_oi_strike, gamma_flip_strike,
+               pcr_oi, pcr_vol, gamma_proxy, dealer_state_hint
+        FROM options_positioning_metrics
+        WHERE underlying=? AND dte_min=? AND dte_max=?
+        ORDER BY snapshot_ts DESC
+        LIMIT 5
+    """, (UNDERLYING, DTE_MIN, DTE_MAX)).fetchall()
+
+    print("DEBUG positioning_metrics sample (session, spot, wall, gamma_flip, pcr_oi, pcr_vol, gamma_proxy, dealer_state):")
+    for r in sample:
+        print(r)
+
+    con.close()
+    print(f"OK: dealer state integrated. upserted {wrote} snapshot rows.")
+
+
+if __name__ == "__main__":
+    main()
