@@ -55,6 +55,14 @@ jobs:
       - name: Aggregate options positioning metrics (2-3 DTE)
         run: |
           DTE_MIN=2 DTE_MAX=3 python scripts/aggregate_options_positioning_metrics.py
+
+      - name: Build options surface state
+        run: |
+          python scripts/build_options_surface_state.py
+
+      - name: Show options surface state
+        run: |
+          cat outputs/options_surface_state.txt
       
       - name: Debug OI walls (latest)
         run: |
@@ -119,6 +127,26 @@ jobs:
           )
           con.close()
           PY
+
+      - name: Build exhaustion transition state
+        run: |
+          python scripts/build_exhaustion_transition_state.py
+
+      - name: Show exhaustion transition state
+        run: |
+          cat outputs/exhaustion_transition_state.txt
+
+      - name: Render surface execution card
+        run: |
+          python scripts/utils/render_surface_execution_card.py
+
+      - name: Show surface execution card
+        run: |
+          cat outputs/surface_execution_card.txt
+
+      - name: Post surface execution card to Discord
+        run: |
+          python scripts/utils/post_surface_execution_card_to_discord.py
 
       # -----------------------------
       # FEATURES / REGIMES
