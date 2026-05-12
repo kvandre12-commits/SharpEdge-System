@@ -35,6 +35,12 @@ def table_exists(con, name):
     return row is not None
 
 
+def columns(con, table):
+    if not table_exists(con, table):
+        return set()
+    return {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+
+
 def latest_positioning(con):
     if not table_exists(con, "options_positioning_metrics"):
         return None
@@ -48,6 +54,54 @@ def latest_positioning(con):
         """,
         (SYMBOL,),
     ).fetchone()
+
+
+def latest_price_fallback(con):
+    """Best-effort spot fallback so observability never kills the pipeline."""
+    # Prefer latest intraday close if available.
+    bars_table = os.getenv("INTRADAY_BARS_TABLE", "spy_bars_15m")
+    cols = columns(con, bars_table)
+    if cols and "close" in cols:
+        ts_col = next((c for c in ("ts", "timestamp", "bar_ts", "datetime", "time") if c in cols), None)
+        symbol_filter = ""
+        params = []
+        if "symbol" in cols:
+            symbol_filter = "WHERE symbol=?"
+            params.append(SYMBOL)
+        order = ts_col or "rowid"
+        try:
+            row = con.execute(
+                f"SELECT close FROM {bars_table} {symbol_filter} ORDER BY {order} DESC LIMIT 1",
+                params,
+            ).fetchone()
+            if row and row[0] is not None and float(row[0]) > 0:
+                return float(row[0]), f"fallback:{bars_table}.close"
+        except Exception as e:
+            print(f"WARNING: intraday spot fallback failed: {e}")
+
+    # Then latest daily close from common daily tables.
+    for table in ("spy_daily", "spy_truth_daily", "daily_bars", "features_daily"):
+        cols = columns(con, table)
+        if not cols or "close" not in cols:
+            continue
+        date_col = next((c for c in ("date", "session_date", "bar_date") if c in cols), None)
+        symbol_filter = ""
+        params = []
+        if "symbol" in cols:
+            symbol_filter = "WHERE symbol=?"
+            params.append(SYMBOL)
+        order = date_col or "rowid"
+        try:
+            row = con.execute(
+                f"SELECT close FROM {table} {symbol_filter} ORDER BY {order} DESC LIMIT 1",
+                params,
+            ).fetchone()
+            if row and row[0] is not None and float(row[0]) > 0:
+                return float(row[0]), f"fallback:{table}.close"
+        except Exception as e:
+            print(f"WARNING: daily spot fallback failed for {table}: {e}")
+
+    return None, "missing"
 
 
 def previous_surface(con, session_date, snapshot_ts):
@@ -150,10 +204,21 @@ def main():
 
     snapshot_ts = pos["snapshot_ts"]
     session_date = pos["session_date"]
-    spot = float(pos["spot"] or 0)
-    dealer_state = pos["dealer_state_hint"] or "UNKNOWN"
+    raw_spot = pos["spot"] if "spot" in pos.keys() else None
+    spot = float(raw_spot or 0)
+    spot_source = "options_positioning_metrics.spot"
     if spot <= 0:
-        raise SystemExit("Latest positioning row missing spot")
+        fallback_spot, fallback_source = latest_price_fallback(con)
+        if fallback_spot and fallback_spot > 0:
+            spot = fallback_spot
+            spot_source = fallback_source
+            print(f"WARNING: latest positioning row missing spot; using {spot_source}={spot}")
+        else:
+            spot = 1.0
+            spot_source = "synthetic:1.0"
+            print("WARNING: no spot fallback found; using synthetic spot=1.0 and marking surface degraded")
+
+    dealer_state = pos["dealer_state_hint"] if "dealer_state_hint" in pos.keys() and pos["dealer_state_hint"] else "UNKNOWN"
 
     rows = load_snapshot_rows(con, snapshot_ts)
     pressure_by = {}
@@ -190,6 +255,9 @@ def main():
         near_density,
         dealer_state,
     )
+    if not rows or spot_source.startswith("synthetic"):
+        transition = "SURFACE_DATA_DEGRADED"
+
     created_at = datetime.now(timezone.utc).isoformat()
 
     con.execute(
@@ -241,6 +309,7 @@ def main():
         "session_date": session_date,
         "underlying": SYMBOL,
         "spot": spot,
+        "spot_source": spot_source,
         "active_wall": active_wall,
         "prior_active_wall": prior_wall,
         "wall_drift": wall_drift,
@@ -262,6 +331,7 @@ def main():
             "====================",
             f"session: {session_date}",
             f"spot: {spot}",
+            f"spot_source: {spot_source}",
             f"active_wall: {active_wall}",
             f"wall_drift: {wall_drift}",
             f"gamma_concentration: {gamma_concentration:.2f}",
