@@ -1,0 +1,17 @@
+SHARPEDGE SURFACE EXECUTION CARD
+================================
+UNDERLYING: SPY
+ASOF: 2026-05-15T14:30:00Z
+
+EXHAUSTION STATE: BALANCED_COMPRESSION
+TRANSITION STATE: MIXED_SURFACE_TRANSITION
+PARTICIPATION: ROTATIONAL
+EXHAUSTION SCORE: 0.48
+
+RISK POSTURE: BALANCED
+
+EXECUTION NOTE:
+Auction is rotational. Avoid forcing directional conviction until structure resolves.
+
+SYSTEM NOTE:
+Auction is balanced. Wait for acceptance/rejection before forcing direction.

@@ -1,0 +1,19 @@
+{
+  "snapshot_ts": "2026-05-15T14:34:19Z",
+  "session_date": "2026-05-15",
+  "underlying": "SPY",
+  "spot": 737.43,
+  "spot_source": "fallback:spy_bars_15m.close",
+  "active_wall": 651.0,
+  "prior_active_wall": null,
+  "wall_drift": null,
+  "gamma_concentration": 0.07304060364788724,
+  "surface_skew": -1.0,
+  "upper_pressure": 0.0,
+  "lower_pressure": 19.80357830498209,
+  "near_spot_density": 0.0,
+  "transition_state": "MIXED_SURFACE_TRANSITION",
+  "dealer_state": "UNKNOWN",
+  "row_count": 100,
+  "created_at": "2026-05-15T14:34:22.145316+00:00"
+}

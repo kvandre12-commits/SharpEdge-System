@@ -1,0 +1,10 @@
+{
+  "underlying": "SPY",
+  "asof_ts": "2026-05-15T14:30:00Z",
+  "exhaustion_state": "BALANCED_COMPRESSION",
+  "transition_state": "MIXED_SURFACE_TRANSITION",
+  "participation_quality": "ROTATIONAL",
+  "risk_posture": "BALANCED",
+  "execution_note": "Auction is rotational. Avoid forcing directional conviction until structure resolves.",
+  "system_note": "Auction is balanced. Wait for acceptance/rejection before forcing direction."
+}
