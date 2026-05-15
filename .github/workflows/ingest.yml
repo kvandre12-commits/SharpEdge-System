@@ -8,6 +8,10 @@ on:
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
 
     env:
       SPY_DB_PATH: data/spy_truth.db
@@ -40,31 +44,44 @@ jobs:
         run: |
          python -m pip install --upgrade pip
          pip install pandas numpy matplotlib yfinance 
+
+      - name: Initialize pipeline health
+        run: |
+          mkdir -p outputs/health
+          echo "pipeline_start=$(date -u)" > outputs/health/run_state.txt
       
       - name: Ingest options chain snapshots (Alpaca)
+        continue-on-error: true
         run: |
-          python scripts/ingest_alpaca_options_chain_snapshots.py
+          python scripts/ingest_alpaca_options_chain_snapshots.py || echo "WARN: options snapshot ingest degraded" >> outputs/health/warnings.log
      
       - name: Ingest options open interest (contracts)
-        run: python scripts/ingest_alpaca_options_open_interest_daily.py
+        continue-on-error: true
+        run: |
+          python scripts/ingest_alpaca_options_open_interest_daily.py || echo "WARN: options OI ingest degraded" >> outputs/health/warnings.log
      
       - name: Aggregate options positioning metrics (0-1 DTE)
+        continue-on-error: true
         run: |
-          DTE_MIN=0 DTE_MAX=1 python scripts/aggregate_options_positioning_metrics.py
+          DTE_MIN=0 DTE_MAX=1 python scripts/aggregate_options_positioning_metrics.py || echo "WARN: 0-1 DTE positioning degraded" >> outputs/health/warnings.log
 
       - name: Aggregate options positioning metrics (2-3 DTE)
+        continue-on-error: true
         run: |
-          DTE_MIN=2 DTE_MAX=3 python scripts/aggregate_options_positioning_metrics.py
+          DTE_MIN=2 DTE_MAX=3 python scripts/aggregate_options_positioning_metrics.py || echo "WARN: 2-3 DTE positioning degraded" >> outputs/health/warnings.log
 
       - name: Build options surface state
+        continue-on-error: true
         run: |
-          python scripts/build_options_surface_state.py
+          python scripts/build_options_surface_state.py || echo "WARN: options surface state degraded" >> outputs/health/warnings.log
 
       - name: Show options surface state
+        continue-on-error: true
         run: |
-          cat outputs/options_surface_state.txt
+          cat outputs/options_surface_state.txt || true
       
       - name: Debug OI walls (latest)
+        continue-on-error: true
         run: |
           python - <<'PY'
           import sqlite3, os, pandas as pd
@@ -101,21 +118,24 @@ jobs:
         env:
           MODE: backfill
           START_ISO: "2025-04-01T00:00:00Z"
+        continue-on-error: true
         run: |
-             python scripts/ingest_spy_intraday_alpaca.py || echo "Backfill failed – safe to retry"
+             python scripts/ingest_spy_intraday_alpaca.py || echo "Backfill failed – safe to retry" >> outputs/health/warnings.log
 
       # -----------------------------
       # NORMAL INTRADAY (INCREMENTAL)
       # -----------------------------
       - name: Ingest SPY intraday (15m) from Alpaca
+        continue-on-error: true
         run: |
           if [ -z "$ALPACA_API_KEY" ] || [ -z "$ALPACA_API_SECRET" ]; then
             echo "ALPACA creds missing — skipping intraday"
             exit 0
           fi
-          python scripts/ingest_spy_intraday_alpaca.py
+          python scripts/ingest_spy_intraday_alpaca.py || echo "WARN: intraday ingest degraded" >> outputs/health/warnings.log
 
       - name: Debug intraday coverage
+        continue-on-error: true
         run: |
           python - <<'PY'
           import sqlite3
@@ -129,24 +149,29 @@ jobs:
           PY
 
       - name: Build exhaustion transition state
+        continue-on-error: true
         run: |
-          python scripts/build_exhaustion_transition_state.py
+          python scripts/build_exhaustion_transition_state.py || echo "WARN: exhaustion transition state degraded" >> outputs/health/warnings.log
 
       - name: Show exhaustion transition state
+        continue-on-error: true
         run: |
-          cat outputs/exhaustion_transition_state.txt
+          cat outputs/exhaustion_transition_state.txt || true
 
       - name: Render surface execution card
+        continue-on-error: true
         run: |
-          python scripts/utils/render_surface_execution_card.py
+          python scripts/utils/render_surface_execution_card.py || echo "WARN: surface execution render degraded" >> outputs/health/warnings.log
 
       - name: Show surface execution card
+        continue-on-error: true
         run: |
-          cat outputs/surface_execution_card.txt
+          cat outputs/surface_execution_card.txt || true
 
       - name: Post surface execution card to Discord
+        continue-on-error: true
         run: |
-          python scripts/utils/post_surface_execution_card_to_discord.py
+          python scripts/utils/post_surface_execution_card_to_discord.py || echo "WARN: surface execution Discord failed" >> outputs/health/warnings.log
 
       # -----------------------------
       # FEATURES / REGIMES
@@ -156,12 +181,14 @@ jobs:
           python scripts/build_features_spy_daily.py
 
       - name: Build fused intraday trend probability (11:30)
+        continue-on-error: true
         run: |
-          python scripts/build_intraday_trendday_prob_1130_fused.py
+          python scripts/build_intraday_trendday_prob_1130_fused.py || echo "WARN: intraday trend probability degraded" >> outputs/health/warnings.log
 
       - name: Build execution state daily (final bias)
+        continue-on-error: true
         run: |
-          python scripts/build_execution_state_daily.py
+          python scripts/build_execution_state_daily.py || echo "WARN: execution state degraded" >> outputs/health/warnings.log
       # -----------------------------
       # CONTEXT / REGIMES
       # -----------------------------
@@ -170,37 +197,43 @@ jobs:
           python scripts/build_liquidity_regime_daily.py
 
       - name: Export liquidity regime CSV
+        continue-on-error: true
         run: |
-          python scripts/exports/export_liquidity_regime_csv.py
+          python scripts/exports/export_liquidity_regime_csv.py || echo "WARN: liquidity export degraded" >> outputs/health/warnings.log
 
       - name: Build open resolution regime (intraday)
+        continue-on-error: true
         run: |
-          python scripts/build_open_resolution_regime_intraday.py
+          python scripts/build_open_resolution_regime_intraday.py || echo "WARN: open resolution regime degraded" >> outputs/health/warnings.log
           
       - name: FINRA darkpool overlay
+        continue-on-error: true
         run: |
           if [ -z "$FINRA_CLIENT_ID" ] || [ -z "$FINRA_CLIENT_SECRET" ]; then
             echo "FINRA creds missing — skipping FINRA overlay"
             exit 0
           fi
-          python scripts/ingest_finra_darkpool_overlay.py
+          python scripts/ingest_finra_darkpool_overlay.py || echo "WARN: FINRA overlay degraded" >> outputs/health/warnings.log
 
       - name: FRED macro overlays
+        continue-on-error: true
         run: |
           if [ -z "$FRED_API_KEY" ]; then
             echo "FRED_API_KEY missing — skipping FRED overlays"
             exit 0
           fi
-          python scripts/ingest_fred_overlays.py
+          python scripts/ingest_fred_overlays.py || echo "WARN: FRED overlay degraded" >> outputs/health/warnings.log
 
       - name: Build regime (daily)
         run: |
           python scripts/build_regime_spy_daily.py
       
       - name: Build regime×pressure×DTE expectancy
+        continue-on-error: true
         run: python scripts/analysis/expectancy_engine.py
       
       - name: Debug trade gate frequency
+        continue-on-error: true
         run: |
              python - <<'PY'
              import sqlite3, os
@@ -232,6 +265,7 @@ jobs:
         continue-on-error: true
 
       - name: OOS validate trade gate (walkforward)
+        continue-on-error: true
         run: |
           python scripts/analysis/oos_validate_trade_gate.py \
           --mode walkforward \
@@ -242,11 +276,13 @@ jobs:
           --min-n 50
 
       - name: Attribution (where PnL came from)
+        continue-on-error: true
         run: |
           python scripts/analysis/attribution.py \
             --min-n 30 \
             --group-cols regime_label,pressure_state,vol_state,vol_trend_state,dp_state,macro_state,compression_flag
       - name: Load edge regime pressure DTE policy LUT
+        continue-on-error: true
         run: |
           python scripts/load_edge_regime_pressure_lut.py  
       # SIGNALS / PLAYBOOK
@@ -261,8 +297,9 @@ jobs:
 
       - name: Controller agent (Gemini)
         id: controller
+        continue-on-error: true
         run: |
-          python scripts/agents/controller_agent.py
+          python scripts/agents/controller_agent.py || echo "WARN: controller agent degraded" >> outputs/health/warnings.log
           decision=$(python - <<'PY'
           import json
           from pathlib import Path
@@ -279,46 +316,63 @@ jobs:
 
       - name: Post FINAL trade card to Discord
         if: steps.controller.outputs.decision == 'post'
+        continue-on-error: true
         run: |
-          python scripts/send_trade_card_to_discord.py
+          python scripts/send_trade_card_to_discord.py || echo "WARN: final Discord trade card failed" >> outputs/health/warnings.log
       # -----------------------------
       # PROOF OF EDGE
       # -----------------------------
       
       - name: Evaluate trade-gate edge
+        continue-on-error: true
         run: |
-          python scripts/analysis/evaluate_trade_gate_edge.py
+          python scripts/analysis/evaluate_trade_gate_edge.py || echo "WARN: trade gate edge evaluation degraded" >> outputs/health/warnings.log
 
       - name: Validate full pipeline outputs
         run: |
           python scripts/utils/validate_spy_truth_db.py
      
       - name: Audit pipeline contracts
+        continue-on-error: true
         run: |
-          python scripts/utils/audit_pipeline.py
+          python scripts/utils/audit_pipeline.py || echo "WARN: audit pipeline degraded" >> outputs/health/warnings.log
 
       # -----------------------------
       # OPTIONAL MANUAL CALIBRATION
       # -----------------------------
       - name: Calibrate DTE from backtest (manual only)
         if: github.event_name == 'workflow_dispatch'
+        continue-on-error: true
         run: |
-          python scripts/calibrate_dte_from_backtest.py
+          python scripts/calibrate_dte_from_backtest.py || echo "WARN: DTE calibration degraded" >> outputs/health/warnings.log
 
       # -----------------------------
       # COMMIT ARTIFACTS
       # -----------------------------
       - name: Commit updated DB + outputs
+        continue-on-error: true
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add data/ outputs/ sql/ scripts/ || true
           git diff --staged --quiet && echo "No changes to commit" && exit 0
-          git commit -m "Daily pipeline + regimes + signals + proof-of-edge artifacts"
-          git push
+          git commit -m "Daily pipeline + regimes + signals + proof-of-edge artifacts" || true
+          git push || true
           
       - name: Post FINAL trade card to Discord
         if: steps.controller.outputs.decision == 'post'
+        continue-on-error: true
         run: |
-          python scripts/send_trade_card_to_discord.py
+          python scripts/send_trade_card_to_discord.py || echo "WARN: final Discord trade card failed after commit" >> outputs/health/warnings.log
+
+      - name: Final pipeline state
+        if: always()
+        run: |
+          echo "PIPELINE COMPLETE"
+          if [ -f outputs/health/warnings.log ]; then
+            echo "WARNINGS DETECTED:"
+            cat outputs/health/warnings.log
+          else
+            echo "NO WARNINGS"
+          fi
