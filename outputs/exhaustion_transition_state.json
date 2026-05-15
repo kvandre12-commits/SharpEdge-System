@@ -1,16 +1,16 @@
 {
   "session_date": "2026-05-15",
-  "asof_ts": "2026-05-15T14:30:00Z",
+  "asof_ts": "2026-05-15T20:30:00Z",
   "underlying": "SPY",
-  "exhaustion_score": 0.47808117602431377,
-  "expansion_efficiency": 0.40679236488875076,
-  "upper_wick_ratio": 0.46603600165667086,
-  "lower_wick_ratio": 0.12717163345457838,
-  "momentum_decay": 2.9471624248841857,
-  "failed_acceptance_count": 2,
-  "exhaustion_state": "BALANCED_COMPRESSION",
-  "transition_state": "MIXED_SURFACE_TRANSITION",
+  "exhaustion_score": 0.23333584224483664,
+  "expansion_efficiency": 0.4828751830813603,
+  "upper_wick_ratio": 0.24427981995500728,
+  "lower_wick_ratio": 0.2728449969636324,
+  "momentum_decay": 0.8762886597938389,
+  "failed_acceptance_count": 0,
+  "exhaustion_state": "HEALTHY_EXPANSION",
+  "transition_state": "DEFENSIVE_ROTATION_TRANSITION",
   "participation_quality": "ROTATIONAL",
-  "note": "Auction is balanced. Wait for acceptance/rejection before forcing direction.",
-  "created_at": "2026-05-15T14:34:28.613391+00:00"
+  "note": "Continuation quality is healthy. Pullbacks can be considered if acceptance holds.",
+  "created_at": "2026-05-15T23:27:59.054829+00:00"
 }
