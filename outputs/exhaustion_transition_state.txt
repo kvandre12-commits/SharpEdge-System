@@ -1,12 +1,12 @@
 EXHAUSTION / TRANSITION STATE
 =============================
-asof: 2026-05-15T20:30:00Z
+asof: 2026-05-18T20:00:00Z
 exhaustion_state: HEALTHY_EXPANSION
-transition_state: DEFENSIVE_ROTATION_TRANSITION
+transition_state: MIXED_SURFACE_TRANSITION
 participation_quality: ROTATIONAL
-exhaustion_score: 0.23
-expansion_efficiency: 0.48
-upper_wick_ratio: 0.24
-momentum_decay: 0.88
+exhaustion_score: 0.20
+expansion_efficiency: 0.45
+upper_wick_ratio: 0.13
+momentum_decay: 0.85
 failed_acceptance_count: 0
 note: Continuation quality is healthy. Pullbacks can be considered if acceptance holds.

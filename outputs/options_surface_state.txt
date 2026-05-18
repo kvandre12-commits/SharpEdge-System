@@ -1,12 +1,12 @@
 OPTIONS SURFACE STATE
 ====================
-session: 2026-05-15
-spot: 741.7000122070312
-spot_source: options_positioning_metrics.spot
-active_wall: 651.0
-wall_drift: 0.0
-gamma_concentration: 0.07
-surface_skew: -1.00
-near_spot_density: 0.00
-transition_state: DEFENSIVE_ROTATION_TRANSITION
+session: 2026-05-18
+spot: 737.71
+spot_source: fallback:spy_bars_15m.close
+active_wall: 738.0
+wall_drift: None
+gamma_concentration: 0.06
+surface_skew: -0.63
+near_spot_density: 0.29
+transition_state: MIXED_SURFACE_TRANSITION
 row_count: 100
