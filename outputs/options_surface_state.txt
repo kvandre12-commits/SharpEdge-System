@@ -1,12 +1,12 @@
 OPTIONS SURFACE STATE
 ====================
-session: 2026-05-18
-spot: 737.71
+session: 2026-05-19
+spot: 738.3
 spot_source: fallback:spy_bars_15m.close
 active_wall: 738.0
 wall_drift: None
 gamma_concentration: 0.06
-surface_skew: -0.63
+surface_skew: -0.66
 near_spot_density: 0.29
 transition_state: MIXED_SURFACE_TRANSITION
 row_count: 100
