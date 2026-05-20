@@ -4,7 +4,7 @@ session: 2026-05-20
 spot: 733.42
 spot_source: fallback:spy_bars_15m.close
 active_wall: 733.0
-wall_drift: None
+wall_drift: 0.0
 gamma_concentration: 0.06
 surface_skew: -0.51
 near_spot_density: 0.26

@@ -1,10 +1,10 @@
 {
   "underlying": "SPY",
-  "asof_ts": "2026-05-19T20:00:00Z",
-  "exhaustion_state": "HEALTHY_EXPANSION",
+  "asof_ts": "2026-05-20T14:30:00Z",
+  "exhaustion_state": "BALANCED_COMPRESSION",
   "transition_state": "MIXED_SURFACE_TRANSITION",
-  "participation_quality": "ROTATIONAL",
-  "risk_posture": "BALANCED",
-  "execution_note": "Auction is rotational. Avoid forcing directional conviction until structure resolves.",
-  "system_note": "Continuation quality is healthy. Pullbacks can be considered if acceptance holds."
+  "participation_quality": "EMPTY_BREAKOUT_RISK",
+  "risk_posture": "WAIT_FOR_CONFIRMATION",
+  "execution_note": "Breakout quality is weak. Require acceptance before directional commitment.",
+  "system_note": "Move lacks participation quality. Treat breakouts as suspect until confirmed."
 }

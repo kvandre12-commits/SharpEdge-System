@@ -1,17 +1,17 @@
 SHARPEDGE SURFACE EXECUTION CARD
 ================================
 UNDERLYING: SPY
-ASOF: 2026-05-19T20:00:00Z
+ASOF: 2026-05-20T14:30:00Z
 
-EXHAUSTION STATE: HEALTHY_EXPANSION
+EXHAUSTION STATE: BALANCED_COMPRESSION
 TRANSITION STATE: MIXED_SURFACE_TRANSITION
-PARTICIPATION: ROTATIONAL
-EXHAUSTION SCORE: 0.20
+PARTICIPATION: EMPTY_BREAKOUT_RISK
+EXHAUSTION SCORE: 0.47
 
-RISK POSTURE: BALANCED
+RISK POSTURE: WAIT_FOR_CONFIRMATION
 
 EXECUTION NOTE:
-Auction is rotational. Avoid forcing directional conviction until structure resolves.
+Breakout quality is weak. Require acceptance before directional commitment.
 
 SYSTEM NOTE:
-Continuation quality is healthy. Pullbacks can be considered if acceptance holds.
+Move lacks participation quality. Treat breakouts as suspect until confirmed.
