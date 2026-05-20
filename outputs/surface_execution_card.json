@@ -1,10 +1,10 @@
 {
   "underlying": "SPY",
-  "asof_ts": "2026-05-20T17:00:00Z",
-  "exhaustion_state": "HEALTHY_EXPANSION",
+  "asof_ts": "2026-05-20T20:00:00Z",
+  "exhaustion_state": "BALANCED_COMPRESSION",
   "transition_state": "MIXED_SURFACE_TRANSITION",
   "participation_quality": "ROTATIONAL",
   "risk_posture": "BALANCED",
   "execution_note": "Auction is rotational. Avoid forcing directional conviction until structure resolves.",
-  "system_note": "Continuation quality is healthy. Pullbacks can be considered if acceptance holds."
+  "system_note": "Auction is balanced. Wait for acceptance/rejection before forcing direction."
 }
