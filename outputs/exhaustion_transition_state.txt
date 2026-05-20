@@ -1,12 +1,12 @@
 EXHAUSTION / TRANSITION STATE
 =============================
-asof: 2026-05-20T14:30:00Z
-exhaustion_state: BALANCED_COMPRESSION
+asof: 2026-05-20T17:00:00Z
+exhaustion_state: HEALTHY_EXPANSION
 transition_state: MIXED_SURFACE_TRANSITION
-participation_quality: EMPTY_BREAKOUT_RISK
-exhaustion_score: 0.47
-expansion_efficiency: 0.30
-upper_wick_ratio: 0.37
-momentum_decay: 3.17
+participation_quality: ROTATIONAL
+exhaustion_score: 0.35
+expansion_efficiency: 0.59
+upper_wick_ratio: 0.11
+momentum_decay: 0.72
 failed_acceptance_count: 2
-note: Move lacks participation quality. Treat breakouts as suspect until confirmed.
+note: Continuation quality is healthy. Pullbacks can be considered if acceptance holds.
