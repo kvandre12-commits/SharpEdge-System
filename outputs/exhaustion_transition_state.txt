@@ -1,12 +1,12 @@
 EXHAUSTION / TRANSITION STATE
 =============================
-asof: 2026-05-20T20:00:00Z
+asof: 2026-05-21T12:00:00Z
 exhaustion_state: BALANCED_COMPRESSION
 transition_state: MIXED_SURFACE_TRANSITION
 participation_quality: ROTATIONAL
-exhaustion_score: 0.36
-expansion_efficiency: 0.27
-upper_wick_ratio: 0.17
-momentum_decay: 0.76
+exhaustion_score: 0.40
+expansion_efficiency: 0.13
+upper_wick_ratio: 0.12
+momentum_decay: 0.60
 failed_acceptance_count: 1
 note: Auction is balanced. Wait for acceptance/rejection before forcing direction.

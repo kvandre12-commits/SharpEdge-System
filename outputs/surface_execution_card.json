@@ -1,6 +1,6 @@
 {
   "underlying": "SPY",
-  "asof_ts": "2026-05-20T20:00:00Z",
+  "asof_ts": "2026-05-21T12:00:00Z",
   "exhaustion_state": "BALANCED_COMPRESSION",
   "transition_state": "MIXED_SURFACE_TRANSITION",
   "participation_quality": "ROTATIONAL",
