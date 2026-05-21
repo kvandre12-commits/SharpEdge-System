@@ -38,6 +38,10 @@ jobs:
         run: |
           python scripts/classify_fill_paths.py
 
+      - name: Measure gap excursions
+        run: |
+          python scripts/measure_gap_excursions.py
+
       - name: Commit expectancy artifacts
         continue-on-error: true
         run: |
