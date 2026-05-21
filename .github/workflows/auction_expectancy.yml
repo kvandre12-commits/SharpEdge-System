@@ -1,0 +1,46 @@
+name: Build Auction Expectancy Events
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Ingest SPY data"]
+    types:
+      - completed
+
+jobs:
+  build-auction-expectancy:
+    runs-on: ubuntu-latest
+
+    env:
+      SPY_DB_PATH: data/spy_truth.db
+      SYMBOL: SPY
+      INTRADAY_BARS_TABLE: spy_bars_15m
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy
+
+      - name: Build canonical auction expectancy dataset
+        run: |
+          python scripts/build_auction_expectancy_events.py
+
+      - name: Commit expectancy artifacts
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add data/ outputs/ scripts/ || true
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Build SharpEdge 2.0 auction expectancy events" || true
+          git push || true
