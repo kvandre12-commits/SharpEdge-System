@@ -1,19 +1,19 @@
 {
-  "snapshot_ts": "2026-05-21T11:34:34Z",
+  "snapshot_ts": "2026-05-21T11:42:35Z",
   "session_date": "2026-05-21",
   "underlying": "SPY",
   "spot": 740.86,
   "spot_source": "fallback:spy_bars_15m.close",
   "active_wall": 741.0,
-  "prior_active_wall": null,
-  "wall_drift": null,
-  "gamma_concentration": 0.062025409139287446,
-  "surface_skew": -0.7215649413373846,
+  "prior_active_wall": 741.0,
+  "wall_drift": 0.0,
+  "gamma_concentration": 0.06202540913928743,
+  "surface_skew": -0.7215649413373845,
   "upper_pressure": 13.312749322265994,
-  "lower_pressure": 82.31277561134007,
-  "near_spot_density": 0.27682091724718993,
+  "lower_pressure": 82.31277561134006,
+  "near_spot_density": 0.27682091724719,
   "transition_state": "MIXED_SURFACE_TRANSITION",
   "dealer_state": "UNKNOWN",
   "row_count": 100,
-  "created_at": "2026-05-21T11:34:36.330984+00:00"
+  "created_at": "2026-05-21T11:42:37.205732+00:00"
 }

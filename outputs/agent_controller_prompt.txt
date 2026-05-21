@@ -34,7 +34,7 @@ DATA:
     "trade_permission": 0,
     "tr_lift": 1.1079367817560208,
     "cluster_slope": 0.0,
-    "signal_ts": "2026-05-21T11:36:48.465973+00:00",
+    "signal_ts": "2026-05-21T11:44:23.617263+00:00",
     "signal_version": "v1_early_readiness_ignition",
     "tr_lift_fast": 1.0101488362253175,
     "cluster_slope_fast": 0.0,
@@ -63,12 +63,12 @@ DATA:
     "transition_label": "mid->mid | falling->rising | low->low",
     "transition_score": 1,
     "transition_flag": 1,
-    "regime_ts": "2026-05-21T11:36:45.585298+00:00",
+    "regime_ts": "2026-05-21T11:44:20.653131+00:00",
     "macro_stress": 0.0,
     "macro_state": "low"
   },
   "latest_open_regime": {
-    "snapshot_ts": "2026-05-21T11:34:43+00:00",
+    "snapshot_ts": "2026-05-21T11:42:44+00:00",
     "session_date": "2026-05-20",
     "underlying": "SPY",
     "pm_open": 736.5,
@@ -95,8 +95,8 @@ DATA:
     "key_source": null
   },
   "latest_options_positioning": {
-    "metrics_id": 9225,
-    "snapshot_ts": "2026-05-21T11:34:34Z",
+    "metrics_id": 9364,
+    "snapshot_ts": "2026-05-21T11:42:35Z",
     "session_date": "2026-05-21",
     "underlying": "SPY",
     "dte_min": 0,
