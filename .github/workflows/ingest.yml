@@ -231,6 +231,16 @@ jobs:
       - name: Build regime×pressure×DTE expectancy
         continue-on-error: true
         run: python scripts/analysis/expectancy_engine.py
+
+      - name: Publish SharpEdge 2.0 report
+        continue-on-error: true
+        run: |
+          python scripts/publish_sharpedge_2_report.py || echo "WARN: SharpEdge 2.0 report degraded" >> outputs/health/warnings.log
+
+      - name: Show SharpEdge 2.0 latest card
+        continue-on-error: true
+        run: |
+          cat outputs/sharpedge_2_latest_card.txt || true
       
       - name: Debug trade gate frequency
         continue-on-error: true
@@ -375,4 +385,3 @@ jobs:
             cat outputs/health/warnings.log
           else
             echo "NO WARNINGS"
-          fi
