@@ -125,19 +125,29 @@ def load_events(con):
 def enrich_metrics(df):
     out = df.copy()
 
-    out["_fill"] = safe_num(out, ["filled", "gap_filled", "fill_success"], 0).fillna(0)
+    out["_fill"] = safe_bool(
+        out,
+        ["filled", "gap_filled", "fill_success"]
+    ).astype(int)
+
     out["_direct_fill"] = (
-        safe_num(out, ["direct_fill"], 0).fillna(0)
-        | out["fill_path_type"].astype(str).str.upper().eq("DIRECT_FILL")
+        safe_bool(out, ["direct_fill"])
+        | out["fill_path_type"]
+            .astype(str)
+            .str.upper()
+            .eq("DIRECT_FILL")
     ).astype(int)
 
     out["_failed_fill"] = (
-        safe_num(out, ["failed_fill"], 0).fillna(0)
-        | out["fill_path_type"].astype(str).str.upper().isin([
-            "FAILED_FILL_CONTINUATION",
-            "PARTIAL_FILL_REJECT",
-            "LIQUIDITY_VACUUM_CONTINUATION",
-        ])
+        safe_bool(out, ["failed_fill"])
+        | out["fill_path_type"]
+            .astype(str)
+            .str.upper()
+            .isin([
+                "FAILED_FILL_CONTINUATION",
+                "PARTIAL_FILL_REJECT",
+                "LIQUIDITY_VACUUM_CONTINUATION",
+            ])
     ).astype(int)
 
     out["_time_to_fill"] = safe_num(out, ["time_to_fill_minutes", "minutes_to_fill"])
