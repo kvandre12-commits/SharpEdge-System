@@ -34,6 +34,10 @@ jobs:
         run: |
           python scripts/build_auction_expectancy_events.py
 
+      - name: Classify auction fill paths
+        run: |
+          python scripts/classify_fill_paths.py
+
       - name: Commit expectancy artifacts
         continue-on-error: true
         run: |
