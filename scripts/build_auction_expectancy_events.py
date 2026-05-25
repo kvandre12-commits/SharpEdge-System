@@ -50,7 +50,13 @@ def main():
   CASE WHEN f.fill_ts IS NULL THEN NULL ELSE (julianday(f.fill_ts)-julianday((SELECT MIN(ts) FROM {BARS} b WHERE b.session_date=d.session_date)))*1440 END time_to_fill_minutes,
   d.prior_close,d.session_open,d.session_high,d.session_low,d.session_close,
   r.vol_state,r.vol_trend_state,r.dp_state,r.macro_state,r.regime_label,
-  o.open_regime_label,l.regime_type liquidity_regime_type,
+  o.open_regime_label,
+COALESCE(o.failed_breakdown_open,0) failed_breakdown_open,
+COALESCE(o.accepted_breakdown_open,0) accepted_breakdown_open,
+o.regime_confidence,
+o.setup_dir,
+o.key_source,
+l.regime_type liquidity_regime_type,
   op.spot,op.gamma_wall_strike,op.pcr_oi,
   '{datetime.now(timezone.utc).isoformat()}' build_ts
   FROM daily d
