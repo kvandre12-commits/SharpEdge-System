@@ -1,0 +1,12 @@
+SHARPEDGE 2.0 LATEST CARD
+Date: 2026-05-20 | Symbol: SPY
+State: mrll0 | NO_SETUP | quiet
+Recommendation: NORMAL
+Reason: Supported edge, but still requires execution discipline.
+Fill Prob: 60.9%
+Time-to-fill: 95.38 min
+MAE before fill: 0.4%
+Squeeze Risk: LOW
+Continuation Risk: MEDIUM
+Playbook: UNCLASSIFIED
+Sample: n=64 / min=20
