@@ -45,8 +45,19 @@ def fetch_spy_daily(period: str = "2y") -> pd.DataFrame:
     df = df.reset_index()
     df.columns = [str(c).lower().replace(" ", "_") for c in df.columns]
 
-    if "date" not in df.columns and "datetime" in df.columns:
+    print("DEBUG columns:", df.columns.tolist())
+
+    # normalize timestamp column names across yfinance/pandas versions
+    if "datetime" in df.columns:
         df = df.rename(columns={"datetime": "date"})
+
+    if "index" in df.columns:
+        df = df.rename(columns={"index": "date"})
+
+    if "date" not in df.columns:
+        raise RuntimeError(
+            f"Could not find date column after yfinance download. Columns={list(df.columns)}"
+        )
 
     df["date"] = pd.to_datetime(df["date"]).dt.date.astype(str)
 
