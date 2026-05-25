@@ -20,22 +20,17 @@ SYMBOL = os.getenv("SYMBOL", "SPY")
 OUTDIR = os.getenv("OUTDIR", "outputs")
 EVENTS_TABLE = os.getenv("AUCTION_EVENTS_TABLE", "auction_expectancy_events")
 OUT_TABLE = os.getenv("CONDITIONAL_EXPECTANCY_TABLE", "conditional_expectancy_matrix")
-MIN_N = int(os.getenv("MIN_N", "20"))
+
+# bootstrap startup phase with smaller sample thresholds
+MIN_N = int(os.getenv("MIN_N", "3"))
 TOP_N = int(os.getenv("TOP_N", "50"))
 
 GROUP_COLS = [
     "event_type",
     "gap_direction",
     "fill_path_type",
-    "regime_id",
     "vol_state",
-    "vol_trend_state",
-    "macro_state",
-    "dp_state",
     "open_regime_label",
-    "gamma_state",
-    "dealer_state_hint",
-    "liquidity_regime_type",
 ]
 
 
@@ -56,21 +51,27 @@ def safe_num(df, candidates, default=np.nan):
     return pd.Series(default, index=df.index)
 
 
+def safe_bool(df, candidates):
+    for c in candidates:
+        if c in df.columns:
+            return (
+                df[c]
+                .fillna(False)
+                .astype(str)
+                .str.lower()
+                .isin(["1", "true", "yes"])
+            )
+    return pd.Series(False, index=df.index)
+
+
 def ensure_output_table(con):
     con.execute(f"""
     CREATE TABLE IF NOT EXISTS {OUT_TABLE} (
       event_type TEXT,
       gap_direction TEXT,
       fill_path_type TEXT,
-      regime_id TEXT,
       vol_state TEXT,
-      vol_trend_state TEXT,
-      macro_state TEXT,
-      dp_state TEXT,
       open_regime_label TEXT,
-      gamma_state TEXT,
-      dealer_state_hint TEXT,
-      liquidity_regime_type TEXT,
       n INTEGER,
       fill_rate REAL,
       direct_fill_rate REAL,
@@ -99,17 +100,19 @@ def load_events(con):
         raise RuntimeError(f"Missing table: {EVENTS_TABLE}")
 
     df = pd.read_sql_query(f"SELECT * FROM {EVENTS_TABLE}", con)
+
+    print(f"DEBUG total auction events: {len(df)}")
+
     if df.empty:
         raise RuntimeError(f"{EVENTS_TABLE} returned 0 rows")
 
-    if "session_date" not in df.columns:
-        if "date" in df.columns:
-            df["session_date"] = df["date"]
+    if "session_date" not in df.columns and "date" in df.columns:
+        df["session_date"] = df["date"]
 
     if "symbol" in df.columns:
         df = df[df["symbol"].fillna(SYMBOL) == SYMBOL].copy()
 
-    required = {"event_type", "gap_direction", "session_date"}
+    required = {"event_type", "gap_direction"}
     missing = required - set(df.columns)
     if missing:
         raise RuntimeError(f"Missing required columns: {sorted(missing)}")
@@ -119,6 +122,11 @@ def load_events(con):
             df[c] = "UNKNOWN"
         df[c] = df[c].fillna("UNKNOWN").astype(str)
 
+    print(
+        "DEBUG labeled paths:",
+        df["fill_path_type"].notna().sum() if "fill_path_type" in df.columns else 0
+    )
+
     return df
 
 
@@ -127,7 +135,7 @@ def enrich_metrics(df):
 
     out["_fill"] = safe_bool(
         out,
-        ["filled", "gap_filled", "fill_success"]
+        ["filled", "gap_filled", "fill_success", "fill_completed"]
     ).astype(int)
 
     out["_direct_fill"] = (
@@ -154,7 +162,6 @@ def enrich_metrics(df):
     out["_mae"] = safe_num(out, ["MAE_pct", "mae_pct"])
     out["_mfe"] = safe_num(out, ["MFE_pct", "mfe_pct"])
     out["_stop"] = safe_num(out, ["stop_out_probability_proxy", "stop_out_rate_proxy"])
-    out["_drawdown"] = safe_num(out, ["max_drawdown_intraday", "drawdown_intraday", "MAE_pct"])
 
     payoff = safe_num(out, ["reward_risk_realized", "realized_r", "ret"])
     missing = payoff.isna()
@@ -191,28 +198,23 @@ def tradability_score(row):
     fill_rate = np.nan_to_num(row["fill_rate"])
     payoff = np.nan_to_num(row["payoff_ratio"])
     mae_penalty = abs(np.nan_to_num(row["avg_MAE_pct"]))
-    drawdown_penalty = abs(np.nan_to_num(row["max_drawdown"]))
-    failed_penalty = np.nan_to_num(row["failed_fill_rate"])
 
-    score = (
-        expectancy * 35
-        + fill_rate * 20
+    return float(
+        expectancy * 40
+        + fill_rate * 25
         + payoff * 15
-        - mae_penalty * 15
-        - drawdown_penalty * 10
-        - failed_penalty * 5
+        - mae_penalty * 10
     )
-
-    if row["n"] < MIN_N:
-        score *= 0.75
-
-    return float(score)
 
 
 def build_matrix(df):
     rows = []
 
-    for keys, g in df.groupby(GROUP_COLS, dropna=False):
+    grouped = df.groupby(GROUP_COLS, dropna=False)
+
+    print(f"DEBUG group count: {len(grouped)}")
+
+    for keys, g in grouped:
         payoff = pd.to_numeric(g["_payoff"], errors="coerce")
 
         wins = payoff[payoff > 0]
@@ -241,11 +243,12 @@ def build_matrix(df):
             "stop_out_rate_proxy": float(g["_stop"].mean()),
         })
 
-        row["sample_quality"] = "LOW_SAMPLE" if row["n"] < MIN_N else "OK"
+        row["sample_quality"] = "LOW_SAMPLE" if row["n"] < MIN_N else "BOOTSTRAP_OK"
         row["tradability_score"] = tradability_score(row)
         rows.append(row)
 
     out = pd.DataFrame(rows)
+
     if out.empty:
         raise RuntimeError("No grouped expectancy rows produced")
 
@@ -276,10 +279,7 @@ def main():
 
         matrix.to_csv(os.path.join(OUTDIR, "conditional_expectancy_matrix.csv"), index=False)
 
-        top_edges = matrix[
-            (matrix["n"] >= max(5, MIN_N // 2))
-            & (matrix["expectancy"] > 0)
-        ].head(TOP_N)
+        top_edges = matrix.head(TOP_N)
 
         top_edges.to_csv(os.path.join(OUTDIR, "top_gap_fill_edges.csv"), index=False)
 
