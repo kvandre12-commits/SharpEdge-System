@@ -3,10 +3,10 @@ Date: 2026-05-20 | Symbol: SPY
 State: mrll0 | NO_SETUP | quiet
 Recommendation: NORMAL
 Reason: Supported edge, but still requires execution discipline.
-Fill Prob: 60.9%
-Time-to-fill: 95.38 min
-MAE before fill: 0.4%
+Fill Prob: 78.6%
+Time-to-fill: 101.59 min
+MAE before fill: 0.5%
 Squeeze Risk: LOW
-Continuation Risk: MEDIUM
+Continuation Risk: HIGH
 Playbook: UNCLASSIFIED
-Sample: n=64 / min=20
+Sample: n=28 / min=20
