@@ -34,7 +34,7 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -113,6 +113,11 @@ jobs:
         run: |
           python scripts/build_conditional_expectancy_matrix.py || echo "WARN: conditional expectancy matrix degraded" >> outputs/health/warnings.log
 
+      - name: Build SharpEdge 2.1 confidence matrix
+        continue-on-error: true
+        run: |
+          python scripts/build_confidence_weights.py || echo "WARN: confidence weighting engine degraded" >> outputs/health/warnings.log
+
       - name: Build regime×pressure×DTE expectancy
         continue-on-error: true
         run: python scripts/analysis/expectancy_engine.py
@@ -129,7 +134,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/ outputs/ sql/ scripts/ || true
           git diff --staged --quiet && echo "No changes to commit" && exit 0
-          git commit -m "Daily pipeline + SharpEdge 2.0 auction expectancy stack" || true
+          git commit -m "Daily pipeline + SharpEdge 2.1 confidence deployment layer" || true
           git push || true
 
       - name: Final pipeline state
@@ -141,4 +146,3 @@ jobs:
             cat outputs/health/warnings.log
           else
             echo "NO WARNINGS"
-          fi
