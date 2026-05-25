@@ -48,6 +48,7 @@ jobs:
       - name: Initialize pipeline health
         run: |
           mkdir -p outputs/health
+          rm -f outputs/health/warnings.log
           echo "pipeline_start=$(date -u)" > outputs/health/run_state.txt
 
       - name: Ingest SPY daily bars
