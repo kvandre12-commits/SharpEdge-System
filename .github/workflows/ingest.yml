@@ -118,6 +118,11 @@ jobs:
         run: |
           python scripts/build_confidence_weights.py || echo "WARN: confidence weighting engine degraded" >> outputs/health/warnings.log
 
+      - name: Build SharpEdge 2.1 risk decision layer
+        continue-on-error: true
+        run: |
+          python scripts/build_risk_decision_layer.py || echo "WARN: risk decision layer degraded" >> outputs/health/warnings.log
+
       - name: Build regime×pressure×DTE expectancy
         continue-on-error: true
         run: python scripts/analysis/expectancy_engine.py
@@ -134,7 +139,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/ outputs/ sql/ scripts/ || true
           git diff --staged --quiet && echo "No changes to commit" && exit 0
-          git commit -m "Daily pipeline + SharpEdge 2.1 confidence deployment layer" || true
+          git commit -m "Daily pipeline + SharpEdge 2.1 risk allocation engine" || true
           git push || true
 
       - name: Final pipeline state
