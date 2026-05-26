@@ -151,3 +151,4 @@ jobs:
             cat outputs/health/warnings.log
           else
             echo "NO WARNINGS"
+          fi
