@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 import pandas as pd
 import yfinance as yf
 
-SYMBOL = "SPY"
-DB_PATH = "data/spy_truth.db"
+SYMBOL = os.getenv("SYMBOL", "SPY")
+DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 SOURCE = "yfinance"
 
 
@@ -35,19 +35,24 @@ def ensure_truth_table(con: sqlite3.Connection):
     con.commit()
 
 
-def fetch_spy_daily(period: str = "2y") -> pd.DataFrame:
-    df = yf.download(SYMBOL, period=period, interval="1d", auto_adjust=False, progress=False)
+def fetch_daily(period: str = "2y") -> pd.DataFrame:
+    df = yf.download(
+        SYMBOL,
+        period=period,
+        interval="1d",
+        auto_adjust=False,
+        progress=False,
+    )
 
-    # flatten MultiIndex if present
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = [c[0] for c in df.columns]
 
     df = df.reset_index()
     df.columns = [str(c).lower().replace(" ", "_") for c in df.columns]
 
+    print("DEBUG symbol:", SYMBOL)
     print("DEBUG columns:", df.columns.tolist())
 
-    # normalize timestamp column names across yfinance/pandas versions
     if "datetime" in df.columns:
         df = df.rename(columns={"datetime": "date"})
 
@@ -67,13 +72,20 @@ def fetch_spy_daily(period: str = "2y") -> pd.DataFrame:
     out["ingest_ts"] = datetime.now(timezone.utc).isoformat()
 
     out = out.dropna(subset=["open", "high", "low", "close"]).reset_index(drop=True)
+
+    if out.empty:
+        raise RuntimeError(f"No rows returned for symbol={SYMBOL}")
+
     return out
 
 
 def upsert_truth(con: sqlite3.Connection, truth: pd.DataFrame):
     ensure_truth_table(con)
 
-    cols = ["date", "symbol", "open", "high", "low", "close", "volume", "source", "ingest_ts"]
+    cols = [
+        "date", "symbol", "open", "high", "low",
+        "close", "volume", "source", "ingest_ts"
+    ]
     rows = truth[cols].to_records(index=False).tolist()
 
     con.executemany(
@@ -96,28 +108,34 @@ def upsert_truth(con: sqlite3.Connection, truth: pd.DataFrame):
 
 def write_truth_csv(con: sqlite3.Connection):
     os.makedirs("outputs", exist_ok=True)
+
     q = """
     SELECT date, symbol, open, high, low, close, volume, source, ingest_ts
     FROM bars_daily
     WHERE symbol = ?
     ORDER BY date ASC
     """
+
     df = pd.read_sql_query(q, con, params=(SYMBOL,))
-    path = "outputs/spy_truth_daily.csv"
+
+    path = f"outputs/{SYMBOL.lower()}_truth_daily.csv"
     df.to_csv(path, index=False)
+
     print(f"Wrote {path} ({len(df)} rows)")
 
 
 def main():
     con = connect(DB_PATH)
     try:
-        truth = fetch_spy_daily(period="2y")
+        truth = fetch_daily(period="2y")
         upsert_truth(con, truth)
         write_truth_csv(con)
 
         last = truth.tail(1)
-        print("OK: truth ingested. Last row:")
+
+        print(f"OK: {SYMBOL} truth ingested. Last row:")
         print(last.to_string(index=False))
+
     finally:
         con.close()
 
