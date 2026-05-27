@@ -58,9 +58,6 @@ def pct_rank_last(window: pd.Series) -> float:
 
 
 def read_daily_truth(con: sqlite3.Connection, symbol: str) -> pd.DataFrame:
-    """
-    Tries common daily tables. Expected columns: date, symbol, open, high, low, close, volume
-    """
     candidates = [
         "truth_daily",
         "ohlc_daily",
@@ -86,14 +83,12 @@ def read_daily_truth(con: sqlite3.Connection, symbol: str) -> pd.DataFrame:
 
 
 def read_intraday_15m(con: sqlite3.Connection, symbol: str) -> Optional[pd.DataFrame]:
-    """
-    Tries common 15m tables. Expected columns: ts (or datetime), symbol, open, high, low, close, volume
-    """
     candidates = [
         "truth_intraday_15m",
         "bars_intraday_15m",
         "bars_15m",
         "spy_intraday_15m",
+        "wmt_bars_15m",
     ]
     table = next((t for t in candidates if table_exists(con, t)), None)
     if table is None:
@@ -110,7 +105,6 @@ def read_intraday_15m(con: sqlite3.Connection, symbol: str) -> Optional[pd.DataF
         params=(symbol,),
     )
 
-    # Normalize timestamp column name
     ts_col = None
     for c in ["ts", "timestamp", "datetime", "time"]:
         if c in df.columns:
@@ -124,7 +118,6 @@ def read_intraday_15m(con: sqlite3.Connection, symbol: str) -> Optional[pd.DataF
     df["session_date"] = df[ts_col].dt.tz_convert(None).dt.date.astype(str)
     df.rename(columns={ts_col: "ts"}, inplace=True)
 
-    # Ensure required columns exist
     required = {"open", "high", "low", "close"}
     if not required.issubset(df.columns):
         return None
@@ -133,19 +126,12 @@ def read_intraday_15m(con: sqlite3.Connection, symbol: str) -> Optional[pd.DataF
 
 
 def compute_orb_features(intra: pd.DataFrame) -> pd.DataFrame:
-    """
-    For each session_date:
-      - open_orb_range  = (max(high first N) - min(low first N)) / close(last bar)
-      - close_orb_range = (max(high last M)  - min(low last M))  / close(last bar)
-      - shares: open_orb_share, close_orb_share, edge_orb_share, bias
-    """
     g = intra.groupby("session_date", sort=True)
 
     rows = []
     for session_date, d in g:
         d = d.sort_values("ts").reset_index(drop=True)
 
-        # Skip tiny sessions
         if len(d) < max(ORB_BARS, CLOSE_BARS) + 1:
             continue
 
@@ -168,7 +154,7 @@ def compute_orb_features(intra: pd.DataFrame) -> pd.DataFrame:
         edge_flag = 0
         if np.isfinite(open_share) and np.isfinite(close_share):
             edge_share = float(max(open_share, close_share))
-            edge_bias = float(open_share - close_share)  # + => open-dominant, - => close-dominant
+            edge_bias = float(open_share - close_share)
             edge_flag = int(edge_share >= EDGE_SHARE_FLAG)
 
         rows.append(
@@ -188,11 +174,6 @@ def compute_orb_features(intra: pd.DataFrame) -> pd.DataFrame:
 
 
 def classify_day_type(row: pd.Series) -> str:
-    """
-    Simple day-type classifier:
-      - trend: large body relative to range and close near an extreme
-      - range: otherwise
-    """
     o, h, l, c = row["open"], row["high"], row["low"], row["close"]
     rng = h - l
     if not np.isfinite(rng) or rng <= 0:
@@ -200,7 +181,6 @@ def classify_day_type(row: pd.Series) -> str:
     body = abs(c - o)
     body_share = body / rng
 
-    # Close location in range (0..1)
     close_loc = (c - l) / rng
     near_extreme = (close_loc >= 0.80) or (close_loc <= 0.20)
 
@@ -212,29 +192,23 @@ def classify_day_type(row: pd.Series) -> str:
 def build_features(df_daily: pd.DataFrame, con: Optional[sqlite3.Connection] = None) -> pd.DataFrame:
     out = df_daily.copy()
 
-    # Prev close + returns
     out["prev_close"] = out["close"].shift(1)
     out["ret_1d"] = safe_div(out["close"], out["prev_close"]) - 1.0
 
-    # Gap (interday)
     out["gap_open_pct"] = safe_div(out["open"], out["prev_close"]) - 1.0
     out["gap_abs_pct"] = out["gap_open_pct"].abs()
 
-    # Range (intraday)
     out["intraday_range"] = out["high"] - out["low"]
     out["intraday_range_pct"] = safe_div(out["intraday_range"], out["close"])
 
-    # True range
     hl = out["high"] - out["low"]
     hc = (out["high"] - out["prev_close"]).abs()
     lc = (out["low"] - out["prev_close"]).abs()
     out["true_range"] = np.maximum(hl, np.maximum(hc, lc))
     out["true_range_pct"] = safe_div(out["true_range"], out["close"])
 
-    # Volatility
     out["vol20"] = out["ret_1d"].rolling(VOL_WIN, min_periods=max(5, VOL_WIN // 2)).std()
 
-    # Cluster score (simple: rolling sum of trigger days)
     out["trigger_gap_15"] = (out["gap_abs_pct"] >= TRIGGER_PCT).astype(int)
     out["trigger_range_15"] = (out["intraday_range_pct"].abs() >= TRIGGER_PCT).astype(int)
     out["trigger_tr_15"] = (out["true_range_pct"].abs() >= TRIGGER_PCT).astype(int)
@@ -244,25 +218,19 @@ def build_features(df_daily: pd.DataFrame, con: Optional[sqlite3.Connection] = N
     ).astype(int)
 
     out["trigger_cluster"] = out["trigger_any_15"].rolling(CLUSTER_WIN, min_periods=1).sum()
-
-    # A continuous "cluster_score" (scaled)
     out["cluster_score"] = safe_div(out["trigger_cluster"], pd.Series([CLUSTER_WIN] * len(out)))
 
-    # Compression percentile rank (lower TR pct => more compressed)
     out["tr_pct_rank"] = out["true_range_pct"].rolling(
         LOOKBACK_COMPRESSION, min_periods=max(5, LOOKBACK_COMPRESSION // 2)
     ).apply(pct_rank_last, raw=False)
     out["compression_flag"] = (out["tr_pct_rank"] <= COMP_PCTL).astype(int)
 
-    # Label: next day expansion (uses future data)
     out["next_tr_pct"] = out["true_range_pct"].shift(-1)
     out["next_tr_pct_rank"] = out["next_tr_pct"].rolling(
         LOOKBACK_EXPANSION, min_periods=max(5, LOOKBACK_EXPANSION // 2)
     ).apply(pct_rank_last, raw=False)
     out["label_next_day_expansion"] = (out["next_tr_pct_rank"] >= EXP_PCTL).astype(int)
 
-    # Permission strength (simple + deterministic)
-    # 0..3-ish: cluster + triggers + compression
     out["permission_strength"] = (
         (out["cluster_score"].fillna(0) >= 0.30).astype(int)
         + out["trigger_any_15"].fillna(0).astype(int)
@@ -281,77 +249,21 @@ def build_features(df_daily: pd.DataFrame, con: Optional[sqlite3.Connection] = N
 
     out["permission_reason"] = out.apply(reason, axis=1)
     out["trade_permission"] = (out["permission_strength"] >= 2).astype(int)
-
-    # Day type
     out["day_type"] = out.apply(classify_day_type, axis=1)
 
-    feats = out[
-        [
-            "date",
-            "symbol",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume",
-            "prev_close",
-            "ret_1d",
-            "gap_open_pct",
-            "gap_abs_pct",
-            "intraday_range_pct",
-            "true_range_pct",
-            "vol20",
-            "cluster_score",
-            "trigger_gap_15",
-            "trigger_range_15",
-            "trigger_tr_15",
-            "trigger_any_15",
-            "trigger_cluster",
-            "compression_flag",
-            "label_next_day_expansion",
-            "permission_strength",
-            "permission_reason",
-            "trade_permission",
-            "day_type",
-        ]
-    ].copy()
-
-    # Optional ORB (15m)
-    if con is not None:
-        intra = read_intraday_15m(con, SYMBOL)
-        if intra is not None and not intra.empty:
-            orb = compute_orb_features(intra)
-            if not orb.empty:
-                feats = feats.merge(orb, on="date", how="left")
-            else:
-                feats["open_orb_range"] = np.nan
-                feats["close_orb_range"] = np.nan
-                feats["open_orb_share"] = np.nan
-                feats["close_orb_share"] = np.nan
-                feats["edge_orb_share"] = np.nan
-                feats["edge_orb_bias"] = np.nan
-                feats["edge_orb_flag"] = 0
-        else:
-            feats["open_orb_range"] = np.nan
-            feats["close_orb_range"] = np.nan
-            feats["open_orb_share"] = np.nan
-            feats["close_orb_share"] = np.nan
-            feats["edge_orb_share"] = np.nan
-            feats["edge_orb_bias"] = np.nan
-            feats["edge_orb_flag"] = 0
-    else:
-        feats["open_orb_range"] = np.nan
-        feats["close_orb_range"] = np.nan
-        feats["open_orb_share"] = np.nan
-        feats["close_orb_share"] = np.nan
-        feats["edge_orb_share"] = np.nan
-        feats["edge_orb_bias"] = np.nan
-        feats["edge_orb_flag"] = 0
+    feats = out[[
+        "date", "symbol", "open", "high", "low", "close", "volume",
+        "prev_close", "ret_1d", "gap_open_pct", "gap_abs_pct",
+        "intraday_range_pct", "true_range_pct", "vol20", "cluster_score",
+        "trigger_gap_15", "trigger_range_15", "trigger_tr_15",
+        "trigger_any_15", "trigger_cluster", "compression_flag",
+        "label_next_day_expansion", "permission_strength",
+        "permission_reason", "trade_permission", "day_type"
+    ]].copy()
 
     feats["feature_ts"] = datetime.now(timezone.utc).isoformat()
     feats["feature_version"] = "v1_clean_daily_features_orb_trend"
 
-    # Drop the first row where prev_close is NaN
     feats = feats.dropna(subset=["prev_close"]).reset_index(drop=True)
     return feats
 
@@ -367,7 +279,6 @@ def ensure_features_table(con: sqlite3.Connection) -> None:
             low REAL,
             close REAL,
             volume REAL,
-
             prev_close REAL,
             ret_1d REAL,
             gap_open_pct REAL,
@@ -375,35 +286,20 @@ def ensure_features_table(con: sqlite3.Connection) -> None:
             intraday_range_pct REAL,
             true_range_pct REAL,
             vol20 REAL,
-
             cluster_score REAL,
-
             trigger_gap_15 INTEGER,
             trigger_range_15 INTEGER,
             trigger_tr_15 INTEGER,
             trigger_any_15 INTEGER,
             trigger_cluster REAL,
-
             compression_flag INTEGER,
             label_next_day_expansion INTEGER,
-
             permission_strength INTEGER,
             permission_reason TEXT,
             trade_permission INTEGER,
-
             day_type TEXT,
-
-            open_orb_range REAL,
-            close_orb_range REAL,
-            open_orb_share REAL,
-            close_orb_share REAL,
-            edge_orb_share REAL,
-            edge_orb_bias REAL,
-            edge_orb_flag INTEGER,
-
             feature_ts TEXT,
             feature_version TEXT,
-
             PRIMARY KEY (symbol, date)
         )
         """
@@ -435,28 +331,36 @@ def upsert_features(con: sqlite3.Connection, feats: pd.DataFrame) -> None:
 
 def write_csv(feats: pd.DataFrame) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    feats.to_csv(OUT_DIR / "features_daily.csv", index=False)
+    feats.to_csv(OUT_DIR / f"{SYMBOL.lower()}_features_daily.csv", index=False)
 
 
 def write_latest_features(feats: pd.DataFrame) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     if feats.empty:
         return
-    feats.tail(1).to_csv(OUT_DIR / "latest_features_daily.csv", index=False)
+    feats.tail(1).to_csv(OUT_DIR / f"latest_{SYMBOL.lower()}_features_daily.csv", index=False)
 
 
 def main() -> None:
     con = connect(DB_PATH)
-    con.execute("DROP TABLE IF EXISTS features_daily")
-    con.commit()
     try:
         ensure_features_table(con)
+
+        # Multi-asset safe cleanup
+        con.execute(
+            "DELETE FROM features_daily WHERE symbol = ?",
+            (SYMBOL,)
+        )
+        con.commit()
+
         truth = read_daily_truth(con, SYMBOL)
         feats = build_features(truth, con=con)
+
         upsert_features(con, feats)
         write_csv(feats)
         write_latest_features(feats)
-        print("OK: features_daily built + upserted + CSVs written.")
+
+        print(f"OK: {SYMBOL} features_daily built + upserted + CSVs written.")
     finally:
         con.close()
 
