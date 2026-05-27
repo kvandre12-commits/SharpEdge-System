@@ -1,0 +1,130 @@
+name: Ingest WMT data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "35 22 * * 1-5"
+
+jobs:
+  ingest_wmt:
+    runs-on: ubuntu-latest
+
+    env:
+      SPY_DB_PATH: data/spy_truth.db
+
+      SYMBOL: WMT
+
+      INTRADAY_TIMEFRAME: "15Min"
+      INTRADAY_BARS_TABLE: wmt_bars_15m
+
+      ALPACA_API_KEY: ${{ secrets.ALPACA_API_KEY }}
+      ALPACA_API_SECRET: ${{ secrets.ALPACA_API_SECRET }}
+
+      FINRA_CLIENT_ID: ${{ secrets.FINRA_CLIENT_ID }}
+      FINRA_CLIENT_SECRET: ${{ secrets.FINRA_CLIENT_SECRET }}
+
+      FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ------------------------------------
+      # OPTIONS POSITIONING
+      # ------------------------------------
+
+      - name: Ingest WMT options chain snapshots
+        run: |
+          python scripts/ingest_alpaca_options_chain_snapshots.py
+
+      - name: Aggregate options positioning metrics
+        run: |
+          DTE_MIN=0 DTE_MAX=3 python scripts/aggregate_options_positioning_metrics.py
+
+      # ------------------------------------
+      # DAILY BARS
+      # ------------------------------------
+
+      - name: Ingest WMT daily bars
+        run: |
+          python scripts/ingest_spy_daily.py
+
+      # ------------------------------------
+      # INTRADAY
+      # ------------------------------------
+
+      - name: Ingest WMT intraday 15m bars
+        run: |
+          python scripts/ingest_spy_intraday_alpaca.py
+
+      # ------------------------------------
+      # FEATURES
+      # ------------------------------------
+
+      - name: Build WMT features
+        run: |
+          python scripts/build_features_spy_daily.py
+
+      - name: Build liquidity regime
+        run: |
+          python scripts/build_liquidity_regime_daily.py
+
+      - name: Build open resolution regime
+        run: |
+          python scripts/build_open_resolution_regime_intraday.py
+
+      # ------------------------------------
+      # OVERLAYS
+      # ------------------------------------
+
+      - name: FINRA darkpool overlay
+        run: |
+          python scripts/ingest_finra_darkpool_overlay.py
+
+      - name: FRED macro overlays
+        run: |
+          python scripts/ingest_fred_overlays.py
+
+      # ------------------------------------
+      # REGIMES + SIGNALS
+      # ------------------------------------
+
+      - name: Build WMT regime
+        run: |
+          python scripts/build_regime_spy_daily.py
+
+      - name: Build signal strength
+        run: |
+          python scripts/build_signal_strength_daily.py
+
+      # ------------------------------------
+      # PLAYBOOK
+      # ------------------------------------
+
+      - name: Run playbook
+        run: |
+          python scripts/run_playbook.py
+
+      # ------------------------------------
+      # COMMIT
+      # ------------------------------------
+
+      - name: Commit updated DB + outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add data/ outputs/ sql/ scripts/ || true
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "WMT pipeline update"
+          git push
