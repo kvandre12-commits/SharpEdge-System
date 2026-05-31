@@ -1,6 +1,6 @@
 # SharpEdge 2.0 Auction Expectancy Report
 
-- Generated UTC: 2026-05-29T23:50:31+00:00
+- Generated UTC: 2026-05-31T12:26:25+00:00
 - Symbol: SPY
 - Minimum supported sample: 20
 
@@ -11,7 +11,7 @@
 - Macro state: low
 - Dark pool state: low
 - Open resolution: NO_SETUP confidence=10.00
-- Setup direction: NA
+- Setup direction: NONE
 - Dealer hint: DEFENSIVE
 - Spot: 742.72 | ATM: 743.00
 - Gamma / OI wall: 500.00
