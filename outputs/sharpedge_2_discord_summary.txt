@@ -1,6 +1,6 @@
 SharpEdge 2.0 | SPY 2026-05-20
 State: mrll0 | NO_SETUP | quiet
-Rec: NORMAL — Supported edge, but still requires execution discipline.
-Fill: 78.6% | TTF: 101.59m | MAE: 0.5%
-Squeeze: LOW | Continuation: HIGH
-Sample: n=28/min=20
+Rec: DO_NOTHING — No positive supported edge.
+Fill: 0.0% | TTF: NAm | MAE: NA
+Squeeze: LOW | Continuation: LOW
+Sample: n=27/min=20
