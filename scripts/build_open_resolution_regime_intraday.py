@@ -58,12 +58,23 @@ def ensure_table(con: sqlite3.Connection) -> None:
       accepted_breakdown_open INTEGER,
       open_regime_label TEXT,
       regime_confidence REAL,
+      setup_dir TEXT,
+      key_source TEXT,
       notes TEXT,
 
       PRIMARY KEY (underlying, session_date)
     )
     """)
     con.execute("CREATE INDEX IF NOT EXISTS idx_open_resolution_regime_date ON open_resolution_regime(underlying, session_date)")
+
+    # Forward-compatible schema repair for existing DBs created before these
+    # attribution fields were persisted. The classifier already computes them;
+    # this keeps the table from silently dropping them downstream.
+    cols = {r[1] for r in con.execute("PRAGMA table_info(open_resolution_regime)")}
+    for col, typ in {"setup_dir": "TEXT", "key_source": "TEXT"}.items():
+        if col not in cols:
+            con.execute(f"ALTER TABLE open_resolution_regime ADD COLUMN {col} {typ}")
+
     con.commit()
 
 def parse_ts_utc(ts_text: str) -> datetime:
@@ -305,13 +316,13 @@ def upsert(con: sqlite3.Connection, row: Dict[str, Any]) -> None:
           pm_open, pm_high, pm_low, pm_close, pm_return, pm_range, pm_range_ratio, pm_initiative_flush,
           break_level, flush_low,
           rth_first_ts, rth_first_open, rth_first_high, rth_first_low, rth_first_close,
-          failed_breakdown_open, accepted_breakdown_open, open_regime_label, regime_confidence, notes
+          failed_breakdown_open, accepted_breakdown_open, open_regime_label, regime_confidence, setup_dir, key_source, notes
         ) VALUES (
           :snapshot_ts, :session_date, :underlying,
           :pm_open, :pm_high, :pm_low, :pm_close, :pm_return, :pm_range, :pm_range_ratio, :pm_initiative_flush,
           :break_level, :flush_low,
           :rth_first_ts, :rth_first_open, :rth_first_high, :rth_first_low, :rth_first_close,
-          :failed_breakdown_open, :accepted_breakdown_open, :open_regime_label, :regime_confidence, :notes
+          :failed_breakdown_open, :accepted_breakdown_open, :open_regime_label, :regime_confidence, :setup_dir, :key_source, :notes
         )
         ON CONFLICT(underlying, session_date) DO UPDATE SET
           snapshot_ts=excluded.snapshot_ts,
@@ -334,6 +345,8 @@ def upsert(con: sqlite3.Connection, row: Dict[str, Any]) -> None:
           accepted_breakdown_open=excluded.accepted_breakdown_open,
           open_regime_label=excluded.open_regime_label,
           regime_confidence=excluded.regime_confidence,
+          setup_dir=excluded.setup_dir,
+          key_source=excluded.key_source,
           notes=excluded.notes
         """,
         row,
@@ -389,7 +402,8 @@ def main():
                 "failed_breakdown_open": cls["failed_breakdown_open"],
                 "accepted_breakdown_open": cls["accepted_breakdown_open"],
                 "open_regime_label": cls["open_regime_label"],
-                "regime_confidence": cls["regime_confidence"],"setup_dir": cls.get("setup_dir"),
+                "regime_confidence": cls["regime_confidence"],
+                "setup_dir": cls.get("setup_dir"),
                 "key_source": cls.get("key_source"),
                 "notes": cls["notes"],
             }
