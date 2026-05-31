@@ -29,9 +29,20 @@ GROUP_COLS = [
     "event_type",
     "gap_direction",
     "fill_path_type",
+
+    "trade_gate",
+    "pressure_state",
+
     "vol_state",
+    "macro_state",
+    "dp_state",
+
     "open_regime_label",
+    "setup_dir",
+    "key_source",
 ]
+
+GROUP_COLS = [c for c in GROUP_COLS if c in df.columns]
 
 
 def connect():
