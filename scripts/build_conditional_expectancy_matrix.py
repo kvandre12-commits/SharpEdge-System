@@ -42,8 +42,6 @@ GROUP_COLS = [
     "key_source",
 ]
 
-GROUP_COLS = [c for c in GROUP_COLS if c in df.columns]
-
 
 def connect():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
@@ -111,7 +109,11 @@ def load_events(con):
         raise RuntimeError(f"Missing table: {EVENTS_TABLE}")
 
     df = pd.read_sql_query(f"SELECT * FROM {EVENTS_TABLE}", con)
+active_group_cols = [c for c in GROUP_COLS if c in df.columns]
 
+print("DEBUG active expectancy cols:")
+for c in active_group_cols:
+    print("  ", c)
     print(f"DEBUG total auction events: {len(df)}")
 
     if df.empty:
@@ -128,7 +130,7 @@ def load_events(con):
     if missing:
         raise RuntimeError(f"Missing required columns: {sorted(missing)}")
 
-    for c in GROUP_COLS:
+    for c in active_group_cols:
         if c not in df.columns:
             df[c] = "UNKNOWN"
         df[c] = df[c].fillna("UNKNOWN").astype(str)
@@ -221,7 +223,12 @@ def tradability_score(row):
 def build_matrix(df):
     rows = []
 
-    grouped = df.groupby(GROUP_COLS, dropna=False)
+    active_group_cols = [c for c in GROUP_COLS if c in df.columns]
+
+grouped = df.groupby(
+    active_group_cols,
+    dropna=False
+)
 
     print(f"DEBUG group count: {len(grouped)}")
 
@@ -235,7 +242,7 @@ def build_matrix(df):
         if len(losses) > 0 and losses.mean() > 0:
             payoff_ratio = float(wins.mean() / losses.mean()) if len(wins) else 0.0
 
-        row = dict(zip(GROUP_COLS, keys))
+        row = dict(zip(active_group_cols, keys))
         row.update({
             "n": int(len(g)),
             "fill_rate": float(g["_fill"].mean()),
