@@ -3,4 +3,4 @@ State: mrll0 | NO_SETUP | quiet
 Rec: DO_NOTHING — No positive supported edge.
 Fill: 0.0% | TTF: NAm | MAE: NA
 Squeeze: LOW | Continuation: LOW
-Sample: n=22/min=20
+Sample: n=27/min=20

@@ -1,6 +1,6 @@
 # SharpEdge 2.0 Auction Expectancy Report
 
-- Generated UTC: 2026-06-01T03:15:25+00:00
+- Generated UTC: 2026-06-01T03:23:16+00:00
 - Symbol: SPY
 - Minimum supported sample: 20
 
@@ -27,7 +27,7 @@
 - Continuation risk: LOW
 - Best matching playbook condition: UNCLASSIFIED
 
-- Sample support: SUPPORTED / n=22
+- Sample support: SUPPORTED / n=27
 - Expected fill probability: 0.0%
 - Direct fill rate: 0.0%
 - Failed fill rate: 0.0%
@@ -42,16 +42,12 @@
 - Tradability score: 0.00
 
 ## Most Similar Supported Historical Paths
-1. match=4 | n=22 | event=UNCLASSIFIED | path=UNKNOWN | regime=NA | open=NO_SETUP | fill=0.0% | expectancy=0.0000 | score=0.00
-2. match=3 | n=42 | event=UNCLASSIFIED | path=UNKNOWN | regime=NA | open=NO_SETUP | fill=0.0% | expectancy=0.0000 | score=0.00
-3. match=3 | n=23 | event=UNCLASSIFIED | path=UNKNOWN | regime=NA | open=NO_SETUP | fill=0.0% | expectancy=0.0000 | score=0.00
-4. match=2 | n=33 | event=UNCLASSIFIED | path=UNKNOWN | regime=NA | open=NO_SETUP | fill=0.0% | expectancy=0.0000 | score=0.00
-5. match=2 | n=27 | event=UNCLASSIFIED | path=UNKNOWN | regime=NA | open=UNKNOWN | fill=0.0% | expectancy=0.0000 | score=0.00
-6. match=1 | n=31 | event=UNCLASSIFIED | path=UNKNOWN | regime=NA | open=UNKNOWN | fill=0.0% | expectancy=0.0000 | score=0.00
+1. match=2 | n=27 | event=UNCLASSIFIED | path=UNCLASSIFIED | regime=NA | open=UNKNOWN | fill=0.0% | expectancy=0.0000 | score=0.00
+2. match=1 | n=31 | event=UNCLASSIFIED | path=UNCLASSIFIED | regime=NA | open=UNKNOWN | fill=0.0% | expectancy=0.0000 | score=0.00
 
 ## Low-Sample Rows To Watch But Not Trust
-1. LOW_SAMPLE n=13 | event=UNCLASSIFIED | path=UNKNOWN | fill=0.0% | expectancy=0.0000 | score=0.00
-2. LOW_SAMPLE n=9 | event=CLEAN_BREAKOUT | path=UNKNOWN | fill=0.0% | expectancy=0.0000 | score=0.00
-3. LOW_SAMPLE n=5 | event=CLEAN_BREAKDOWN | path=UNKNOWN | fill=0.0% | expectancy=0.0000 | score=0.00
-4. LOW_SAMPLE n=4 | event=CLEAN_BREAKDOWN | path=UNKNOWN | fill=0.0% | expectancy=0.0000 | score=0.00
-5. LOW_SAMPLE n=1 | event=FAILED_BREAKDOWN | path=UNKNOWN | fill=0.0% | expectancy=0.0000 | score=0.00
+1. LOW_SAMPLE n=4 | event=CLEAN_BREAKDOWN | path=SQUEEZE_THEN_FILL | fill=100.0% | expectancy=10.0807 | score=428.20
+2. LOW_SAMPLE n=4 | event=UNCLASSIFIED | path=DIRECT_FILL | fill=100.0% | expectancy=4.5644 | score=207.56
+3. LOW_SAMPLE n=1 | event=FAILED_BREAKDOWN | path=SQUEEZE_THEN_FILL | fill=100.0% | expectancy=3.3980 | score=160.86
+4. LOW_SAMPLE n=2 | event=UNCLASSIFIED | path=DIRECT_FILL | fill=100.0% | expectancy=2.0823 | score=108.27
+5. LOW_SAMPLE n=6 | event=UNCLASSIFIED | path=SQUEEZE_THEN_FILL | fill=100.0% | expectancy=1.8342 | score=98.32
