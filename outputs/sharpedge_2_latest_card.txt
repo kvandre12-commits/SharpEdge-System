@@ -9,4 +9,4 @@ MAE before fill: NA
 Squeeze Risk: LOW
 Continuation Risk: LOW
 Playbook: UNCLASSIFIED
-Sample: n=27 / min=20
+Sample: n=22 / min=20
