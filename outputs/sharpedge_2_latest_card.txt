@@ -1,6 +1,6 @@
 SHARPEDGE 2.0 LATEST CARD
 Date: 2026-05-20 | Symbol: SPY
-State: mrll0 | NO_SETUP | quiet
+State: mrll0 | UNRESOLVED_OPEN | quiet
 Recommendation: DO_NOTHING
 Reason: No positive supported edge.
 Fill Prob: 0.0%
