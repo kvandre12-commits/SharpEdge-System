@@ -1,6 +1,6 @@
 # SharpEdge 2.0 Auction Expectancy Report
 
-- Generated UTC: 2026-06-01T23:52:29+00:00
+- Generated UTC: 2026-06-03T00:12:02+00:00
 - Symbol: SPY
 - Minimum supported sample: 20
 
@@ -10,8 +10,8 @@
 - Vol state: mid / trend: rising
 - Macro state: low
 - Dark pool state: low
-- Open resolution: UNRESOLVED_OPEN confidence=35.00
-- Setup direction: DOWN
+- Open resolution: NO_SETUP confidence=10.00
+- Setup direction: NONE
 - Dealer hint: DEFENSIVE
 - Spot: 742.72 | ATM: 743.00
 - Gamma / OI wall: 500.00
@@ -46,8 +46,8 @@
 2. match=1 | n=31 | event=UNCLASSIFIED | path=UNCLASSIFIED | regime=NA | open=UNKNOWN | fill=0.0% | expectancy=0.0000 | score=0.00
 
 ## Low-Sample Rows To Watch But Not Trust
-1. LOW_SAMPLE n=1 | event=CLEAN_BREAKDOWN | path=UNCLASSIFIED | fill=100.0% | expectancy=63.6415 | score=2570.66
-2. LOW_SAMPLE n=5 | event=UNCLASSIFIED | path=DIRECT_FILL | fill=100.0% | expectancy=17.0107 | score=705.42
-3. LOW_SAMPLE n=1 | event=UNCLASSIFIED | path=DIRECT_FILL | fill=100.0% | expectancy=4.1355 | score=190.40
-4. LOW_SAMPLE n=4 | event=UNCLASSIFIED | path=ROTATIONAL_BALANCE_THEN_FILL | fill=100.0% | expectancy=10.3915 | score=440.65
-5. LOW_SAMPLE n=4 | event=CLEAN_BREAKDOWN | path=SQUEEZE_THEN_FILL | fill=100.0% | expectancy=10.0807 | score=428.20
+1. LOW_SAMPLE n=4 | event=CLEAN_BREAKDOWN | path=SQUEEZE_THEN_FILL | fill=100.0% | expectancy=10.0807 | score=428.20
+2. LOW_SAMPLE n=4 | event=UNCLASSIFIED | path=DIRECT_FILL | fill=100.0% | expectancy=4.5644 | score=207.56
+3. LOW_SAMPLE n=1 | event=FAILED_BREAKDOWN | path=SQUEEZE_THEN_FILL | fill=100.0% | expectancy=3.3980 | score=160.86
+4. LOW_SAMPLE n=2 | event=UNCLASSIFIED | path=DIRECT_FILL | fill=100.0% | expectancy=2.0823 | score=108.27
+5. LOW_SAMPLE n=6 | event=UNCLASSIFIED | path=SQUEEZE_THEN_FILL | fill=100.0% | expectancy=1.8342 | score=98.32

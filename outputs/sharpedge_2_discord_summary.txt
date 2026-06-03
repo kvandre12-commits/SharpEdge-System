@@ -1,5 +1,5 @@
 SharpEdge 2.0 | SPY 2026-05-20
-State: mrll0 | UNRESOLVED_OPEN | quiet
+State: mrll0 | NO_SETUP | quiet
 Rec: DO_NOTHING — No positive supported edge.
 Fill: 0.0% | TTF: NAm | MAE: NA
 Squeeze: LOW | Continuation: LOW
