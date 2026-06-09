@@ -26754,4 +26754,4 @@ date,symbol,overlay_type,overlay_strength,raw_value,z_score,notes
 2026-06-08,SPY,vix,0.0,18.92,0.23922623123076153,VIX spot level (VIXCLS)
 2026-06-08,SPY,vix3m,0.0,20.79,0.1092726322053565,3M VIX level (VXVCLS)
 2026-06-08,SPY,vix_term,0.0,0.9100529100529102,0.5586897575757659,Term structure proxy (VIXCLS / VXVCLS)
-2026-06-08,SPY,rates10y,0.0,4.55,0.9508768903253227,10Y rate impulse (DGS10 5D chg z-score)
+2026-06-08,SPY,rates10y,0.0477919949826903,4.56,1.0716879924740355,10Y rate impulse (DGS10 5D chg z-score)
