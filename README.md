@@ -53,6 +53,19 @@ Optional stricter style audit, currently advisory while old debt is cleaned up:
 python scripts/utils/lint_python.py scripts --strict-style
 ```
 
+## FINRA Runtime Control
+
+The FINRA darkpool overlay uses persisted `ats_weekly` state. Routine runs rebuild
+daily overlays from SQLite and skip FINRA network calls while the cache is fresh.
+
+Useful overrides:
+
+```bash
+FINRA_FORCE_REFRESH=1 python scripts/ingest_finra_darkpool_overlay.py
+FINRA_CACHE_TTL_HOURS=24 python scripts/ingest_finra_darkpool_overlay.py
+FINRA_REFRESH_LOOKBACK_WEEKS=8 python scripts/ingest_finra_darkpool_overlay.py
+```
+
 ## Results Summary
 
 | Metric | Value |
