@@ -66,6 +66,26 @@ FINRA_CACHE_TTL_HOURS=24 python scripts/ingest_finra_darkpool_overlay.py
 FINRA_REFRESH_LOOKBACK_WEEKS=8 python scripts/ingest_finra_darkpool_overlay.py
 ```
 
+## Layer 1 Cache + State Controls
+
+Layer 1 ingestion emits state breadcrumbs under `outputs/health/*_state.json`.
+Routine runs now avoid unnecessary network or recompute work when persisted state is
+fresh.
+
+Useful overrides:
+
+```bash
+DAILY_FORCE_REFRESH=1 python scripts/ingest_spy_daily.py
+DAILY_CACHE_TTL_HOURS=6 python scripts/ingest_spy_daily.py
+DAILY_INCREMENTAL_PERIOD=30d python scripts/ingest_spy_daily.py
+
+FRED_FORCE_REFRESH=1 python scripts/ingest_fred_overlays.py
+FRED_MAX_LAG_DAYS=2 python scripts/ingest_fred_overlays.py
+
+OPTIONS_POSITIONING_FORCE_REBUILD=1 DTE_MIN=0 DTE_MAX=1 \
+  python scripts/aggregate_options_positioning_metrics.py
+```
+
 ## Results Summary
 
 | Metric | Value |

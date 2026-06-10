@@ -3,10 +3,17 @@ import argparse
 import os
 import sqlite3
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from dateutil import tz
 
 import pandas as pd
 import requests
+
+try:
+    from scripts.utils.pipeline_state import write_state
+except ModuleNotFoundError:  # pragma: no cover - path execution fallback
+    from utils.pipeline_state import write_state
 
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 SYMBOL = os.getenv("SYMBOL", "SPY")
@@ -19,7 +26,12 @@ ALPACA_SECRET = os.getenv("ALPACA_API_SECRET")
 # Alpaca data endpoint (v2). For most accounts this works:
 ALPACA_DATA_BASE = os.getenv("ALPACA_DATA_BASE", "https://data.alpaca.markets")
 
-NY = ZoneInfo("America/New_York")
+try:
+    NY = ZoneInfo("America/New_York")
+except ZoneInfoNotFoundError:  # Termux may not ship system tzdata. Tiny cursed treasure.
+    NY = tz.gettz("America/New_York")
+    if NY is None:
+        raise
 
 
 def ensure_table(con: sqlite3.Connection) -> None:
@@ -124,6 +136,23 @@ def upsert(con: sqlite3.Connection, df: pd.DataFrame) -> int:
     return len(rows)
 
 
+def intraday_state(con: sqlite3.Connection) -> dict:
+    row = con.execute(
+        f"""
+        SELECT COUNT(*), MIN(ts), MAX(ts), COUNT(DISTINCT session_date)
+        FROM {BARS_TABLE}
+        WHERE symbol = ?
+        """,
+        (SYMBOL,),
+    ).fetchone()
+    return {
+        "rows": row[0] or 0,
+        "earliest_ts": row[1],
+        "latest_ts": row[2],
+        "session_count": row[3] or 0,
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default=os.getenv("MODE", "incremental"), choices=["incremental", "backfill"])
@@ -135,6 +164,7 @@ def main():
     try:
         ensure_table(con)
 
+        before = intraday_state(con)
         if args.mode == "incremental":
             last = last_ts(con)
             start = None
@@ -149,7 +179,23 @@ def main():
             df = fetch_bars(start_iso=args.start, end_iso=args.end)
 
         n = upsert(con, df)
-        print(f"OK: wrote {n} bars into {BARS_TABLE} (timeframe={TIMEFRAME})")
+        after = intraday_state(con)
+        write_state(
+            "intraday_bars",
+            {
+                "symbol": SYMBOL,
+                "table": BARS_TABLE,
+                "timeframe": TIMEFRAME,
+                "mode": args.mode,
+                "start": start if args.mode == "incremental" else args.start,
+                "end": args.end,
+                "fetched_rows": len(df),
+                "upserted_rows": n,
+                "before": before,
+                "after": after,
+            },
+        )
+        print(f"OK: wrote {n} bars into {BARS_TABLE} (timeframe={TIMEFRAME}) latest={after.get('latest_ts')}")
     finally:
         con.close()
 

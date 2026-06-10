@@ -12,14 +12,26 @@ Outputs:
 import os
 import sqlite3
 from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
 from typing import Optional, Dict, Any, List
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from dateutil import tz
+
+try:
+    from scripts.utils.pipeline_state import write_state
+except ModuleNotFoundError:  # pragma: no cover - path execution fallback
+    from utils.pipeline_state import write_state
 
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 SYMBOL = os.getenv("SYMBOL", "SPY")
 BARS_TABLE = os.getenv("INTRADAY_BARS_TABLE", "spy_bars_15m")
 
-NY = ZoneInfo("America/New_York")
+try:
+    NY = ZoneInfo("America/New_York")
+except ZoneInfoNotFoundError:  # Termux may not ship system tzdata. Because of course.
+    NY = tz.gettz("America/New_York")
+    if NY is None:
+        raise
 
 # Premarket "initiative flush" knobs (tune later)
 PM_RETURN_THRESH = float(os.getenv("PM_RETURN_THRESH", "-0.003"))      # -0.30%
@@ -352,17 +364,40 @@ def upsert(con: sqlite3.Connection, row: Dict[str, Any]) -> None:
         row,
     )
 
+def output_state(con: sqlite3.Connection) -> dict:
+    row = con.execute(
+        """
+        SELECT COUNT(*), MIN(session_date), MAX(session_date), MAX(snapshot_ts)
+        FROM open_resolution_regime
+        WHERE underlying=?
+        """,
+        (SYMBOL,),
+    ).fetchone()
+    return {
+        "rows": row[0] or 0,
+        "earliest_session_date": row[1],
+        "latest_session_date": row[2],
+        "latest_snapshot_ts": row[3],
+    }
+
+
 def main():
     con = sqlite3.connect(DB_PATH)
     try:
         ensure_table(con)
 
+        before = output_state(con)
         sessions = fetch_sessions(con)
         if not sessions:
+            write_state(
+                "open_resolution",
+                {"symbol": SYMBOL, "bars_table": BARS_TABLE, "input_sessions": 0, "upserted_rows": 0, "before": before, "after": before},
+            )
             print(f"No sessions found in {BARS_TABLE}.")
             return
 
         snapshot_ts = iso_utc_now()
+        wrote = 0
 
         for session_date in sessions:
             bars = fetch_bars_for_session(con, session_date)
@@ -409,9 +444,22 @@ def main():
             }
 
             upsert(con, row)
+            wrote += 1
 
         con.commit()
-        print("OK: open_resolution_regime updated.")
+        after = output_state(con)
+        write_state(
+            "open_resolution",
+            {
+                "symbol": SYMBOL,
+                "bars_table": BARS_TABLE,
+                "input_sessions": len(sessions),
+                "upserted_rows": wrote,
+                "before": before,
+                "after": after,
+            },
+        )
+        print(f"OK: open_resolution_regime updated. upserted={wrote} latest={after.get('latest_session_date')}")
     finally:
         con.close()
 

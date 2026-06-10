@@ -8,7 +8,7 @@
       "status": "PASS"
     },
     {
-      "evidence": "52 Python files parse and compile successfully.",
+      "evidence": "53 Python files parse and compile successfully.",
       "name": "Syntax and importability",
       "next_step": "Keep compile/lint gate required before data pipeline steps.",
       "score": 95,
@@ -29,28 +29,28 @@
       "status": "WARN"
     },
     {
-      "evidence": "Typed function coverage is 55.5% (261/470).",
+      "evidence": "Typed function coverage is 58.7% (288/491).",
       "name": "Type annotation coverage",
       "next_step": "Add annotations to new/refactored functions and critical decision contracts first.",
-      "score": 55,
+      "score": 58,
       "status": "WARN"
     },
     {
-      "evidence": "Module docstring coverage is 42.3%.",
+      "evidence": "Module docstring coverage is 47.2%.",
       "name": "Module documentation",
       "next_step": "Add short module docstrings to high-value scripts as they are touched.",
-      "score": 42,
+      "score": 47,
       "status": "WARN"
     },
     {
-      "evidence": "Main-guard coverage is 92.3%.",
+      "evidence": "Main-guard coverage is 90.6%.",
       "name": "Script entrypoint clarity",
       "next_step": "Prefer `main()` + `if __name__ == '__main__'` for runnable scripts.",
       "score": 90,
       "status": "PASS"
     },
     {
-      "evidence": "Detected 12 unittest methods across 3 test files; ci_wired=True.",
+      "evidence": "Detected 17 unittest methods across 4 test files; ci_wired=True.",
       "name": "Automated tests",
       "next_step": "Expand coverage to risk sizing, data freshness, and degraded-ingest cases.",
       "score": 75,
@@ -103,6 +103,28 @@
     },
     {
       "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 18,
+      "has_main_guard": true,
+      "has_module_docstring": true,
+      "lines": 474,
+      "path": "scripts/aggregate_options_positioning_metrics.py",
+      "risky_calls": [],
+      "typed_functions": 12
+    },
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 14,
+      "has_main_guard": true,
+      "has_module_docstring": true,
+      "lines": 467,
+      "path": "scripts/build_open_resolution_regime_intraday.py",
+      "risky_calls": [],
+      "typed_functions": 13
+    },
+    {
+      "bare_exception_handlers": 0,
       "broad_exception_handlers": 2,
       "functions": 25,
       "has_main_guard": true,
@@ -136,17 +158,6 @@
     },
     {
       "bare_exception_handlers": 0,
-      "broad_exception_handlers": 0,
-      "functions": 13,
-      "has_main_guard": true,
-      "has_module_docstring": true,
-      "lines": 419,
-      "path": "scripts/build_open_resolution_regime_intraday.py",
-      "risky_calls": [],
-      "typed_functions": 12
-    },
-    {
-      "bare_exception_handlers": 0,
       "broad_exception_handlers": 2,
       "functions": 17,
       "has_main_guard": true,
@@ -170,17 +181,6 @@
     {
       "bare_exception_handlers": 0,
       "broad_exception_handlers": 0,
-      "functions": 16,
-      "has_main_guard": true,
-      "has_module_docstring": true,
-      "lines": 396,
-      "path": "scripts/aggregate_options_positioning_metrics.py",
-      "risky_calls": [],
-      "typed_functions": 10
-    },
-    {
-      "bare_exception_handlers": 0,
-      "broad_exception_handlers": 0,
       "functions": 14,
       "has_main_guard": true,
       "has_module_docstring": true,
@@ -191,13 +191,13 @@
     }
   ],
   "overall_grade": "B",
-  "overall_score": 77.9,
+  "overall_score": 78.6,
   "summary": {
-    "python_files": 52,
+    "python_files": 53,
     "secret_literal_files": [],
-    "test_files": 3,
-    "test_methods": 12,
+    "test_files": 4,
+    "test_methods": 17,
     "tests_ci_wired": true,
-    "total_lines": 13133
+    "total_lines": 13512
   }
 }

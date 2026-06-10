@@ -15,6 +15,11 @@ import sqlite3
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
+try:
+    from scripts.utils.pipeline_state import write_state
+except ModuleNotFoundError:  # pragma: no cover - path execution fallback
+    from utils.pipeline_state import write_state
+
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 SYMBOL = os.getenv("SYMBOL", "SPY")
 
@@ -240,6 +245,23 @@ def upsert(con: sqlite3.Connection, event: Dict) -> None:
     )
 
 
+def output_state(con: sqlite3.Connection) -> dict:
+    row = con.execute(
+        """
+        SELECT COUNT(*), MIN(session_date), MAX(session_date), MAX(snapshot_ts)
+        FROM liquidity_regime_events
+        WHERE underlying=?
+        """,
+        (SYMBOL,),
+    ).fetchone()
+    return {
+        "rows": row[0] or 0,
+        "earliest_session_date": row[1],
+        "latest_session_date": row[2],
+        "latest_snapshot_ts": row[3],
+    }
+
+
 def main():
     # ---- parse args FIRST (outside try) ----
     ap = argparse.ArgumentParser()
@@ -252,6 +274,7 @@ def main():
     try:
         ensure_table(con)
 
+        before = output_state(con)
         days = fetch_bars(con, SYMBOL, bars_table)
         if len(days) < ATR_LOOKBACK + 1:
             print(f"Not enough bars for ATR{ATR_LOOKBACK}. Have {len(days)}. Still writing when possible.")
@@ -271,6 +294,7 @@ def main():
         atrs = rolling_sma(trs, ATR_LOOKBACK)
         snapshot_ts = iso_utc_now()
 
+        wrote = 0
         for i in range(1, len(days)):
             cur = days[i]
             prev = days[i - 1]
@@ -321,9 +345,22 @@ def main():
             }
 
             upsert(con, event)
+            wrote += 1
 
         con.commit()
-        print(f"OK: liquidity_regime_events updated from {bars_table}.")
+        after = output_state(con)
+        write_state(
+            "liquidity_regime",
+            {
+                "symbol": SYMBOL,
+                "bars_table": bars_table,
+                "input_rows": len(days),
+                "upserted_rows": wrote,
+                "before": before,
+                "after": after,
+            },
+        )
+        print(f"OK: liquidity_regime_events updated from {bars_table}. upserted={wrote} latest={after.get('latest_session_date')}")
     finally:
         con.close()
 

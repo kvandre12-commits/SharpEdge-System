@@ -13,6 +13,11 @@ import sqlite3
 from typing import Optional, List, Tuple, Dict
 import numpy as np
 
+try:
+    from scripts.utils.pipeline_state import write_state
+except ModuleNotFoundError:  # pragma: no cover - path execution fallback
+    from utils.pipeline_state import write_state
+
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 UNDERLYING = os.getenv("SYMBOL", "SPY")
 DTE_MIN = int(os.getenv("DTE_MIN", "0"))
@@ -20,6 +25,7 @@ DTE_MAX = int(os.getenv("DTE_MAX", "3"))
 ONLY_SNAPSHOT_TS = os.getenv("SNAPSHOT_TS", "").strip()
 COMPUTE_STATE = os.getenv("COMPUTE_DEALER_STATE", "1").strip() == "1"
 PIN_THRESH_PCT = float(os.getenv("PIN_THRESH_PCT", "0.0025"))
+FORCE_REBUILD = os.getenv("OPTIONS_POSITIONING_FORCE_REBUILD", "0").strip().lower() in {"1", "true", "yes", "y"}
 
 
 def connect() -> sqlite3.Connection:
@@ -353,43 +359,115 @@ def upsert(con: sqlite3.Connection, row):
     )
 
 
-def main():
-    con = connect()
-    ensure_schema(con)
-
-    snaps_q = "SELECT DISTINCT snapshot_ts FROM options_chain_snapshots"
-    params = ()
-    if ONLY_SNAPSHOT_TS:
-        snaps_q += " WHERE snapshot_ts=?"
-        params = (ONLY_SNAPSHOT_TS,)
-    snaps_q += " ORDER BY snapshot_ts"
-
-    snaps = [r[0] for r in con.execute(snaps_q, params).fetchall()]
-
-    wrote = 0
-    for s in snaps:
-        row = compute_metrics(con, s)
-        if row:
-            upsert(con, row)
-            wrote += 1
-
-    con.commit()
-
-    sample = con.execute("""
-        SELECT session_date, spot, max_total_oi_strike, gamma_flip_strike,
-               pcr_oi, pcr_vol, gamma_proxy, dealer_state_hint
+def positioning_state(con: sqlite3.Connection) -> dict:
+    source = con.execute(
+        """
+        SELECT COUNT(DISTINCT snapshot_ts), MIN(snapshot_ts), MAX(snapshot_ts)
+        FROM options_chain_snapshots
+        WHERE underlying=? AND dte BETWEEN ? AND ?
+        """,
+        (UNDERLYING, DTE_MIN, DTE_MAX),
+    ).fetchone()
+    metrics = con.execute(
+        """
+        SELECT COUNT(*), MIN(snapshot_ts), MAX(snapshot_ts)
         FROM options_positioning_metrics
         WHERE underlying=? AND dte_min=? AND dte_max=?
-        ORDER BY snapshot_ts DESC
-        LIMIT 5
-    """, (UNDERLYING, DTE_MIN, DTE_MAX)).fetchall()
+        """,
+        (UNDERLYING, DTE_MIN, DTE_MAX),
+    ).fetchone()
+    return {
+        "source_snapshot_count": source[0] or 0,
+        "source_min_snapshot_ts": source[1],
+        "source_max_snapshot_ts": source[2],
+        "metrics_rows": metrics[0] or 0,
+        "metrics_min_snapshot_ts": metrics[1],
+        "metrics_max_snapshot_ts": metrics[2],
+    }
+
+
+def snapshots_to_process(con: sqlite3.Connection) -> list[str]:
+    if ONLY_SNAPSHOT_TS:
+        return [ONLY_SNAPSHOT_TS]
+    if FORCE_REBUILD:
+        rows = con.execute(
+            """
+            SELECT DISTINCT snapshot_ts
+            FROM options_chain_snapshots
+            WHERE underlying=? AND dte BETWEEN ? AND ?
+            ORDER BY snapshot_ts
+            """,
+            (UNDERLYING, DTE_MIN, DTE_MAX),
+        ).fetchall()
+        return [r[0] for r in rows]
+    rows = con.execute(
+        """
+        SELECT DISTINCT s.snapshot_ts
+        FROM options_chain_snapshots s
+        LEFT JOIN options_positioning_metrics m
+          ON m.snapshot_ts = s.snapshot_ts
+         AND m.underlying = s.underlying
+         AND m.dte_min = ?
+         AND m.dte_max = ?
+        WHERE s.underlying=?
+          AND s.dte BETWEEN ? AND ?
+          AND m.snapshot_ts IS NULL
+        ORDER BY s.snapshot_ts
+        """,
+        (DTE_MIN, DTE_MAX, UNDERLYING, DTE_MIN, DTE_MAX),
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
+def main():
+    con = connect()
+    try:
+        ensure_schema(con)
+        before = positioning_state(con)
+        snaps = snapshots_to_process(con)
+
+        wrote = 0
+        for s in snaps:
+            row = compute_metrics(con, s)
+            if row:
+                upsert(con, row)
+                wrote += 1
+
+        con.commit()
+        after = positioning_state(con)
+        sample = con.execute("""
+            SELECT session_date, spot, max_total_oi_strike, gamma_flip_strike,
+                   pcr_oi, pcr_vol, gamma_proxy, dealer_state_hint
+            FROM options_positioning_metrics
+            WHERE underlying=? AND dte_min=? AND dte_max=?
+            ORDER BY snapshot_ts DESC
+            LIMIT 5
+        """, (UNDERLYING, DTE_MIN, DTE_MAX)).fetchall()
+    finally:
+        con.close()
+
+    state = {
+        "underlying": UNDERLYING,
+        "dte_min": DTE_MIN,
+        "dte_max": DTE_MAX,
+        "force_rebuild": FORCE_REBUILD,
+        "only_snapshot_ts": ONLY_SNAPSHOT_TS or None,
+        "requested_snapshot_count": len(snaps),
+        "upserted_rows": wrote,
+        "before": before,
+        "after": after,
+    }
+    write_state(f"options_positioning_{DTE_MIN}_{DTE_MAX}", state)
 
     print("DEBUG positioning_metrics sample (session, spot, wall, gamma_flip, pcr_oi, pcr_vol, gamma_proxy, dealer_state):")
     for r in sample:
         print(r)
 
-    con.close()
-    print(f"OK: dealer state integrated. upserted {wrote} snapshot rows.")
+    mode = "compute" if snaps else "cache_skip"
+    print(
+        f"OK: dealer state integrated. mode={mode} requested={len(snaps)} "
+        f"upserted={wrote} dte={DTE_MIN}-{DTE_MAX}."
+    )
 
 
 if __name__ == "__main__":
