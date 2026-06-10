@@ -1,0 +1,200 @@
+{
+  "checks": [
+    {
+      "evidence": "Termux-friendly lint gate is wired into GitHub Actions.",
+      "name": "CI quality gate",
+      "next_step": "Add Ruff/Black/pre-commit on non-Termux environments when practical.",
+      "score": 85,
+      "status": "PASS"
+    },
+    {
+      "evidence": "52 Python files parse and compile successfully.",
+      "name": "Syntax and importability",
+      "next_step": "Keep compile/lint gate required before data pipeline steps.",
+      "score": 95,
+      "status": "PASS"
+    },
+    {
+      "evidence": "No script exceeds 600 lines.",
+      "name": "File size / maintainability",
+      "next_step": "Continue splitting only when cohesion demands it; do not split performatively.",
+      "score": 90,
+      "status": "PASS"
+    },
+    {
+      "evidence": "Strict advisory mode reports existing whitespace/long-line/unused-import debt.",
+      "name": "Style cleanliness",
+      "next_step": "Clean strict-style issues gradually; then promote strict mode into CI.",
+      "score": 65,
+      "status": "WARN"
+    },
+    {
+      "evidence": "Typed function coverage is 53.2% (241/453).",
+      "name": "Type annotation coverage",
+      "next_step": "Add annotations to new/refactored functions and critical decision contracts first.",
+      "score": 53,
+      "status": "WARN"
+    },
+    {
+      "evidence": "Module docstring coverage is 40.4%.",
+      "name": "Module documentation",
+      "next_step": "Add short module docstrings to high-value scripts as they are touched.",
+      "score": 40,
+      "status": "WARN"
+    },
+    {
+      "evidence": "Main-guard coverage is 92.3%.",
+      "name": "Script entrypoint clarity",
+      "next_step": "Prefer `main()` + `if __name__ == '__main__'` for runnable scripts.",
+      "score": 90,
+      "status": "PASS"
+    },
+    {
+      "evidence": "No dedicated test suite/config detected.",
+      "name": "Automated tests",
+      "next_step": "Add smoke/unit tests for risk, freshness, and decision contract behavior.",
+      "score": 20,
+      "status": "GAP"
+    },
+    {
+      "evidence": "secret_hits=0, risky_shell_calls=0.",
+      "name": "Security hygiene",
+      "next_step": "Keep secrets in env/GitHub Secrets; review any shell=True usage before merging.",
+      "score": 90,
+      "status": "PASS"
+    },
+    {
+      "evidence": "broad_exception_handlers=21, bare_exception_handlers=0.",
+      "name": "Exception discipline",
+      "next_step": "Use narrower exception types in safety-critical scripts over time.",
+      "score": 80,
+      "status": "WARN"
+    },
+    {
+      "evidence": "Agent v1 contract explicitly blocks broker orders and reports blockers.",
+      "name": "Agent/trading safety contract",
+      "next_step": "Keep live order authority disabled until paper validation and approval gates exist.",
+      "score": 90,
+      "status": "PASS"
+    }
+  ],
+  "largest_scripts": [
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 1,
+      "functions": 10,
+      "has_main_guard": true,
+      "has_module_docstring": false,
+      "lines": 542,
+      "path": "scripts/build_signal_strength_daily.py",
+      "risky_calls": [],
+      "typed_functions": 6
+    },
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 16,
+      "has_main_guard": true,
+      "has_module_docstring": false,
+      "lines": 487,
+      "path": "scripts/analysis/oos_validate_trade_gate.py",
+      "risky_calls": [],
+      "typed_functions": 14
+    },
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 8,
+      "has_main_guard": true,
+      "has_module_docstring": true,
+      "lines": 439,
+      "path": "scripts/classify_fill_paths.py",
+      "risky_calls": [],
+      "typed_functions": 0
+    },
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 20,
+      "has_main_guard": true,
+      "has_module_docstring": true,
+      "lines": 420,
+      "path": "scripts/build_confidence_weights.py",
+      "risky_calls": [],
+      "typed_functions": 20
+    },
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 13,
+      "has_main_guard": true,
+      "has_module_docstring": true,
+      "lines": 419,
+      "path": "scripts/build_open_resolution_regime_intraday.py",
+      "risky_calls": [],
+      "typed_functions": 12
+    },
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 2,
+      "functions": 17,
+      "has_main_guard": true,
+      "has_module_docstring": false,
+      "lines": 400,
+      "path": "scripts/publish_sharpedge_2_report.py",
+      "risky_calls": [],
+      "typed_functions": 0
+    },
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 9,
+      "has_main_guard": true,
+      "has_module_docstring": false,
+      "lines": 398,
+      "path": "scripts/build_risk_decision_layer.py",
+      "risky_calls": [],
+      "typed_functions": 0
+    },
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 16,
+      "has_main_guard": true,
+      "has_module_docstring": true,
+      "lines": 396,
+      "path": "scripts/aggregate_options_positioning_metrics.py",
+      "risky_calls": [],
+      "typed_functions": 10
+    },
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 14,
+      "has_main_guard": true,
+      "has_module_docstring": true,
+      "lines": 392,
+      "path": "scripts/measure_gap_excursions.py",
+      "risky_calls": [],
+      "typed_functions": 13
+    },
+    {
+      "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 18,
+      "has_main_guard": true,
+      "has_module_docstring": true,
+      "lines": 384,
+      "path": "scripts/build_robinhood_fvg_monitor.py",
+      "risky_calls": [],
+      "typed_functions": 18
+    }
+  ],
+  "overall_grade": "C",
+  "overall_score": 72.5,
+  "summary": {
+    "python_files": 52,
+    "secret_literal_files": [],
+    "total_lines": 12900
+  }
+}

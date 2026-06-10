@@ -48,6 +48,10 @@ jobs:
         run: |
           python scripts/utils/lint_python.py scripts
 
+      - name: Python industry-standard audit
+        run: |
+          python scripts/utils/audit_code_quality.py
+
       - name: Initialize pipeline health
         run: |
           mkdir -p outputs/health
