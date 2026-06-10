@@ -1,0 +1,21 @@
+ROBINHOOD FVG MONITOR
+Created: 2026-06-10T16:31:26.211127+00:00
+Symbol: SPY
+Decision: no_trade
+Reasons: low_sample_n<5, risk_context_missing
+
+Gap date: 2026-06-09
+Gap direction: UP
+Gap fill level: 739.219970703125
+Fill completed: 0
+Edge fill rate: 1.0 n=1
+Avg time to fill: 59.99999977648258 min
+
+Hypothesis: bearish_gap_fill_watch
+Option side watch: puts_or_put_spreads
+Spot: 742.719970703125
+ATM strike: 743.0
+Dealer state: DEFENSIVE
+
+Robinhood MCP mode: dry_run_monitoring_only
+Orders: BLOCKED unless operator confirms manually.

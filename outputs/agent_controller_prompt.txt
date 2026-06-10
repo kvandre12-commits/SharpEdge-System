@@ -1,123 +1,189 @@
-You are a risk controller for a SPY trading pipeline.
+SharpEdge deterministic controller evidence
+External AI APIs: disabled
 
-Your job is NOT to create a trade.
-Your job is to decide whether the finished pipeline output should be published to Discord.
-
-You must return ONLY valid JSON with this exact schema:
 {
-  "decision": "post" or "hold",
-  "confidence": 0.0 to 1.0,
-  "summary": "short summary",
-  "reasons": ["reason 1", "reason 2", "reason 3"],
-  "risk_flags": ["flag 1", "flag 2"]
-}
-
-Use conservative logic:
-- choose "hold" if evidence is mixed, incomplete, contradictory, or weak
-- choose "hold" if key fields are missing
-- choose "post" only if the signal/regime/positioning state is coherent
-- keep reasons short and concrete
-
-DATA:
-{
-  "latest_signal": {
-    "date": "2026-05-20",
-    "symbol": "SPY",
-    "readiness_score": 20.0,
-    "ignition_score": 4.3174712702408335,
-    "early_score": 24.317471270240834,
+  "db_context": {
+    "db_present": true,
+    "latest_options_positioning": {
+      "atm_strike": 743.0,
+      "dealer_state_hint": "DEFENSIVE",
+      "dte_max": 1,
+      "dte_min": 0,
+      "gamma_flip_strike": null,
+      "gamma_neg_wall_strike": 500.0,
+      "gamma_pos_wall_strike": 500.0,
+      "gamma_proxy": null,
+      "gamma_wall_strike": 500.0,
+      "max_call_oi_strike": 745.0,
+      "max_put_oi_strike": 535.0,
+      "max_total_oi_strike": 535.0,
+      "metrics_id": 9504,
+      "pcr_oi": 2.3345307425751556,
+      "pcr_vol": null,
+      "session_date": "2026-05-21",
+      "snapshot_ts": "2026-05-21T12:06:51Z",
+      "spot": 742.719970703125,
+      "total_call_oi": 440952,
+      "total_call_vol": 0,
+      "total_put_oi": 1029416,
+      "total_put_vol": 0,
+      "underlying": "SPY"
+    },
+    "latest_regime": {
+      "compression_flag": 0,
+      "date": "2026-05-20",
+      "dp_state": "low",
+      "dp_state_prev": "low",
+      "dp_strength": 0.0,
+      "macro_state": "low",
+      "macro_stress": 0.0,
+      "regime_id": "mrll0",
+      "regime_label": "mid_vol|rising_voltrend|low_dp|low_macro|0_comp",
+      "regime_ts": "2026-06-09T23:53:24.396611+00:00",
+      "symbol": "SPY",
+      "transition_flag": 1,
+      "transition_label": "mid->mid | falling->rising | low->low",
+      "transition_score": 1,
+      "vol20": 0.006747872166070984,
+      "vol_rank_252": 0.42063492063492064,
+      "vol_state": "mid",
+      "vol_state_prev": "mid",
+      "vol_trend_10": 0.00034257124142353466,
+      "vol_trend_state": "rising",
+      "vol_trend_state_prev": "falling"
+    },
+    "latest_risk": {},
+    "latest_signal": {
+      "cluster_slope": 0.0,
+      "cluster_slope_fast": 0.0,
+      "compression_flag": 0,
+      "date": "2026-05-20",
+      "dp_strength": 0.0,
+      "early_bucket": "quiet",
+      "early_score": 24.317471270240834,
+      "fb_conf": null,
+      "fb_event": null,
+      "ignition_score": 4.3174712702408335,
+      "pressure_reason": "default",
+      "pressure_state": "NORMAL",
+      "readiness_score": 20.0,
+      "signal_ts": "2026-05-21T12:08:59.477197+00:00",
+      "signal_version": "v1_early_readiness_ignition",
+      "symbol": "SPY",
+      "tr_lift": 1.1079367817560208,
+      "tr_lift_fast": 1.0101488362253175,
+      "trade_gate": 0,
+      "trade_permission": 0,
+      "transition_flag": 1,
+      "trigger_cluster": 0.0
+    }
+  },
+  "health_warnings": [
+    "WARN: risk decision layer degraded"
+  ],
+  "latest_signal_strength": {
+    "cluster_slope": "0.0",
+    "cluster_slope_fast": "0.0",
+    "compression_flag": "0",
+    "date": "2026-06-08",
+    "dp_strength": "0.0",
     "early_bucket": "quiet",
-    "dp_strength": 0.0,
-    "transition_flag": 1,
-    "compression_flag": 0,
-    "trigger_cluster": 0.0,
-    "trade_permission": 0,
-    "tr_lift": 1.1079367817560208,
-    "cluster_slope": 0.0,
-    "signal_ts": "2026-05-21T12:08:59.477197+00:00",
-    "signal_version": "v1_early_readiness_ignition",
-    "tr_lift_fast": 1.0101488362253175,
-    "cluster_slope_fast": 0.0,
-    "pressure_state": "NORMAL",
-    "trade_gate": 0,
+    "early_score": "0.0",
+    "ignition_score": "0.0",
     "pressure_reason": "default",
-    "fb_event": null,
-    "fb_conf": null
+    "pressure_state": "NORMAL",
+    "readiness_score": "0.0",
+    "signal_version": "v1_early_readiness_ignition",
+    "symbol": "WMT",
+    "tr_lift": "0.7205487140666613",
+    "tr_lift_fast": "0.6539641791338306",
+    "trade_gate": "0",
+    "trade_permission": "1",
+    "transition_flag": "0",
+    "trigger_cluster": "9.0"
   },
-  "latest_regime": {
-    "date": "2026-05-20",
-    "symbol": "SPY",
-    "vol20": 0.006747872166070984,
-    "vol_rank_252": 0.42063492063492064,
-    "vol_state": "mid",
-    "vol_trend_10": 0.00034257124142353466,
-    "vol_trend_state": "rising",
-    "dp_strength": 0.0,
-    "dp_state": "low",
-    "compression_flag": 0,
-    "regime_label": "mid_vol|rising_voltrend|low_dp|low_macro|0_comp",
-    "regime_id": "mrll0",
-    "vol_state_prev": "mid",
-    "vol_trend_state_prev": "falling",
-    "dp_state_prev": "low",
-    "transition_label": "mid->mid | falling->rising | low->low",
-    "transition_score": 1,
-    "transition_flag": 1,
-    "regime_ts": "2026-05-21T12:08:56.567726+00:00",
-    "macro_stress": 0.0,
-    "macro_state": "low"
+  "robinhood_fvg_monitor": {
+    "created_ts": "2026-06-10T16:31:26.211127+00:00",
+    "decision": "no_trade",
+    "directional_hypothesis": {
+      "fill_bias": "bearish_gap_fill_watch",
+      "option_side_watch": "puts_or_put_spreads",
+      "reason": "Up gaps fill downward toward prior close / gap fill level."
+    },
+    "latest_gap_event": {
+      "dp_state": "",
+      "event_type": "FAILED_BREAKOUT",
+      "fill_completed": "0",
+      "fill_path_type": "SQUEEZE_THEN_FILL",
+      "fill_ts": "",
+      "gap_direction": "UP",
+      "gap_fill_level": "739.219970703125",
+      "gap_pct": "0.005965794153927959",
+      "macro_state": "",
+      "open_regime_label": "NO_SETUP",
+      "session_close": "737.0499877929688",
+      "session_date": "2026-06-09",
+      "session_high": "746.9000244140625",
+      "session_low": "722.5900268554688",
+      "session_open": "743.6300048828125",
+      "time_to_fill_minutes": "",
+      "vol_state": ""
+    },
+    "matched_gap_edge": {
+      "avg_MAE_pct": "0.0005338163856513209",
+      "avg_MFE_pct": "0.00866907725958064",
+      "avg_time_to_fill_minutes": "59.99999977648258",
+      "direct_fill_rate": "0.0",
+      "event_type": "FAILED_BREAKOUT",
+      "failed_fill_rate": "0.0",
+      "fill_path_type": "ROTATIONAL_BALANCE_THEN_FILL",
+      "fill_rate": "1.0",
+      "gap_direction": "UP",
+      "n": "1",
+      "sample_quality": "LOW_SAMPLE",
+      "tradability_score": "674.5871054253984"
+    },
+    "mode": "dry_run_monitoring_only",
+    "options_context": {
+      "atm_strike": 743.0,
+      "dealer_state_hint": "DEFENSIVE",
+      "dte_max": 1,
+      "dte_min": 0,
+      "gamma_proxy": null,
+      "max_call_oi_strike": 745.0,
+      "max_put_oi_strike": 535.0,
+      "max_total_oi_strike": 535.0,
+      "pcr_oi": 2.3345307425751556,
+      "session_date": "2026-05-21",
+      "spot": 742.719970703125,
+      "total_call_oi": 440952,
+      "total_put_oi": 1029416
+    },
+    "reasons": [
+      "low_sample_n<5",
+      "risk_context_missing"
+    ],
+    "risk_context": {},
+    "robinhood_mcp_handoff": {
+      "blocked_actions": [
+        "place_order",
+        "replace_order",
+        "cancel_order_without_operator_confirmation"
+      ],
+      "intent": "monitor_fair_value_gap_fill_options_context",
+      "mode": "dry_run",
+      "operator_confirmation_required_for_orders": true,
+      "permitted_actions": [
+        "read_account_status",
+        "read_positions",
+        "read_option_chain",
+        "monitor_underlying_quote",
+        "monitor_option_quotes"
+      ],
+      "server": "robinhood-trading"
+    },
+    "schema_version": "1.0",
+    "symbol": "SPY"
   },
-  "latest_open_regime": {
-    "snapshot_ts": "2026-05-21T12:06:59+00:00",
-    "session_date": "2026-05-21",
-    "underlying": "SPY",
-    "pm_open": 739.44,
-    "pm_high": 739.44,
-    "pm_low": 739.44,
-    "pm_close": 739.44,
-    "pm_return": 0.0,
-    "pm_range": 0.0,
-    "pm_range_ratio": 0.0,
-    "pm_initiative_flush": 0,
-    "break_level": null,
-    "flush_low": 739.44,
-    "rth_first_ts": null,
-    "rth_first_open": null,
-    "rth_first_high": null,
-    "rth_first_low": null,
-    "rth_first_close": null,
-    "failed_breakdown_open": 0,
-    "accepted_breakdown_open": 0,
-    "open_regime_label": "NO_SETUP",
-    "regime_confidence": 10.0,
-    "notes": "no initiative flush/rip setup",
-    "setup_dir": null,
-    "key_source": null
-  },
-  "latest_options_positioning": {
-    "metrics_id": 9504,
-    "snapshot_ts": "2026-05-21T12:06:51Z",
-    "session_date": "2026-05-21",
-    "underlying": "SPY",
-    "dte_min": 0,
-    "dte_max": 1,
-    "spot": null,
-    "atm_strike": null,
-    "max_total_oi_strike": 535.0,
-    "max_call_oi_strike": 745.0,
-    "max_put_oi_strike": 535.0,
-    "total_call_oi": 440952,
-    "total_put_oi": 1029416,
-    "pcr_oi": 2.3345307425751556,
-    "total_call_vol": 0,
-    "total_put_vol": 0,
-    "pcr_vol": null,
-    "gamma_proxy": null,
-    "dealer_state_hint": null,
-    "gamma_wall_strike": 500.0,
-    "gamma_pos_wall_strike": 500.0,
-    "gamma_neg_wall_strike": 500.0,
-    "gamma_flip_strike": null
-  },
-  "latest_trade_card_artifact": "date,symbol,early_score,early_bucket,readiness_score,ignition_score,dp_strength,transition_flag,compression_flag,trigger_cluster,trade_permission,tr_lift,cluster_slope,signal_version,tr_lift_fast,cluster_slope_fast,pressure_state,trade_gate,pressure_reason\n2026-05-20,SPY,24.317471270240837,quiet,20.0,4.3174712702408335,0.0,1,0,0.0,0,1.1079367817560208,0.0,v1_early_readiness_ignition,1.0101488362253177,0.0,NORMAL,0,default\n"
+  "symbol": "SPY"
 }

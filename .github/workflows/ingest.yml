@@ -29,7 +29,6 @@ jobs:
 
       FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
       DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     steps:
       - name: Checkout repo
@@ -131,6 +130,16 @@ jobs:
         continue-on-error: true
         run: |
           python scripts/publish_sharpedge_2_report.py || echo "WARN: SharpEdge 2.0 report degraded" >> outputs/health/warnings.log
+
+      - name: Build Robinhood FVG monitor handoff
+        continue-on-error: true
+        run: |
+          python scripts/build_robinhood_fvg_monitor.py || echo "WARN: Robinhood FVG monitor degraded" >> outputs/health/warnings.log
+
+      - name: Run deterministic controller
+        continue-on-error: true
+        run: |
+          python scripts/agents/controller_agent.py || echo "WARN: deterministic controller degraded" >> outputs/health/warnings.log
 
       - name: Commit updated DB + outputs
         continue-on-error: true

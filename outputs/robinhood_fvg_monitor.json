@@ -1,0 +1,83 @@
+{
+  "created_ts": "2026-06-10T16:31:26.211127+00:00",
+  "decision": "no_trade",
+  "directional_hypothesis": {
+    "fill_bias": "bearish_gap_fill_watch",
+    "option_side_watch": "puts_or_put_spreads",
+    "reason": "Up gaps fill downward toward prior close / gap fill level."
+  },
+  "latest_gap_event": {
+    "dp_state": "",
+    "event_type": "FAILED_BREAKOUT",
+    "fill_completed": "0",
+    "fill_path_type": "SQUEEZE_THEN_FILL",
+    "fill_ts": "",
+    "gap_direction": "UP",
+    "gap_fill_level": "739.219970703125",
+    "gap_pct": "0.005965794153927959",
+    "macro_state": "",
+    "open_regime_label": "NO_SETUP",
+    "session_close": "737.0499877929688",
+    "session_date": "2026-06-09",
+    "session_high": "746.9000244140625",
+    "session_low": "722.5900268554688",
+    "session_open": "743.6300048828125",
+    "time_to_fill_minutes": "",
+    "vol_state": ""
+  },
+  "matched_gap_edge": {
+    "avg_MAE_pct": "0.0005338163856513209",
+    "avg_MFE_pct": "0.00866907725958064",
+    "avg_time_to_fill_minutes": "59.99999977648258",
+    "direct_fill_rate": "0.0",
+    "event_type": "FAILED_BREAKOUT",
+    "failed_fill_rate": "0.0",
+    "fill_path_type": "ROTATIONAL_BALANCE_THEN_FILL",
+    "fill_rate": "1.0",
+    "gap_direction": "UP",
+    "n": "1",
+    "sample_quality": "LOW_SAMPLE",
+    "tradability_score": "674.5871054253984"
+  },
+  "mode": "dry_run_monitoring_only",
+  "options_context": {
+    "atm_strike": 743.0,
+    "dealer_state_hint": "DEFENSIVE",
+    "dte_max": 1,
+    "dte_min": 0,
+    "gamma_proxy": null,
+    "max_call_oi_strike": 745.0,
+    "max_put_oi_strike": 535.0,
+    "max_total_oi_strike": 535.0,
+    "pcr_oi": 2.3345307425751556,
+    "session_date": "2026-05-21",
+    "spot": 742.719970703125,
+    "total_call_oi": 440952,
+    "total_put_oi": 1029416
+  },
+  "reasons": [
+    "low_sample_n<5",
+    "risk_context_missing"
+  ],
+  "risk_context": {},
+  "robinhood_mcp_handoff": {
+    "blocked_actions": [
+      "place_order",
+      "replace_order",
+      "cancel_order_without_operator_confirmation"
+    ],
+    "intent": "monitor_fair_value_gap_fill_options_context",
+    "mode": "dry_run",
+    "operator_confirmation_required_for_orders": true,
+    "permitted_actions": [
+      "read_account_status",
+      "read_positions",
+      "read_option_chain",
+      "monitor_underlying_quote",
+      "monitor_option_quotes"
+    ],
+    "server": "robinhood-trading"
+  },
+  "schema_version": "1.0",
+  "symbol": "SPY"
+}

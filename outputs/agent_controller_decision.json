@@ -1,13 +1,16 @@
 {
+  "confidence": 0.4,
   "decision": "hold",
-  "confidence": 0.0,
-  "summary": "Controller failed: HTTPError",
   "reasons": [
-    "403 Client Error: Forbidden for url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyDLQRhWFwYcZgsxrD46ELaxqBBeI6yUFsg"
+    "latest signal artifact present",
+    "Robinhood FVG monitor decision=no_trade",
+    "pipeline warnings=1"
   ],
   "risk_flags": [
-    "controller_error"
+    "pipeline_warnings_present",
+    "monitor_no_trade"
   ],
+  "summary": "Deterministic local controller; no external AI API used.",
   "symbol": "SPY",
-  "ts_utc": "2026-05-21T12:09:00.064961+00:00"
+  "ts_utc": "2026-06-10T16:31:26.283487+00:00"
 }
