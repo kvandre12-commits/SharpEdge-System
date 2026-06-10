@@ -1,0 +1,112 @@
+{
+  "approval_required": true,
+  "beta_capabilities": {
+    "cancel_order_without_operator_approval": false,
+    "create_order_draft": false,
+    "monitor_quotes": false,
+    "read_account_status": false,
+    "read_option_chain": false,
+    "read_positions": false,
+    "replace_order": false,
+    "submit_order": false
+  },
+  "beta_profile": "approval_gated_shadow",
+  "beta_stage": "artifact_only",
+  "blocking_reasons": [
+    "controller_hold",
+    "monitor_no_trade",
+    "sample_n_below_30",
+    "stale_or_missing_inputs"
+  ],
+  "broker_integration_status": "disabled",
+  "created_ts": "2026-06-10T22:58:01.645023+00:00",
+  "headline": "Stand down. Preserve context, but do not act on this setup.",
+  "monitoring_mode": "artifact_only_manual_review",
+  "operator_action": "stand_down",
+  "order_preview": {
+    "blocked_actions": [
+      "submit_order_without_operator_approval",
+      "cancel_order_without_operator_approval",
+      "remove_defined_risk_when_beta_requires_it"
+    ],
+    "defined_risk_required": true,
+    "draft_allowed": false,
+    "dte_window": {
+      "max": 1,
+      "min": 0
+    },
+    "entry_style": "limit_debit",
+    "headline": "Stand down. Preserve context, but do not act on this setup.",
+    "leg_selection_rules": [
+      "Use near-ATM long leg aligned with option_side_watch.",
+      "If defined risk is required, sell further OTM leg to cap loss.",
+      "Prefer same-session thesis alignment with contract freshness and monitor context."
+    ],
+    "option_side_watch": "calls_or_call_spreads",
+    "price_limit_required": true,
+    "reference_levels": {
+      "atm_strike": 743.0,
+      "gap_fill_level": "737.0499877929688",
+      "spot": 742.719970703125
+    },
+    "risk_limits": {
+      "beta_cap_risk_pct": 0.25,
+      "max_capital_risk_pct": 0.0,
+      "source_contract_risk_pct": 0.0
+    },
+    "setup_type": "gap_fill_options_context",
+    "strategy_family": "call_debit_spread",
+    "symbol": "SPY"
+  },
+  "readiness": "blocked",
+  "required_approvals": [
+    "operator_trade_confirmation",
+    "price_limit_review",
+    "defined_risk_review",
+    "risk_budget_review"
+  ],
+  "risk_flags": [
+    "broker_integration_unavailable",
+    "freshness_gate_failed",
+    "low_sample",
+    "monitor_blocks_trade"
+  ],
+  "robinhood_beta_handoff": {
+    "agent": "code-puppy",
+    "blocked_actions": [
+      "submit_order_without_operator_approval",
+      "replace_order_without_operator_approval",
+      "cancel_order_without_operator_approval"
+    ],
+    "bridge_available": false,
+    "bridge_status": {
+      "agent": "code-puppy",
+      "agent_bound": false,
+      "auto_start": false,
+      "available": false,
+      "enabled": false,
+      "fallback_mode": "artifact_only_manual_review",
+      "reason": "server_disabled",
+      "registered": true,
+      "server": "robinhood-trading",
+      "status": "disabled",
+      "url": "https://agent.robinhood.com/mcp/trading"
+    },
+    "fallback_mode": "artifact_only_shadow_review",
+    "intent": "approval_gated_shadow_order_management",
+    "manual_review_required": true,
+    "mode": "beta_shadow_execution",
+    "permitted_actions": [
+      "read_account_status",
+      "read_positions",
+      "read_option_chain",
+      "monitor_underlying_quote",
+      "monitor_option_quotes",
+      "artifact_only_order_preview"
+    ],
+    "server": "robinhood-trading"
+  },
+  "schema_version": "robinhood_beta_execution.v1",
+  "symbol": "SPY",
+  "trade_allowed": false
+}

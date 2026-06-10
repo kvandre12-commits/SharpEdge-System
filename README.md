@@ -106,17 +106,21 @@ Outputs:
 - `outputs/operator_session_review.txt`
 - `outputs/morning_open_dashboard.json`
 - `outputs/morning_open_dashboard.txt`
+- `outputs/robinhood_beta_execution.json`
+- `outputs/robinhood_beta_execution.txt`
 
 Extra operator artifacts:
 
 ```bash
 python scripts/agents/operator_session_review.py
 python scripts/agents/morning_open_dashboard.py
+python scripts/agents/robinhood_beta_execution.py
 ```
 
-Design note:
+Design notes:
 
 - `docs/operator_breadcrumbs.md`
+- `docs/robinhood_beta_execution.md`
 
 ## Results Summary
 

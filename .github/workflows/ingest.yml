@@ -173,6 +173,11 @@ jobs:
         run: |
           python scripts/agents/morning_open_dashboard.py || echo "WARN: morning open dashboard degraded" >> outputs/health/warnings.log
 
+      - name: Build Robinhood beta execution handoff
+        continue-on-error: true
+        run: |
+          python scripts/agents/robinhood_beta_execution.py || echo "WARN: Robinhood beta execution degraded" >> outputs/health/warnings.log
+
       - name: Commit updated DB + outputs
         continue-on-error: true
         run: |

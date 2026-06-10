@@ -22,6 +22,7 @@ operator should be able to tell **why** without reverse-engineering the codebase
 6. `outputs/operator_journal_append.jsonl`
 7. `outputs/operator_session_review.json`
 8. `outputs/morning_open_dashboard.json`
+9. `outputs/robinhood_beta_execution.json`
 
 ## What good looks like
 
@@ -31,6 +32,7 @@ A later review should be able to answer:
 - what blockers existed
 - whether broker integration was live
 - whether the decision was review / monitor / blocked
+- whether beta execution was artifact-only, monitoring-only, or approval-queue ready
 - what changed across runs
 
 Breadcrumbs are for traceability, not for auto-trading authority.
