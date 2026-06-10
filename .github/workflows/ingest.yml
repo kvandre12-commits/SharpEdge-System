@@ -141,6 +141,11 @@ jobs:
         run: |
           python scripts/agents/controller_agent.py || echo "WARN: deterministic controller degraded" >> outputs/health/warnings.log
 
+      - name: Build Agentic AI v1 decision contract
+        continue-on-error: true
+        run: |
+          python scripts/agents/agent_v1_decision.py || echo "WARN: agentic AI v1 contract degraded" >> outputs/health/warnings.log
+
       - name: Commit updated DB + outputs
         continue-on-error: true
         run: |
