@@ -8,7 +8,7 @@
       "status": "PASS"
     },
     {
-      "evidence": "53 Python files parse and compile successfully.",
+      "evidence": "56 Python files parse and compile successfully.",
       "name": "Syntax and importability",
       "next_step": "Keep compile/lint gate required before data pipeline steps.",
       "score": 95,
@@ -29,28 +29,28 @@
       "status": "WARN"
     },
     {
-      "evidence": "Typed function coverage is 58.7% (288/491).",
+      "evidence": "Typed function coverage is 61.5% (324/527).",
       "name": "Type annotation coverage",
       "next_step": "Add annotations to new/refactored functions and critical decision contracts first.",
-      "score": 58,
+      "score": 61,
       "status": "WARN"
     },
     {
-      "evidence": "Module docstring coverage is 47.2%.",
+      "evidence": "Module docstring coverage is 50.0%.",
       "name": "Module documentation",
       "next_step": "Add short module docstrings to high-value scripts as they are touched.",
-      "score": 47,
+      "score": 50,
       "status": "WARN"
     },
     {
-      "evidence": "Main-guard coverage is 90.6%.",
+      "evidence": "Main-guard coverage is 91.1%.",
       "name": "Script entrypoint clarity",
       "next_step": "Prefer `main()` + `if __name__ == '__main__'` for runnable scripts.",
       "score": 90,
       "status": "PASS"
     },
     {
-      "evidence": "Detected 17 unittest methods across 4 test files; ci_wired=True.",
+      "evidence": "Detected 24 unittest methods across 7 test files; ci_wired=True.",
       "name": "Automated tests",
       "next_step": "Expand coverage to risk sizing, data freshness, and degraded-ingest cases.",
       "score": 75,
@@ -125,6 +125,17 @@
     },
     {
       "bare_exception_handlers": 0,
+      "broad_exception_handlers": 0,
+      "functions": 21,
+      "has_main_guard": true,
+      "has_module_docstring": true,
+      "lines": 467,
+      "path": "scripts/build_robinhood_fvg_monitor.py",
+      "risky_calls": [],
+      "typed_functions": 21
+    },
+    {
+      "bare_exception_handlers": 0,
       "broad_exception_handlers": 2,
       "functions": 25,
       "has_main_guard": true,
@@ -177,27 +188,16 @@
       "path": "scripts/build_risk_decision_layer.py",
       "risky_calls": [],
       "typed_functions": 0
-    },
-    {
-      "bare_exception_handlers": 0,
-      "broad_exception_handlers": 0,
-      "functions": 14,
-      "has_main_guard": true,
-      "has_module_docstring": true,
-      "lines": 392,
-      "path": "scripts/measure_gap_excursions.py",
-      "risky_calls": [],
-      "typed_functions": 13
     }
   ],
   "overall_grade": "B",
-  "overall_score": 78.6,
+  "overall_score": 79.2,
   "summary": {
-    "python_files": 53,
+    "python_files": 56,
     "secret_literal_files": [],
-    "test_files": 4,
-    "test_methods": 17,
+    "test_files": 7,
+    "test_methods": 24,
     "tests_ci_wired": true,
-    "total_lines": 13512
+    "total_lines": 14289
   }
 }

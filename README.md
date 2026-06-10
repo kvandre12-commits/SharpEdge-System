@@ -114,6 +114,10 @@ python scripts/agents/operator_session_review.py
 python scripts/agents/morning_open_dashboard.py
 ```
 
+Design note:
+
+- `docs/operator_breadcrumbs.md`
+
 ## Results Summary
 
 | Metric | Value |
