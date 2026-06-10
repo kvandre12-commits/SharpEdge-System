@@ -1,0 +1,65 @@
+{
+  "blocking_reasons": [
+    "controller_hold",
+    "monitor_no_trade",
+    "sample_n_below_30",
+    "stale_or_missing_inputs"
+  ],
+  "broker_order_allowed": false,
+  "confidence_evidence_quality": 1.0,
+  "confidence_trade_edge": 0.0,
+  "created_ts": "2026-06-10T17:23:00.637967+00:00",
+  "decision": "hold",
+  "freshness": {
+    "max_current_age_days": 3,
+    "max_options_age_days": 7,
+    "stale_inputs": [
+      {
+        "age_days": 21,
+        "date": "2026-05-20",
+        "input": "signal",
+        "max_age_days": 3
+      },
+      {
+        "age_days": 21,
+        "date": "2026-05-20",
+        "input": "regime",
+        "max_age_days": 3
+      },
+      {
+        "age_days": 20,
+        "date": "2026-05-21",
+        "input": "options_positioning",
+        "max_age_days": 7
+      }
+    ]
+  },
+  "max_capital_risk_pct": 0.0,
+  "mode": "dry_run_safety_contract",
+  "permissions": {
+    "cancel_order_without_operator_confirmation": false,
+    "monitor_quotes": true,
+    "place_order": false,
+    "read_account_status": true,
+    "read_market_data": true,
+    "read_option_chain": true,
+    "read_positions": true,
+    "replace_order": false
+  },
+  "required_human_action": "none",
+  "risk_flags": [
+    "freshness_gate_failed",
+    "low_sample",
+    "monitor_blocks_trade"
+  ],
+  "risk_state": "PROBE",
+  "schema_version": "agentic_ai_v1.0",
+  "source_decisions": {
+    "controller_decision": "hold",
+    "monitor_decision": "no_trade",
+    "risk_deployment_state": "PROBE",
+    "risk_sample_n": 1
+  },
+  "symbol": "SPY",
+  "trade_allowed": false
+}

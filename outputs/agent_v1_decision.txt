@@ -1,0 +1,14 @@
+SHARPEDGE AGENTIC AI V1 DECISION
+Created: 2026-06-10T17:23:00.637967+00:00
+Symbol: SPY
+Decision: hold
+Trade allowed: False
+Broker order allowed: False
+Risk state: PROBE
+Max capital risk pct: 0.0
+Evidence quality: 1.0
+Trade edge confidence: 0.0
+Blocking reasons: controller_hold, monitor_no_trade, sample_n_below_30, stale_or_missing_inputs
+Risk flags: freshness_gate_failed, low_sample, monitor_blocks_trade
+Stale inputs: 3
+Orders remain blocked unless an operator manually confirms outside this contract.
