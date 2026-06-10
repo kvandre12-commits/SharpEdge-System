@@ -12,6 +12,7 @@ from typing import Any
 
 ROOT = Path(".")
 SCRIPTS = ROOT / "scripts"
+TESTS = ROOT / "tests"
 DOCS = ROOT / "docs"
 OUTPUTS = ROOT / "outputs"
 AUDIT_JSON = OUTPUTS / "code_quality_industry_audit.json"
@@ -48,6 +49,13 @@ class StandardCheck:
     next_step: str
 
 
+@dataclass(frozen=True)
+class TestMetrics:
+    files: int
+    test_methods: int
+    ci_wired: bool
+
+
 def is_excluded(path: Path) -> bool:
     return any(part in EXCLUDED_PARTS for part in path.parts)
 
@@ -55,6 +63,14 @@ def is_excluded(path: Path) -> bool:
 def python_files() -> list[Path]:
     return sorted(
         path for path in SCRIPTS.rglob("*.py") if path.is_file() and not is_excluded(path)
+    )
+
+
+def test_files() -> list[Path]:
+    if not TESTS.exists():
+        return []
+    return sorted(
+        path for path in TESTS.rglob("test_*.py") if path.is_file() and not is_excluded(path)
     )
 
 
@@ -142,7 +158,28 @@ def workflow_contains(text: str) -> bool:
     return any(text in path.read_text(encoding="utf-8", errors="ignore") for path in workflow_dir.glob("*.yml"))
 
 
-def build_checks(metrics: list[ScriptMetrics], secret_hits: list[str]) -> list[StandardCheck]:
+def collect_test_metrics() -> TestMetrics:
+    files = test_files()
+    test_methods = 0
+    for path in files:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"), filename=str(path))
+        test_methods += sum(
+            1
+            for node in ast.walk(tree)
+            if isinstance(node, ast.FunctionDef) and node.name.startswith("test_")
+        )
+    return TestMetrics(
+        files=len(files),
+        test_methods=test_methods,
+        ci_wired=workflow_contains("python -m unittest discover -s tests -v"),
+    )
+
+
+def build_checks(
+    metrics: list[ScriptMetrics],
+    secret_hits: list[str],
+    tests: TestMetrics,
+) -> list[StandardCheck]:
     files = len(metrics)
     over_600 = [item.path for item in metrics if item.lines > 600]
     docstring_pct = pct(sum(item.has_module_docstring for item in metrics), files)
@@ -206,10 +243,10 @@ def build_checks(metrics: list[ScriptMetrics], secret_hits: list[str]) -> list[S
         ),
         StandardCheck(
             "Automated tests",
-            "GAP" if not exists_any(["tests", "pytest.ini"]) else "WARN",
-            20 if not exists_any(["tests", "pytest.ini"]) else 55,
-            "No dedicated test suite/config detected.",
-            "Add smoke/unit tests for risk, freshness, and decision contract behavior.",
+            "PASS" if tests.test_methods >= 6 and tests.ci_wired else "WARN" if tests.test_methods else "GAP",
+            75 if tests.test_methods >= 6 and tests.ci_wired else 55 if tests.test_methods else 20,
+            f"Detected {tests.test_methods} unittest methods across {tests.files} test files; ci_wired={tests.ci_wired}.",
+            "Expand coverage to risk sizing, data freshness, and degraded-ingest cases.",
         ),
         StandardCheck(
             "Security hygiene",
@@ -281,11 +318,11 @@ Python scripts scanned: **{payload['summary']['python_files']}**
 
 ## Verdict
 
-SharpEdge is currently at **early production / disciplined v1 beta** quality for the script layer. The strongest areas are pipeline automation, file-size discipline, safety contracts, and secrets hygiene. The largest gaps versus mature industry standard are automated tests, type coverage, and stricter formatting/tooling.
+SharpEdge is currently at **early production / disciplined v1 beta** quality for the script layer. The strongest areas are pipeline automation, file-size discipline, safety contracts, secrets hygiene, and the first safety-focused unit tests. The largest remaining gaps versus mature industry standard are broader test coverage, type coverage, and stricter formatting/tooling.
 
 ## Recommended Order Of Work
 
-1. Add tests for `agent_v1_decision.py`, `build_robinhood_fvg_monitor.py`, and freshness gates.
+1. Expand tests for risk sizing, degraded ingests, and freshness edge cases.
 2. Clean strict-style advisory issues in small batches.
 3. Add type hints to decision/risk scripts first.
 4. Add optional Ruff/Black/pre-commit for machines where binary wheels install cleanly.
@@ -299,7 +336,8 @@ def main() -> int:
     files = python_files()
     metrics = [analyze_file(path) for path in files]
     secret_hits = [str(path) for path in files if file_contains_secret(path)]
-    checks = build_checks(metrics, secret_hits)
+    tests = collect_test_metrics()
+    checks = build_checks(metrics, secret_hits, tests)
     overall_score = round(sum(check.score for check in checks) / len(checks), 1)
     payload = {
         "overall_score": overall_score,
@@ -308,6 +346,9 @@ def main() -> int:
             "python_files": len(files),
             "total_lines": sum(item.lines for item in metrics),
             "secret_literal_files": secret_hits,
+            "test_files": tests.files,
+            "test_methods": tests.test_methods,
+            "tests_ci_wired": tests.ci_wired,
         },
         "checks": [asdict(check) for check in checks],
         "largest_scripts": [

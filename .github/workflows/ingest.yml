@@ -46,7 +46,11 @@ jobs:
 
       - name: Python quality gate
         run: |
-          python scripts/utils/lint_python.py scripts
+          python scripts/utils/lint_python.py scripts tests
+
+      - name: Unit tests
+        run: |
+          python -m unittest discover -s tests -v
 
       - name: Python industry-standard audit
         run: |

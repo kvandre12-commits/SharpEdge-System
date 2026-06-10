@@ -29,7 +29,7 @@
       "status": "WARN"
     },
     {
-      "evidence": "Typed function coverage is 53.2% (241/453).",
+      "evidence": "Typed function coverage is 53.4% (243/455).",
       "name": "Type annotation coverage",
       "next_step": "Add annotations to new/refactored functions and critical decision contracts first.",
       "score": 53,
@@ -50,11 +50,11 @@
       "status": "PASS"
     },
     {
-      "evidence": "No dedicated test suite/config detected.",
+      "evidence": "Detected 6 unittest methods across 2 test files; ci_wired=True.",
       "name": "Automated tests",
-      "next_step": "Add smoke/unit tests for risk, freshness, and decision contract behavior.",
-      "score": 20,
-      "status": "GAP"
+      "next_step": "Expand coverage to risk sizing, data freshness, and degraded-ingest cases.",
+      "score": 75,
+      "status": "PASS"
     },
     {
       "evidence": "secret_hits=0, risky_shell_calls=0.",
@@ -190,11 +190,14 @@
       "typed_functions": 18
     }
   ],
-  "overall_grade": "C",
-  "overall_score": 72.5,
+  "overall_grade": "B",
+  "overall_score": 77.5,
   "summary": {
     "python_files": 52,
     "secret_literal_files": [],
-    "total_lines": 12900
+    "test_files": 2,
+    "test_methods": 6,
+    "tests_ci_wired": true,
+    "total_lines": 12941
   }
 }
