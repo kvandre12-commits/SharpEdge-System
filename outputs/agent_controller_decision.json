@@ -1,16 +1,15 @@
 {
-  "confidence": 0.4,
+  "confidence": 1.0,
   "decision": "hold",
   "reasons": [
     "latest signal artifact present",
     "Robinhood FVG monitor decision=no_trade",
-    "pipeline warnings=1"
+    "risk layer state=PROBE"
   ],
   "risk_flags": [
-    "pipeline_warnings_present",
     "monitor_no_trade"
   ],
   "summary": "Deterministic local controller; no external AI API used.",
   "symbol": "SPY",
-  "ts_utc": "2026-06-10T16:59:55.468129+00:00"
+  "ts_utc": "2026-06-10T17:08:00.002768+00:00"
 }

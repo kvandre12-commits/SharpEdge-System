@@ -1,5 +1,5 @@
 {
-  "created_ts": "2026-06-10T16:59:55.422870+00:00",
+  "created_ts": "2026-06-10T17:07:59.952672+00:00",
   "decision": "no_trade",
   "directional_hypothesis": {
     "fill_bias": "bullish_gap_fill_watch",
@@ -17,7 +17,7 @@
     "gap_pct": "-0.00496570545437592",
     "macro_state": "",
     "open_regime_label": "NO_SETUP",
-    "session_close": "730.0800170898438",
+    "session_close": "730.1199951171875",
     "session_date": "2026-06-10",
     "session_high": "738.3800048828125",
     "session_low": "728.4901123046875",
@@ -57,10 +57,17 @@
   },
   "reasons": [
     "gap_already_filled",
-    "low_sample_n<5",
-    "risk_context_missing"
+    "low_sample_n<5"
   ],
-  "risk_context": {},
+  "risk_context": {
+    "capital_risk_pct": 0.05,
+    "date": "2026-06-10",
+    "deployment_confidence": 1.0,
+    "deployment_denied_reason": "LOW_SAMPLE",
+    "deployment_state": "PROBE",
+    "sample_n": 1,
+    "tradability_score": 0.8123899730439009
+  },
   "robinhood_mcp_handoff": {
     "blocked_actions": [
       "place_order",

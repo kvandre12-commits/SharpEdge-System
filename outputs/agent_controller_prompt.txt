@@ -39,7 +39,7 @@ External AI APIs: disabled
       "macro_stress": 0.0,
       "regime_id": "mrll0",
       "regime_label": "mid_vol|rising_voltrend|low_dp|low_macro|0_comp",
-      "regime_ts": "2026-06-10T16:59:48.048048+00:00",
+      "regime_ts": "2026-06-10T17:07:52.904125+00:00",
       "symbol": "SPY",
       "transition_flag": 1,
       "transition_label": "mid->mid | falling->rising | low->low",
@@ -52,7 +52,35 @@ External AI APIs: disabled
       "vol_trend_state": "rising",
       "vol_trend_state_prev": "falling"
     },
-    "latest_risk": {},
+    "latest_risk": {
+      "capital_risk_pct": 0.05,
+      "confidence_of_inaction": 0.05628300808682972,
+      "confidence_score": 25.0,
+      "date": "2026-06-10",
+      "dealer_state_hint": null,
+      "decision_ts": "2026-06-10T17:07:58.919471+00:00",
+      "deployment_confidence": 1.0,
+      "deployment_denied_reason": "LOW_SAMPLE",
+      "deployment_state": "PROBE",
+      "dp_state": "low",
+      "expectancy": 74.24207362879937,
+      "failed_fill_rate": 0.0,
+      "fill_rate": 1.0,
+      "macro_state": "UNKNOWN",
+      "mae_pct": 9.780173875479732e-05,
+      "no_trade_score": 0.05628300808682972,
+      "open_regime_label": "NO_SETUP",
+      "path_quality_score": 1.0,
+      "payoff_ratio": null,
+      "position_size_multiplier": 0.5,
+      "risk_quality_score": 0.7492664869593391,
+      "sample_bucket": "MICRO_SAMPLE",
+      "sample_n": 1,
+      "squeeze_risk": 0.0,
+      "symbol": "SPY",
+      "tradability_score": 0.8123899730439009,
+      "vol_state": "low"
+    },
     "latest_signal": {
       "cluster_slope": 0.0,
       "cluster_slope_fast": 0.0,
@@ -78,9 +106,7 @@ External AI APIs: disabled
       "trigger_cluster": 0.0
     }
   },
-  "health_warnings": [
-    "WARN: risk decision layer degraded"
-  ],
+  "health_warnings": [],
   "latest_signal_strength": {
     "cluster_slope": "0.0",
     "cluster_slope_fast": "0.0",
@@ -103,7 +129,7 @@ External AI APIs: disabled
     "trigger_cluster": "9.0"
   },
   "robinhood_fvg_monitor": {
-    "created_ts": "2026-06-10T16:59:55.422870+00:00",
+    "created_ts": "2026-06-10T17:07:59.952672+00:00",
     "decision": "no_trade",
     "directional_hypothesis": {
       "fill_bias": "bullish_gap_fill_watch",
@@ -121,7 +147,7 @@ External AI APIs: disabled
       "gap_pct": "-0.00496570545437592",
       "macro_state": "",
       "open_regime_label": "NO_SETUP",
-      "session_close": "730.0800170898438",
+      "session_close": "730.1199951171875",
       "session_date": "2026-06-10",
       "session_high": "738.3800048828125",
       "session_low": "728.4901123046875",
@@ -161,10 +187,17 @@ External AI APIs: disabled
     },
     "reasons": [
       "gap_already_filled",
-      "low_sample_n<5",
-      "risk_context_missing"
+      "low_sample_n<5"
     ],
-    "risk_context": {},
+    "risk_context": {
+      "capital_risk_pct": 0.05,
+      "date": "2026-06-10",
+      "deployment_confidence": 1.0,
+      "deployment_denied_reason": "LOW_SAMPLE",
+      "deployment_state": "PROBE",
+      "sample_n": 1,
+      "tradability_score": 0.8123899730439009
+    },
     "robinhood_mcp_handoff": {
       "blocked_actions": [
         "place_order",
