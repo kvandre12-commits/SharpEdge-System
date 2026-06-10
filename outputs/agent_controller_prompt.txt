@@ -39,7 +39,7 @@ External AI APIs: disabled
       "macro_stress": 0.0,
       "regime_id": "mrll0",
       "regime_label": "mid_vol|rising_voltrend|low_dp|low_macro|0_comp",
-      "regime_ts": "2026-06-10T17:43:16.588866+00:00",
+      "regime_ts": "2026-06-10T17:51:06.369970+00:00",
       "symbol": "SPY",
       "transition_flag": 1,
       "transition_label": "mid->mid | falling->rising | low->low",
@@ -58,7 +58,7 @@ External AI APIs: disabled
       "confidence_score": 25.0,
       "date": "2026-06-10",
       "dealer_state_hint": null,
-      "decision_ts": "2026-06-10T17:43:22.619339+00:00",
+      "decision_ts": "2026-06-10T17:51:12.240063+00:00",
       "deployment_confidence": 1.0,
       "deployment_denied_reason": "LOW_SAMPLE",
       "deployment_state": "PROBE",
@@ -129,7 +129,7 @@ External AI APIs: disabled
     "trigger_cluster": "9.0"
   },
   "robinhood_fvg_monitor": {
-    "created_ts": "2026-06-10T17:43:23.662433+00:00",
+    "created_ts": "2026-06-10T17:51:13.247541+00:00",
     "decision": "no_trade",
     "directional_hypothesis": {
       "fill_bias": "bullish_gap_fill_watch",
@@ -147,10 +147,10 @@ External AI APIs: disabled
       "gap_pct": "-0.00496570545437592",
       "macro_state": "",
       "open_regime_label": "NO_SETUP",
-      "session_close": "728.1749877929688",
+      "session_close": "729.97998046875",
       "session_date": "2026-06-10",
       "session_high": "738.3800048828125",
-      "session_low": "728.0150146484375",
+      "session_low": "727.864990234375",
       "session_open": "733.3900146484375",
       "time_to_fill_minutes": "105.00000044703484",
       "vol_state": ""
