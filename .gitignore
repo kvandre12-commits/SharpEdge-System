@@ -1,0 +1,21 @@
+# Python cache/build junk
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local secrets/config
+.env
+.env.*
+!.env.example
+
+# OS/editor noise
+.DS_Store
+*.swp
+*.swo
