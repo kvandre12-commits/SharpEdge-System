@@ -1,0 +1,18 @@
+{
+  "after": {
+    "earliest_date": "2000-01-03",
+    "latest_date": "2026-06-09",
+    "rows": 26760
+  },
+  "before": {
+    "earliest_date": "2000-01-03",
+    "latest_date": "2026-06-09",
+    "rows": 26760
+  },
+  "force_refresh": false,
+  "max_lag_days": 5,
+  "network_refresh": false,
+  "output_rows": 26760,
+  "symbol": "SPY",
+  "upserted_rows": 0
+}

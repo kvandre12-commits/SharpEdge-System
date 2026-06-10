@@ -1,0 +1,18 @@
+{
+  "after": {
+    "earliest_session_date": "2025-01-02",
+    "latest_session_date": "2026-06-10",
+    "latest_snapshot_ts": "2026-06-10T18:23:50+00:00",
+    "rows": 359
+  },
+  "bars_table": "spy_bars_15m",
+  "before": {
+    "earliest_session_date": "2025-01-02",
+    "latest_session_date": "2026-06-10",
+    "latest_snapshot_ts": "2026-06-10T18:04:16+00:00",
+    "rows": 359
+  },
+  "input_sessions": 359,
+  "symbol": "SPY",
+  "upserted_rows": 359
+}

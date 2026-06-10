@@ -1,0 +1,22 @@
+{
+  "after": {
+    "earliest_ts": "2025-01-02T14:30:00Z",
+    "latest_ts": "2026-06-10T18:15:00Z",
+    "rows": 10873,
+    "session_count": 359
+  },
+  "before": {
+    "earliest_ts": "2025-01-02T14:30:00Z",
+    "latest_ts": "2026-06-10T18:00:00Z",
+    "rows": 10872,
+    "session_count": 359
+  },
+  "end": null,
+  "fetched_rows": 1,
+  "mode": "incremental",
+  "start": "2026-06-10T18:00:01Z",
+  "symbol": "SPY",
+  "table": "spy_bars_15m",
+  "timeframe": "15Min",
+  "upserted_rows": 1
+}

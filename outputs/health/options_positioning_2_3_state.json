@@ -1,0 +1,25 @@
+{
+  "after": {
+    "metrics_max_snapshot_ts": "2026-05-10T00:36:39Z",
+    "metrics_min_snapshot_ts": "2026-02-07T17:33:09Z",
+    "metrics_rows": 11,
+    "source_max_snapshot_ts": "2026-05-10T00:36:39Z",
+    "source_min_snapshot_ts": "2026-02-07T17:33:09Z",
+    "source_snapshot_count": 11
+  },
+  "before": {
+    "metrics_max_snapshot_ts": "2026-05-10T00:36:39Z",
+    "metrics_min_snapshot_ts": "2026-02-07T17:33:09Z",
+    "metrics_rows": 11,
+    "source_max_snapshot_ts": "2026-05-10T00:36:39Z",
+    "source_min_snapshot_ts": "2026-02-07T17:33:09Z",
+    "source_snapshot_count": 11
+  },
+  "dte_max": 3,
+  "dte_min": 2,
+  "force_rebuild": false,
+  "only_snapshot_ts": null,
+  "requested_snapshot_count": 0,
+  "underlying": "SPY",
+  "upserted_rows": 0
+}
