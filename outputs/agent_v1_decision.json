@@ -8,7 +8,7 @@
   "broker_order_allowed": false,
   "confidence_evidence_quality": 1.0,
   "confidence_trade_edge": 0.0,
-  "created_ts": "2026-06-10T17:23:00.637967+00:00",
+  "created_ts": "2026-06-10T17:31:09.548082+00:00",
   "decision": "hold",
   "freshness": {
     "max_current_age_days": 3,

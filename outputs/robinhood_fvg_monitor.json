@@ -1,5 +1,5 @@
 {
-  "created_ts": "2026-06-10T17:23:00.541283+00:00",
+  "created_ts": "2026-06-10T17:31:09.446440+00:00",
   "decision": "no_trade",
   "directional_hypothesis": {
     "fill_bias": "bullish_gap_fill_watch",
@@ -17,7 +17,7 @@
     "gap_pct": "-0.00496570545437592",
     "macro_state": "",
     "open_regime_label": "NO_SETUP",
-    "session_close": "728.9400024414062",
+    "session_close": "729.6801147460938",
     "session_date": "2026-06-10",
     "session_high": "738.3800048828125",
     "session_low": "728.4901123046875",
