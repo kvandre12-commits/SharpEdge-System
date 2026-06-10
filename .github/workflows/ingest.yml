@@ -44,6 +44,10 @@ jobs:
          python -m pip install --upgrade pip
          pip install pandas numpy matplotlib yfinance
 
+      - name: Python quality gate
+        run: |
+          python scripts/utils/lint_python.py scripts
+
       - name: Initialize pipeline health
         run: |
           mkdir -p outputs/health

@@ -38,6 +38,21 @@ SharpEdge Systems is both:
 
 It represents the transition from physical precision craft → data system design.
 
+## Local Quality Gate
+
+Ruff may require a Rust build on Android/Termux, so this repo includes a
+stdlib-only fallback quality gate:
+
+```bash
+python scripts/utils/lint_python.py scripts
+```
+
+Optional stricter style audit, currently advisory while old debt is cleaned up:
+
+```bash
+python scripts/utils/lint_python.py scripts --strict-style
+```
+
 ## Results Summary
 
 | Metric | Value |
