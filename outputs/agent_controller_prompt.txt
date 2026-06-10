@@ -39,7 +39,7 @@ External AI APIs: disabled
       "macro_stress": 0.0,
       "regime_id": "mrll0",
       "regime_label": "mid_vol|rising_voltrend|low_dp|low_macro|0_comp",
-      "regime_ts": "2026-06-09T23:53:24.396611+00:00",
+      "regime_ts": "2026-06-10T16:59:48.048048+00:00",
       "symbol": "SPY",
       "transition_flag": 1,
       "transition_label": "mid->mid | falling->rising | low->low",
@@ -103,45 +103,45 @@ External AI APIs: disabled
     "trigger_cluster": "9.0"
   },
   "robinhood_fvg_monitor": {
-    "created_ts": "2026-06-10T16:31:26.211127+00:00",
+    "created_ts": "2026-06-10T16:59:55.422870+00:00",
     "decision": "no_trade",
     "directional_hypothesis": {
-      "fill_bias": "bearish_gap_fill_watch",
-      "option_side_watch": "puts_or_put_spreads",
-      "reason": "Up gaps fill downward toward prior close / gap fill level."
+      "fill_bias": "bullish_gap_fill_watch",
+      "option_side_watch": "calls_or_call_spreads",
+      "reason": "Down gaps fill upward toward prior close / gap fill level."
     },
     "latest_gap_event": {
       "dp_state": "",
-      "event_type": "FAILED_BREAKOUT",
-      "fill_completed": "0",
+      "event_type": "UNCLASSIFIED",
+      "fill_completed": "1",
       "fill_path_type": "SQUEEZE_THEN_FILL",
-      "fill_ts": "",
-      "gap_direction": "UP",
-      "gap_fill_level": "739.219970703125",
-      "gap_pct": "0.005965794153927959",
+      "fill_ts": "2026-06-10T14:00:00Z",
+      "gap_direction": "DOWN",
+      "gap_fill_level": "737.0499877929688",
+      "gap_pct": "-0.00496570545437592",
       "macro_state": "",
       "open_regime_label": "NO_SETUP",
-      "session_close": "737.0499877929688",
-      "session_date": "2026-06-09",
-      "session_high": "746.9000244140625",
-      "session_low": "722.5900268554688",
-      "session_open": "743.6300048828125",
-      "time_to_fill_minutes": "",
+      "session_close": "730.0800170898438",
+      "session_date": "2026-06-10",
+      "session_high": "738.3800048828125",
+      "session_low": "728.4901123046875",
+      "session_open": "733.3900146484375",
+      "time_to_fill_minutes": "105.00000044703484",
       "vol_state": ""
     },
     "matched_gap_edge": {
-      "avg_MAE_pct": "0.0005338163856513209",
-      "avg_MFE_pct": "0.00866907725958064",
-      "avg_time_to_fill_minutes": "59.99999977648258",
-      "direct_fill_rate": "0.0",
-      "event_type": "FAILED_BREAKOUT",
+      "avg_MAE_pct": "0.0003380090596740238",
+      "avg_MFE_pct": "0.012050929982451657",
+      "avg_time_to_fill_minutes": "29.99999988824129",
+      "direct_fill_rate": "1.0",
+      "event_type": "UNCLASSIFIED",
       "failed_fill_rate": "0.0",
-      "fill_path_type": "ROTATIONAL_BALANCE_THEN_FILL",
+      "fill_path_type": "DIRECT_FILL",
       "fill_rate": "1.0",
-      "gap_direction": "UP",
-      "n": "1",
+      "gap_direction": "DOWN",
+      "n": "2",
       "sample_quality": "LOW_SAMPLE",
-      "tradability_score": "674.5871054253984"
+      "tradability_score": "6912.392298535597"
     },
     "mode": "dry_run_monitoring_only",
     "options_context": {
@@ -160,6 +160,7 @@ External AI APIs: disabled
       "total_put_oi": 1029416
     },
     "reasons": [
+      "gap_already_filled",
       "low_sample_n<5",
       "risk_context_missing"
     ],
