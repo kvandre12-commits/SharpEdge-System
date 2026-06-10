@@ -76,6 +76,36 @@ def load_table(con, table: str) -> pd.DataFrame:
     return pd.read_sql_query(f"SELECT * FROM {table}", con)
 
 
+def latest_symbol_date(con) -> str:
+    """Return the freshest known date for the active symbol.
+
+    The confidence/expectancy matrices are state-level artifacts, not always
+    daily rows. The SQLite table is daily keyed, so stamp matrix-derived risk
+    decisions with the latest market date instead of inserting NULL and face-
+    planting on the NOT NULL constraint. Elegant? No. Honest? Yes.
+    """
+    candidates = [
+        ("bars_daily", "date", "symbol"),
+        ("signals_daily", "date", "symbol"),
+        ("regime_daily", "date", "symbol"),
+        ("open_resolution_regime", "session_date", "underlying"),
+        ("options_positioning_metrics", "session_date", "underlying"),
+    ]
+    dates = []
+    for table, date_col, symbol_col in candidates:
+        if not table_exists(con, table):
+            continue
+        row = con.execute(
+            f"SELECT MAX({date_col}) FROM {table} WHERE {symbol_col}=?",
+            (SYMBOL,),
+        ).fetchone()
+        if row and row[0]:
+            dates.append(str(row[0]))
+    if dates:
+        return max(dates)
+    return datetime.now(timezone.utc).date().isoformat()
+
+
 def safe_col(df: pd.DataFrame, col: str, default=np.nan):
     if col not in df.columns:
         df[col] = default
@@ -263,6 +293,17 @@ def main():
 
         base["decision_ts"] = datetime.now(timezone.utc).isoformat()
 
+        decision_date = latest_symbol_date(con)
+        if "date" not in base.columns:
+            base["date"] = decision_date
+        else:
+            base["date"] = base["date"].fillna(decision_date)
+
+        if "symbol" not in base.columns:
+            base["symbol"] = SYMBOL
+        else:
+            base["symbol"] = base["symbol"].fillna(SYMBOL)
+
         out_cols = [
             "date",
             "symbol",
@@ -308,6 +349,14 @@ def main():
             "tradability_score","sample_bucket","sample_n","decision_ts"
         ]]
 
+        db_records = (
+            records.sort_values(
+                ["deployment_confidence", "tradability_score", "sample_n"],
+                ascending=[False, False, False],
+            )
+            .drop_duplicates(["symbol", "date"], keep="first")
+        )
+
         con.executemany(
             """
             INSERT OR REPLACE INTO risk_decision_layer (
@@ -322,7 +371,7 @@ def main():
               tradability_score,sample_bucket,sample_n,decision_ts
             ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
-            records.to_records(index=False).tolist()
+            db_records.to_records(index=False).tolist()
         )
 
         con.commit()
