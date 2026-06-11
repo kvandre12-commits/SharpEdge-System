@@ -1,0 +1,75 @@
+name: Robinhood Capability Probe
+
+permissions:
+  contents: read
+  actions: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      capability:
+        description: "Capability/tool/task name to classify"
+        required: true
+        default: "get_portfolio"
+        type: string
+  push:
+    paths:
+      - ".github/workflows/robinhood_capability_probe.yml"
+      - "scripts/utils/robinhood_mcp_capability_probe.py"
+      - "docs/robinhood_capability_probe.md"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Resolve capability input
+        id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            capability='${{ inputs.capability }}'
+          else
+            capability='get_portfolio'
+          fi
+          printf 'capability=%s\n' "$capability" >> "$GITHUB_OUTPUT"
+          echo "Capability: $capability"
+
+      - name: Run capability probe
+        run: python scripts/utils/robinhood_mcp_capability_probe.py "${{ steps.resolve.outputs.capability }}"
+
+      - name: Upload probe artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: robinhood-capability-probe-${{ github.run_id }}
+          retention-days: 14
+          path: |
+            outputs/robinhood_capability_probe.json
+            outputs/robinhood_capability_probe.txt
+
+      - name: Write GitHub run summary
+        shell: bash
+        run: |
+          {
+            echo "# Robinhood Capability Probe"
+            echo ""
+            echo "- Event: ${{ github.event_name }}"
+            echo "- Ref: ${{ github.ref_name }}"
+            echo "- Capability: \`${{ steps.resolve.outputs.capability }}\`"
+            echo ""
+            if [ -f outputs/robinhood_capability_probe.txt ]; then
+              echo "## Probe result"
+              echo '```text'
+              cat outputs/robinhood_capability_probe.txt
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
