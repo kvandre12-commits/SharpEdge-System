@@ -5,14 +5,14 @@
     "rows": 26760
   },
   "before": {
-    "earliest_date": "2000-01-03",
-    "latest_date": "2026-06-09",
-    "rows": 26760
+    "earliest_date": null,
+    "latest_date": null,
+    "rows": 0
   },
   "force_refresh": false,
   "max_lag_days": 5,
-  "network_refresh": false,
+  "network_refresh": true,
   "output_rows": 26760,
-  "symbol": "SPY",
-  "upserted_rows": 0
+  "symbol": "WMT",
+  "upserted_rows": 26760
 }
