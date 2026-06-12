@@ -1,2 +1,2 @@
 date,symbol,early_score,early_bucket,readiness_score,ignition_score,dp_strength,transition_flag,compression_flag,trigger_cluster,trade_permission,tr_lift,cluster_slope,signal_version,tr_lift_fast,cluster_slope_fast,pressure_state,trade_gate,pressure_reason
-2026-06-10,WMT,14.405783015565003,quiet,0.0,14.405783015565003,0.0,0,0,10.0,1,1.160144575389125,0.2,v1_early_readiness_ignition,1.0529378237856732,1.0,NORMAL,0,default
+2026-06-11,WMT,8.0,quiet,0.0,8.0,0.0,0,0,10.0,1,0.8436141969890324,0.2,v1_early_readiness_ignition,0.9431472892185124,0.0,NORMAL,0,default
