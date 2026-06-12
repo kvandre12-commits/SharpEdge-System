@@ -9,15 +9,15 @@
     "evidence_quality": 1.0,
     "trade_edge": 0.0
   },
-  "created_ts": "2026-06-10T22:40:33.220726+00:00",
+  "created_ts": "2026-06-12T00:06:11.782336+00:00",
   "focus": {
     "atm_strike": 743.0,
     "dealer_state_hint": "DEFENSIVE",
-    "fill_bias": "bullish_gap_fill_watch",
-    "gap_direction": "DOWN",
-    "gap_fill_level": "737.0499877929688",
-    "gap_session_date": "2026-06-10",
-    "option_side_watch": "calls_or_call_spreads",
+    "fill_bias": "bearish_gap_fill_watch",
+    "gap_direction": "UP",
+    "gap_fill_level": "725.4299926757812",
+    "gap_session_date": "2026-06-11",
+    "option_side_watch": "puts_or_put_spreads",
     "spot": 742.719970703125
   },
   "headline": "Stand down. Preserve context, but do not act on this setup.",
@@ -44,19 +44,19 @@
     "sample_n": 1,
     "stale_inputs": [
       {
-        "age_days": 21,
+        "age_days": 23,
         "date": "2026-05-20",
         "input": "signal",
         "max_age_days": 3
       },
       {
-        "age_days": 21,
+        "age_days": 23,
         "date": "2026-05-20",
         "input": "regime",
         "max_age_days": 3
       },
       {
-        "age_days": 20,
+        "age_days": 22,
         "date": "2026-05-21",
         "input": "options_positioning",
         "max_age_days": 7
@@ -65,7 +65,7 @@
   },
   "schema_version": "operator_brief.v1",
   "summary": {
-    "broker_integration_status": "disabled",
+    "broker_integration_status": "unconfigured",
     "contract_decision": "hold",
     "controller_decision": "hold",
     "monitor_decision": "no_trade",

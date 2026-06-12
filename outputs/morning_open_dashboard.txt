@@ -1,18 +1,18 @@
 SHARPEDGE MORNING OPEN DASHBOARD
-Created: 2026-06-10T22:40:33.348656+00:00
+Created: 2026-06-12T00:06:11.873729+00:00
 Readiness: blocked
 Operator action: stand_down
 Headline: Stand down. Preserve context, but do not act on this setup.
 
 Symbol: SPY
-Gap direction / fill level: DOWN / 737.0499877929688
-Option side watch: calls_or_call_spreads
+Gap direction / fill level: UP / 725.4299926757812
+Option side watch: puts_or_put_spreads
 Spot / ATM: 742.719970703125 / 743.0
 Dealer state: DEFENSIVE
 
 Checklist:
 - [BLOCKED] fresh_inputs: 3 stale input(s) present.
-- [BLOCKED] broker_integration: Broker integration status=disabled.
+- [BLOCKED] broker_integration: Broker integration status=unconfigured.
 - [OK] watchlist_focus: Watchlist items available=1.
 - [BLOCKED] trade_permission: Contract decision=hold.
 

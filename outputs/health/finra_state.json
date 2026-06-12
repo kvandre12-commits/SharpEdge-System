@@ -1,11 +1,11 @@
 {
   "after": {
-    "latest_ingest_ts": "2026-06-08T23:51:31.728102",
+    "latest_ingest_ts": "2026-06-10T17:55:11.478596",
     "latest_week_start": "2026-05-18",
     "rows": 125
   },
   "before": {
-    "latest_ingest_ts": "2026-06-08T23:51:31.728102",
+    "latest_ingest_ts": "2026-06-10T17:55:11.478596",
     "latest_week_start": "2026-05-18",
     "rows": 125
   },
@@ -14,8 +14,8 @@
   "fetched_week_count": 0,
   "force_refresh": false,
   "network_refresh": false,
-  "overlay_rows": 511,
+  "overlay_rows": 593,
   "requested_week_count": 0,
   "requested_weeks": [],
-  "symbol": "WMT"
+  "symbol": "SPY"
 }

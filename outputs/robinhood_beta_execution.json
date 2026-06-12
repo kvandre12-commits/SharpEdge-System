@@ -18,8 +18,8 @@
     "sample_n_below_30",
     "stale_or_missing_inputs"
   ],
-  "broker_integration_status": "disabled",
-  "created_ts": "2026-06-10T22:58:01.645023+00:00",
+  "broker_integration_status": "unconfigured",
+  "created_ts": "2026-06-12T00:06:11.918177+00:00",
   "headline": "Stand down. Preserve context, but do not act on this setup.",
   "monitoring_mode": "artifact_only_manual_review",
   "operator_action": "stand_down",
@@ -42,11 +42,11 @@
       "If defined risk is required, sell further OTM leg to cap loss.",
       "Prefer same-session thesis alignment with contract freshness and monitor context."
     ],
-    "option_side_watch": "calls_or_call_spreads",
+    "option_side_watch": "puts_or_put_spreads",
     "price_limit_required": true,
     "reference_levels": {
       "atm_strike": 743.0,
-      "gap_fill_level": "737.0499877929688",
+      "gap_fill_level": "725.4299926757812",
       "spot": 742.719970703125
     },
     "risk_limits": {
@@ -55,7 +55,7 @@
       "source_contract_risk_pct": 0.0
     },
     "setup_type": "gap_fill_options_context",
-    "strategy_family": "call_debit_spread",
+    "strategy_family": "put_debit_spread",
     "symbol": "SPY"
   },
   "readiness": "blocked",
@@ -86,11 +86,11 @@
       "available": false,
       "enabled": false,
       "fallback_mode": "artifact_only_manual_review",
-      "reason": "server_disabled",
-      "registered": true,
+      "reason": "server_not_registered",
+      "registered": false,
       "server": "robinhood-trading",
-      "status": "disabled",
-      "url": "https://agent.robinhood.com/mcp/trading"
+      "status": "unconfigured",
+      "url": null
     },
     "fallback_mode": "artifact_only_shadow_review",
     "intent": "approval_gated_shadow_order_management",

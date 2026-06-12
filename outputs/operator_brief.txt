@@ -1,5 +1,5 @@
 SHARPEDGE OPERATOR BRIEF
-Created: 2026-06-10T22:40:33.220726+00:00
+Created: 2026-06-12T00:06:11.782336+00:00
 Symbol: SPY
 Action: stand_down
 Headline: Stand down. Preserve context, but do not act on this setup.
@@ -8,11 +8,11 @@ Contract decision: hold
 Controller decision: hold
 Monitor decision: no_trade
 Risk state: PROBE
-Broker integration: disabled (artifact_only_manual_review)
+Broker integration: unconfigured (artifact_only_manual_review)
 
-Gap direction: DOWN
-Gap fill level: 737.0499877929688
-Option side watch: calls_or_call_spreads
+Gap direction: UP
+Gap fill level: 725.4299926757812
+Option side watch: puts_or_put_spreads
 Spot / ATM: 742.719970703125 / 743.0
 Dealer state: DEFENSIVE
 

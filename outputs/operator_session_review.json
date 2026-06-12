@@ -1,28 +1,32 @@
 {
-  "created_ts": "2026-06-10T22:40:33.287824+00:00",
+  "created_ts": "2026-06-12T00:06:11.826015+00:00",
   "current_watchlist_active_count": 0,
   "distributions": {
     "broker_integration_statuses": [
       {
         "count": 1,
         "value": "disabled"
+      },
+      {
+        "count": 1,
+        "value": "unconfigured"
       }
     ],
     "operator_actions": [
       {
-        "count": 1,
+        "count": 2,
         "value": "stand_down"
       }
     ],
     "watchlist_statuses": [
       {
-        "count": 1,
+        "count": 2,
         "value": "blocked"
       }
     ]
   },
-  "journal_entries_reviewed": 1,
-  "journal_entries_total": 1,
+  "journal_entries_reviewed": 2,
+  "journal_entries_total": 2,
   "latest_entry": {
     "blocking_reasons": [
       "controller_hold",
@@ -30,7 +34,7 @@
       "sample_n_below_30",
       "stale_or_missing_inputs"
     ],
-    "created_ts": "2026-06-10T22:35:32.370123+00:00",
+    "created_ts": "2026-06-12T00:06:11.782336+00:00",
     "headline": "Stand down. Preserve context, but do not act on this setup.",
     "operator_action": "stand_down",
     "risk_flags": [
@@ -46,37 +50,37 @@
   "schema_version": "operator_session_review.v1",
   "top_blockers": [
     {
-      "count": 1,
+      "count": 2,
       "value": "controller_hold"
     },
     {
-      "count": 1,
+      "count": 2,
       "value": "monitor_no_trade"
     },
     {
-      "count": 1,
+      "count": 2,
       "value": "sample_n_below_30"
     },
     {
-      "count": 1,
+      "count": 2,
       "value": "stale_or_missing_inputs"
     }
   ],
   "top_risk_flags": [
     {
-      "count": 1,
+      "count": 2,
       "value": "broker_integration_unavailable"
     },
     {
-      "count": 1,
+      "count": 2,
       "value": "freshness_gate_failed"
     },
     {
-      "count": 1,
+      "count": 2,
       "value": "low_sample"
     },
     {
-      "count": 1,
+      "count": 2,
       "value": "monitor_blocks_trade"
     }
   ]

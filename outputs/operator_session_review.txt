@@ -1,13 +1,13 @@
 SHARPEDGE OPERATOR SESSION REVIEW
-Created: 2026-06-10T22:40:33.287824+00:00
-Journal entries reviewed: 1 / 1
+Created: 2026-06-12T00:06:11.826015+00:00
+Journal entries reviewed: 2 / 2
 Current active watchlist count: 0
 
 Latest action: stand_down
 Latest watchlist status: blocked
 Latest headline: Stand down. Preserve context, but do not act on this setup.
 
-Top actions: stand_down=1
-Top statuses: blocked=1
-Top blockers: controller_hold=1, monitor_no_trade=1, sample_n_below_30=1, stale_or_missing_inputs=1
-Top risk flags: broker_integration_unavailable=1, freshness_gate_failed=1, low_sample=1, monitor_blocks_trade=1
+Top actions: stand_down=2
+Top statuses: blocked=2
+Top blockers: controller_hold=2, monitor_no_trade=2, sample_n_below_30=2, stale_or_missing_inputs=2
+Top risk flags: broker_integration_unavailable=2, freshness_gate_failed=2, low_sample=2, monitor_blocks_trade=2

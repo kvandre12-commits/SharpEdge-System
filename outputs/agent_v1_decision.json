@@ -5,30 +5,30 @@
     "sample_n_below_30",
     "stale_or_missing_inputs"
   ],
-  "broker_integration_status": "disabled",
+  "broker_integration_status": "unconfigured",
   "broker_order_allowed": false,
   "confidence_evidence_quality": 1.0,
   "confidence_trade_edge": 0.0,
-  "created_ts": "2026-06-10T22:01:14.511466+00:00",
+  "created_ts": "2026-06-12T00:06:11.734524+00:00",
   "decision": "hold",
   "freshness": {
     "max_current_age_days": 3,
     "max_options_age_days": 7,
     "stale_inputs": [
       {
-        "age_days": 21,
+        "age_days": 23,
         "date": "2026-05-20",
         "input": "signal",
         "max_age_days": 3
       },
       {
-        "age_days": 21,
+        "age_days": 23,
         "date": "2026-05-20",
         "input": "regime",
         "max_age_days": 3
       },
       {
-        "age_days": 20,
+        "age_days": 22,
         "date": "2026-05-21",
         "input": "options_positioning",
         "max_age_days": 7

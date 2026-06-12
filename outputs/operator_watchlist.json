@@ -1,6 +1,6 @@
 {
   "active_count": 0,
-  "created_ts": "2026-06-10T22:40:33.220757+00:00",
+  "created_ts": "2026-06-12T00:06:11.782361+00:00",
   "items": [
     {
       "atm_strike": 743.0,
@@ -10,17 +10,17 @@
         "sample_n_below_30",
         "stale_or_missing_inputs"
       ],
-      "broker_integration_status": "disabled",
+      "broker_integration_status": "unconfigured",
       "dealer_state_hint": "DEFENSIVE",
-      "fill_bias": "bullish_gap_fill_watch",
-      "gap_direction": "DOWN",
-      "gap_fill_level": "737.0499877929688",
-      "gap_session_date": "2026-06-10",
+      "fill_bias": "bearish_gap_fill_watch",
+      "gap_direction": "UP",
+      "gap_fill_level": "725.4299926757812",
+      "gap_session_date": "2026-06-11",
       "headline": "Stand down. Preserve context, but do not act on this setup.",
-      "item_id": "SPY-gap-fill-2026-06-10-down",
+      "item_id": "SPY-gap-fill-2026-06-11-up",
       "monitoring_mode": "artifact_only_manual_review",
       "operator_action": "stand_down",
-      "option_side_watch": "calls_or_call_spreads",
+      "option_side_watch": "puts_or_put_spreads",
       "priority": "low",
       "risk_flags": [
         "broker_integration_unavailable",

@@ -1,19 +1,19 @@
 ROBINHOOD BETA EXECUTION HANDOFF
-Created: 2026-06-10T22:58:01.645023+00:00
+Created: 2026-06-12T00:06:11.918177+00:00
 Symbol: SPY
 Beta profile: approval_gated_shadow
 Beta stage: artifact_only
 Headline: Stand down. Preserve context, but do not act on this setup.
 Readiness: blocked
-Broker integration: disabled
+Broker integration: unconfigured
 
 Trade allowed by contract: False
 Create order draft allowed: False
 Submit order allowed: False
 Approval required: True
 
-Strategy family: call_debit_spread
-Option side watch: calls_or_call_spreads
+Strategy family: put_debit_spread
+Option side watch: puts_or_put_spreads
 Entry style: limit_debit
 DTE window: 0 to 1
 Max capital risk pct: 0.0
