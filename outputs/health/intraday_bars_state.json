@@ -1,22 +1,22 @@
 {
   "after": {
-    "earliest_ts": "2025-01-02T14:30:00Z",
+    "earliest_ts": "2026-05-27T13:30:00Z",
     "latest_ts": "2026-06-12T19:45:00Z",
-    "rows": 10942,
-    "session_count": 361
+    "rows": 338,
+    "session_count": 13
   },
   "before": {
-    "earliest_ts": "2025-01-02T14:30:00Z",
-    "latest_ts": "2026-06-11T20:15:00Z",
-    "rows": 10912,
-    "session_count": 360
+    "earliest_ts": "2026-05-27T13:30:00Z",
+    "latest_ts": "2026-06-11T19:45:00Z",
+    "rows": 312,
+    "session_count": 12
   },
   "end": null,
-  "fetched_rows": 30,
+  "fetched_rows": 26,
   "mode": "incremental",
-  "start": "2026-06-11T20:15:01Z",
-  "symbol": "SPY",
-  "table": "spy_bars_15m",
+  "start": "2026-06-11T19:45:01Z",
+  "symbol": "WMT",
+  "table": "wmt_bars_15m",
   "timeframe": "15Min",
-  "upserted_rows": 30
+  "upserted_rows": 26
 }

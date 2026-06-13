@@ -1,18 +1,18 @@
 {
   "after": {
-    "earliest_session_date": "2025-01-02",
+    "earliest_session_date": "2026-05-27",
     "latest_session_date": "2026-06-12",
-    "latest_snapshot_ts": "2026-06-13T00:01:50+00:00",
-    "rows": 361
+    "latest_snapshot_ts": "2026-06-13T00:04:00+00:00",
+    "rows": 13
   },
-  "bars_table": "spy_bars_15m",
+  "bars_table": "wmt_bars_15m",
   "before": {
-    "earliest_session_date": "2025-01-02",
+    "earliest_session_date": "2026-05-27",
     "latest_session_date": "2026-06-11",
-    "latest_snapshot_ts": "2026-06-12T00:06:02+00:00",
-    "rows": 360
+    "latest_snapshot_ts": "2026-06-12T00:07:29+00:00",
+    "rows": 12
   },
-  "input_sessions": 361,
-  "symbol": "SPY",
-  "upserted_rows": 361
+  "input_sessions": 13,
+  "symbol": "WMT",
+  "upserted_rows": 13
 }

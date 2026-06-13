@@ -1,21 +1,21 @@
 {
   "after": {
-    "earliest_date": "2024-01-31",
+    "earliest_date": "2024-05-28",
     "latest_date": "2026-06-12",
-    "latest_ingest_ts": "2026-06-13T00:01:49.616939+00:00",
-    "rows": 594
+    "latest_ingest_ts": "2026-06-13T00:03:59.648522+00:00",
+    "rows": 513
   },
   "before": {
-    "earliest_date": "2024-01-31",
+    "earliest_date": "2024-05-28",
     "latest_date": "2026-06-11",
-    "latest_ingest_ts": "2026-06-12T00:06:01.159666+00:00",
-    "rows": 593
+    "latest_ingest_ts": "2026-06-12T00:07:28.312890+00:00",
+    "rows": 512
   },
   "cache_ttl_hours": 12.0,
-  "csv_rows": 594,
+  "csv_rows": 513,
   "force_refresh": false,
   "network_refresh": true,
   "period": "10d",
-  "symbol": "SPY",
+  "symbol": "WMT",
   "upserted_rows": 10
 }
