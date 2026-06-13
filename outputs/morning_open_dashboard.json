@@ -27,13 +27,13 @@
       "ok": false
     }
   ],
-  "created_ts": "2026-06-12T00:06:11.873729+00:00",
+  "created_ts": "2026-06-13T00:01:59.656973+00:00",
   "headline": "Stand down. Preserve context, but do not act on this setup.",
   "market_focus": {
     "atm_strike": 743.0,
     "dealer_state_hint": "DEFENSIVE",
     "gap_direction": "UP",
-    "gap_fill_level": "725.4299926757812",
+    "gap_fill_level": "737.760009765625",
     "option_side_watch": "puts_or_put_spreads",
     "spot": 742.719970703125,
     "symbol": "SPY"
@@ -56,23 +56,23 @@
   },
   "readiness": "blocked",
   "recent_review": {
-    "journal_entries_reviewed": 2,
+    "journal_entries_reviewed": 3,
     "latest_action": "stand_down",
     "top_blockers": [
       {
-        "count": 2,
+        "count": 3,
         "value": "controller_hold"
       },
       {
-        "count": 2,
+        "count": 3,
         "value": "monitor_no_trade"
       },
       {
-        "count": 2,
+        "count": 3,
         "value": "sample_n_below_30"
       },
       {
-        "count": 2,
+        "count": 3,
         "value": "stale_or_missing_inputs"
       }
     ]
@@ -86,19 +86,19 @@
   "schema_version": "morning_open_dashboard.v1",
   "stale_inputs": [
     {
-      "age_days": 23,
+      "age_days": 24,
       "date": "2026-05-20",
       "input": "signal",
       "max_age_days": 3
     },
     {
-      "age_days": 23,
+      "age_days": 24,
       "date": "2026-05-20",
       "input": "regime",
       "max_age_days": 3
     },
     {
-      "age_days": 22,
+      "age_days": 23,
       "date": "2026-05-21",
       "input": "options_positioning",
       "max_age_days": 7

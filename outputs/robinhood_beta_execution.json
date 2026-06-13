@@ -19,7 +19,7 @@
     "stale_or_missing_inputs"
   ],
   "broker_integration_status": "unconfigured",
-  "created_ts": "2026-06-12T00:06:11.918177+00:00",
+  "created_ts": "2026-06-13T00:01:59.702675+00:00",
   "headline": "Stand down. Preserve context, but do not act on this setup.",
   "monitoring_mode": "artifact_only_manual_review",
   "operator_action": "stand_down",
@@ -46,7 +46,7 @@
     "price_limit_required": true,
     "reference_levels": {
       "atm_strike": 743.0,
-      "gap_fill_level": "725.4299926757812",
+      "gap_fill_level": "737.760009765625",
       "spot": 742.719970703125
     },
     "risk_limits": {
