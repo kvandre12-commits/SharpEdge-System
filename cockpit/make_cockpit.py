@@ -15,10 +15,13 @@ Run it in a loop for live updates; the HTML meta-refreshes to pick them up.
 from __future__ import annotations
 
 import datetime as dt
+import os
 import re
 from collections import defaultdict
 
 import requests
+
+from setups import detect_exhaustion, detect_failed_breaks, reference_levels
 
 UA = {"User-Agent": "Mozilla/5.0"}
 INTRA_URL = (
@@ -27,7 +30,7 @@ INTRA_URL = (
 )
 CBOE_URL = "https://cdn.cboe.com/api/global/delayed_quotes/options/SPY.json"
 SYM_RE = re.compile(r"^[A-Z]+(\d{6})([CP])(\d{8})$")
-OUT_DIR = "/data/data/com.termux/files/home/spy_overlay"
+OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # ----------------------------- data fetch -----------------------------
@@ -39,13 +42,18 @@ def fetch_intraday():
     ts = res["timestamp"]
     q = res["indicators"]["quote"][0]
     rows = []
-    for t, c, v in zip(ts, q["close"], q["volume"]):
+    o_, h_, l_ = q["open"], q["high"], q["low"]
+    for i, (t, c, v) in enumerate(zip(ts, q["close"], q["volume"])):
         if c is None:
             continue
         local = dt.datetime.utcfromtimestamp(t + gmt)
         minute = local.hour * 60 + local.minute
         if 570 <= minute <= 960:  # regular session 09:30-16:00 ET
-            rows.append((minute - 570, c, v or 0))
+            o = o_[i] if o_[i] is not None else c
+            h = h_[i] if h_[i] is not None else c
+            low = l_[i] if l_[i] is not None else c
+            # bar = (minute_of_session, open, high, low, close, volume)
+            rows.append((minute - 570, o, h, low, c, v or 0))
     return rows
 
 
@@ -67,8 +75,8 @@ def fetch_options():
 
 # ----------------------------- analytics -----------------------------
 def read_price_action(rows):
-    closes = [c for _, c, _ in rows]
-    vols = [v for _, _, v in rows]
+    closes = [b[4] for b in rows]
+    vols = [b[5] for b in rows]
     spot = closes[-1]
     day_open = closes[0]
     hi, lo = max(closes), min(closes)
@@ -76,7 +84,7 @@ def read_price_action(rows):
     rng_pos = (spot - lo) / rng * 100  # 0=low, 100=high of day
 
     # VWAP (who controls the day)
-    cum_pv = sum(c * v for _, c, v in rows)
+    cum_pv = sum(b[4] * b[5] for b in rows)
     cum_v = sum(vols) or 1
     vwap = cum_pv / cum_v
 
@@ -204,7 +212,7 @@ def synthesize(pa, op):
 def chart_svg(rows, pa):
     W, H, PL, PR, PT, PB = 1000, 320, 60, 70, 20, 28
     pw, ph = W - PL - PR, H - PT - PB
-    closes = [c for _, c, _ in rows]
+    closes = [b[4] for b in rows]
     n = len(closes)
     lo, hi = min(closes), max(closes)
     span = (hi - lo) or 1
@@ -245,7 +253,27 @@ def chart_svg(rows, pa):
 CLR = {"ok": "#26a641", "bad": "#f85149", "warn": "#d29922", "info": "#58a6ff"}
 
 
-def render_html(pa, op, lines, chart):
+def _setup_section(setups):
+    if not setups:
+        return ('<div style="border:1px dashed #30363d;background:#0d1117;'
+                'padding:12px;margin:8px 0;border-radius:6px;color:#7d8590;'
+                'font-size:13px">No failed-break or exhaustion setup right now '
+                '- stand down, wait for the trap.</div>')
+    blocks = []
+    for s in setups:
+        c = CLR.get(s["kind"], "#58a6ff")
+        blocks.append(
+            f'<div style="border:2px solid {c};background:#161b22;'
+            f'padding:12px;margin:8px 0;border-radius:8px">'
+            f'<div style="color:{c};font-weight:bold;font-size:17px">'
+            f'{s["tag"]} &#8594; {s["bias"]}</div>'
+            f'<div style="color:#adbac7;font-size:13px;margin-top:4px">'
+            f'{s["detail"]}</div></div>'
+        )
+    return "".join(blocks)
+
+
+def render_html(pa, op, lines, setups):
     stamp = dt.datetime.now().strftime("%H:%M:%S")
     sign = "+" if pa["day_chg"] >= 0 else ""
     cards = []
@@ -274,8 +302,11 @@ ${pa['spot']:.2f}
 {sign}{pa['day_chg']:.2f}% today</span></div>
 <img src="cockpit_chart.svg" style="width:100%;border:1px solid #21262d;
 border-radius:8px">
+<h3 style="font-size:14px;color:#e6edf3;margin:14px 0 4px">SETUPS
+(failed breaks + exhaustion)</h3>
+{_setup_section(setups)}
 <h3 style="font-size:14px;color:#7d8590;margin:14px 0 4px">THE READ
-(data-driven)</h3>
+(context)</h3>
 {''.join(cards)}
 <p style="color:#484f58;font-size:11px;margin-top:14px">
 Free data (Yahoo 1m + CBOE delayed options). Decision support only -
@@ -289,13 +320,22 @@ def main():
     pa = read_price_action(rows)
     op = read_options(pa["spot"], book)
     lines = synthesize(pa, op)
+    levels = reference_levels(rows)
+    setups = detect_failed_breaks(rows, levels) + detect_exhaustion(rows, pa)
     with open(f"{OUT_DIR}/cockpit_chart.svg", "w") as f:
         f.write(chart_svg(rows, pa))
     with open(f"{OUT_DIR}/cockpit.html", "w") as f:
-        f.write(render_html(pa, op, lines, None))
+        f.write(render_html(pa, op, lines, setups))
     print(f"spot ${pa['spot']:.2f} | day {pa['day_chg']:+.2f}% | "
           f"vs VWAP {pa['vs_vwap']:+.2f}% | rng {pa['rng_pos']:.0f}% | "
           f"vol {pa['vol_mult']:.1f}x")
+    levels_str = " ".join(f"{k}=${v:.2f}" for k, v in levels.items())
+    print(f"  levels: {levels_str}")
+    if setups:
+        for s in setups:
+            print(f"  >> {s['tag']} -> {s['bias']}: {s['detail']}")
+    else:
+        print("  >> no failed-break/exhaustion setup right now")
     for t, k, d in lines:
         print(f"  [{k:4}] {t}: {d}")
 
