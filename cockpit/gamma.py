@@ -93,22 +93,24 @@ def gamma_card(gp):
 
     if gp["regime"] == "positive":
         kind = "info"
-        # which way the pin pulls
+        # which way the magnet pulls price
         if pin and spot > pin:
-            pull = f"downward pull toward pin ${pin:g}"
+            pull = f"magnet ${pin:g} is BELOW price - expect pull DOWN"
         elif pin and spot < pin:
-            pull = f"upward pull toward pin ${pin:g}"
+            pull = f"magnet ${pin:g} is ABOVE price - expect pull UP"
         else:
-            pull = f"glued to pin ${pin:g}"
-        tag = "POSITIVE GAMMA - PINNED"
-        bias = "chop / mean-revert -> fade the edges"
-        detail = (f"{dte_lbl} {gp['exp']} | {pull} | max pain ${mp:g} | "
-                  f"dealers dampen moves")
+            pull = f"price stuck on magnet ${pin:g}"
+        tag = "STICKY DAY (calm/chop)"
+        bias = "FADE the edges - bet on snap-back to the magnet"
+        detail = (f"{dte_lbl} {gp['exp']} | {pull} | "
+                  f"careful: cheap 0DTE lottos usually bleed today "
+                  f"(tech: positive gamma, max pain ${mp:g})")
     else:
         kind = "warn"
-        tag = "NEGATIVE GAMMA - LOOSE (wheee)"
-        bias = "moves accelerate -> ride momentum / directional"
-        detail = (f"{dte_lbl} {gp['exp']} | pin ${pin:g} weak, max pain "
-                  f"${mp:g} | dealers amplify moves - breakouts RUN")
+        tag = "RUNNER DAY (wheee)"
+        bias = "RIDE momentum - go directional, breakouts run"
+        detail = (f"{dte_lbl} {gp['exp']} | no strong magnet holding price, "
+                  f"moves snowball | good day for directional 0DTE "
+                  f"(tech: negative gamma, max pain ${mp:g})")
 
     return {"tag": tag, "bias": bias, "kind": kind, "detail": detail}
