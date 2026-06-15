@@ -21,6 +21,7 @@ from collections import defaultdict
 
 import requests
 
+from gamma import gamma_card, gamma_profile
 from setups import detect_exhaustion, detect_failed_breaks, reference_levels
 
 UA = {"User-Agent": "Mozilla/5.0"}
@@ -322,6 +323,10 @@ def main():
     lines = synthesize(pa, op)
     levels = reference_levels(rows)
     setups = detect_failed_breaks(rows, levels) + detect_exhaustion(rows, pa)
+    gp = gamma_profile(book, pa["spot"])
+    gcard = gamma_card(gp)
+    if gcard:
+        setups = [gcard] + setups  # gamma regime sits at the very top
     with open(f"{OUT_DIR}/cockpit_chart.svg", "w") as f:
         f.write(chart_svg(rows, pa))
     with open(f"{OUT_DIR}/cockpit.html", "w") as f:
