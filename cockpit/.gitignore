@@ -1,0 +1,3 @@
+# generated artifacts -- regenerated on every run, no need to track
+*.svg
+*.html
