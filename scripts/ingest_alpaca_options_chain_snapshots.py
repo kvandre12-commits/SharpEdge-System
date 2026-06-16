@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# DEPRECATED as the open-interest source. Alpaca's options *snapshot* endpoint
+# does not return open_interest, so this writer left call_oi/put_oi/volume = 0
+# across the whole table -> the gamma-regime and wall gates were un-backtestable.
+# Use scripts/ingest_cboe_options_chain_snapshots.py instead (CBOE = the same
+# feed the live cockpit trusts, and it carries real OI + gamma + volume).
 import os
 import json
 import sqlite3

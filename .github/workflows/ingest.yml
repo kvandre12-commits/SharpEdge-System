@@ -71,6 +71,11 @@ jobs:
         run: |
           python scripts/ingest_spy_intraday_alpaca.py || echo "WARN: intraday ingest degraded" >> outputs/health/warnings.log
 
+      - name: Ingest options chain snapshots (CBOE - real OI/gamma)
+        continue-on-error: true
+        run: |
+          python scripts/ingest_cboe_options_chain_snapshots.py || echo "WARN: CBOE options snapshot ingest degraded" >> outputs/health/warnings.log
+
       - name: Aggregate options positioning metrics (0-1 DTE)
         continue-on-error: true
         run: |
