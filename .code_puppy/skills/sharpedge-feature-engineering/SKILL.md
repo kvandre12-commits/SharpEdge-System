@@ -71,6 +71,27 @@ Then rebuild + verify: `prob` spread, `frac>=0.65`, Brier via
 (`/data/data/com.termux/files/usr/bin/python3` — has numpy/pandas/tzdata); the PATH
 `python3` is a venv without them.
 
+## Direction vs Magnitude — the efficient-market frontier (validated)
+
+Tested on 359 days at the 11:30 horizon:
+
+- **DIRECTION (back-half up/down) is ~unforecastable.** Best single feature OOS
+  AUC **0.52** (lower_wick/wick_asym); most ~0.50; `ret_open_to_cutoff` 0.47
+  (morning momentum slightly reverses). **`vs_vwap`/`vwap_proxy` is 0.46 —
+  ANTI-predictive**, yet it's what `decide()` uses to pick EXPANSION direction.
+  Don't fish for directional alpha; it isn't there (returns ≈ martingale).
+- **MAGNITUDE (rest-of-day |move|) IS strongly forecastable.** Morning
+  Garman-Klass / Parkinson vol → afternoon |move| with **Spearman IC ~0.40
+  (0.21 OOS)**. Calibration: `expected |move|% ≈ 2.54 · morning_GK%`.
+
+Note the inversion: the vol estimators are **duds for trend-classification** but
+the **best magnitude predictors**. Target choice decides the winner.
+
+**Strategy implication:** the edge is **structural + magnitude**, not directional
+forecasting — gamma walls, the pin/magnet, fade-the-edge reversion, and sizing to
+the expected move (surfaced on the deck's EXPECTED MOVE panel). The runner-long
+*directional* call is the shakiest part of the system.
+
 ## Calibration gotcha (already fixed, keep in mind)
 
 `fit_logreg` adds the L2 penalty straight to the gradient → it's brutally strong.
