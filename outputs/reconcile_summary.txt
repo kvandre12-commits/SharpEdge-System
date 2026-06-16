@@ -1,0 +1,15 @@
+SharpEdge model-vs-reality reconciliation
+window: all  | sessions: 359
+
+regime accuracy:    0.7461538461538462  (260 decisive calls)
+direction accuracy: 1.0  (1 directional calls)
+Brier:              0.1998  (constant-base-rate baseline 0.2167; lower is better)
+trend base rate:    0.318
+
+calibration (predicted prob_trend vs observed trend frequency):
+  prob bucket    n   pred   observed_trend_rate
+  [0.00,0.35)   212  0.231  0.226
+  [0.35,0.45)    89  0.400  0.427
+  [0.45,0.55)    52  0.489  0.423
+  [0.55,0.65)     5  0.594  1.000
+  [0.65,1.01)     1  0.789  1.000

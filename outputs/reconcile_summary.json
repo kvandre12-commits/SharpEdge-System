@@ -1,0 +1,11 @@
+{
+  "sessions": 359,
+  "decisive_regime_calls": 260,
+  "regime_accuracy": 0.7461538461538462,
+  "directional_calls": 1,
+  "direction_accuracy": 1.0,
+  "brier": 0.19983493180670353,
+  "brier_baseline_constant": 0.21671154010288562,
+  "trend_base_rate": 0.31754874651810583,
+  "calibration": "see reconcile_summary.txt"
+}

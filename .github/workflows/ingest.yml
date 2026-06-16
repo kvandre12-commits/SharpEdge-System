@@ -109,6 +109,37 @@ jobs:
         run: |
           python scripts/build_regime_spy_daily.py
 
+      # --- SPY gate chain (was never wired here -> the gate rotted stale) ---
+      - name: Build SPY features (daily)
+        continue-on-error: true
+        run: |
+          python scripts/build_features_spy_daily.py || echo "WARN: features build degraded" >> outputs/health/warnings.log
+
+      - name: Join macro overlays into features
+        continue-on-error: true
+        run: |
+          python scripts/join_macros_into_features.py || echo "WARN: macro join degraded" >> outputs/health/warnings.log
+
+      - name: Build signal strength (daily)
+        continue-on-error: true
+        run: |
+          python scripts/build_signal_strength_daily.py || echo "WARN: signal strength degraded" >> outputs/health/warnings.log
+
+      - name: Build intraday trend-day probability (11:30)
+        continue-on-error: true
+        run: |
+          python scripts/build_intraday_trendday_prob_1130_fused.py || echo "WARN: trendday prob degraded" >> outputs/health/warnings.log
+
+      - name: Build execution-state gate (daily)
+        continue-on-error: true
+        run: |
+          python scripts/build_execution_state_daily.py || echo "WARN: execution state degraded" >> outputs/health/warnings.log
+
+      - name: Nightly model-vs-reality reconciliation
+        continue-on-error: true
+        run: |
+          python scripts/reconcile_model_vs_reality.py || echo "WARN: reconciliation degraded" >> outputs/health/warnings.log
+
       - name: Build canonical auction expectancy dataset
         continue-on-error: true
         run: |
