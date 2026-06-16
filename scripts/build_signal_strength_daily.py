@@ -19,6 +19,10 @@ import pandas as pd
 
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 SYMBOL = os.getenv("SYMBOL", "SPY")
+# The execution path (decide(), controller_agent) reads the un-suffixed
+# latest_signal_strength.csv. Only the PRIMARY symbol is allowed to write that
+# canonical file, so a SYMBOL=WMT run can never clobber the SPY trade feed.
+PRIMARY_SYMBOL = os.getenv("EXEC_SYMBOL", "SPY")
 
 # --- knobs (keep small + sane) ---
 TR_BASE_WIN = int(os.getenv("SIG_TR_BASE_WIN", "10"))          # baseline for TR lift
@@ -505,7 +509,9 @@ def main():
         con.commit()
 
         os.makedirs("outputs", exist_ok=True)
-        daily_path = "outputs/spy_signal_strength_daily.csv"
+        sym = SYMBOL.lower()
+        # Symbol-namespaced daily file (SPY keeps its historical name spy_*).
+        daily_path = f"outputs/{sym}_signal_strength_daily.csv"
         df[out_cols].to_csv(daily_path, index=False)
         print(f"OK: {daily_path} | rows={len(df)}")
 
@@ -531,9 +537,20 @@ def main():
             "trade_gate": int(last.get("trade_gate", 0)),
             "pressure_reason": str(last.get("pressure_reason", "")),
         }])
-        latest_path = "outputs/latest_signal_strength.csv"
-        latest.to_csv(latest_path, index=False)
-        print(f"OK: {latest_path} (1 row)")
+        # Always write a symbol-suffixed latest so every symbol is preserved.
+        latest_symbol_path = f"outputs/latest_signal_strength_{sym}.csv"
+        latest.to_csv(latest_symbol_path, index=False)
+        print(f"OK: {latest_symbol_path} (1 row)")
+        # Only the PRIMARY (execution) symbol writes the canonical feed.
+        if SYMBOL.upper() == PRIMARY_SYMBOL.upper():
+            canonical_path = "outputs/latest_signal_strength.csv"
+            latest.to_csv(canonical_path, index=False)
+            print(f"OK: {canonical_path} (1 row, primary={PRIMARY_SYMBOL})")
+        else:
+            print(
+                f"SKIP canonical latest_signal_strength.csv: SYMBOL={SYMBOL} "
+                f"!= PRIMARY_SYMBOL={PRIMARY_SYMBOL} (protects execution feed)"
+            )
 
     finally:
         con.close()
