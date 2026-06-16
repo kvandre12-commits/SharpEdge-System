@@ -92,6 +92,22 @@ forecasting — gamma walls, the pin/magnet, fade-the-edge reversion, and sizing
 the expected move (surfaced on the deck's EXPECTED MOVE panel). The runner-long
 *directional* call is the shakiest part of the system.
 
+## Coil / squeeze (tested 3 ways — NO breakout edge in SPY; it FADES)
+
+The compression→expansion coil does NOT work as a breakout in SPY, at any tested
+horizon (don't re-chase it):
+- daily: P(next-day expansion) 0.049 after compression vs 0.232 base.
+- intraday width: narrowest channel quintile → SMALLEST forward range (monotonic =
+  pure vol persistence, not coil).
+- intraday squeeze→breakout (n=540): follow-through −0.014%, P(continue)=0.48 →
+  **breaks REVERT.**
+
+**Why (and it's consistent with everything):** SPY is a dealer-pinned, positive-
+gamma index — long-gamma hedging sells rallies / buys dips and **suppresses
+breakouts**. So a coil that pokes out gets sold back = the cockpit's `STICKY DAY →
+FADE the edges`. The coil is real but it's a **FADE signal, not a breakout** — use
+it to *strengthen* the fade side (`sharpedge-decision-gate`), never to chase a break.
+
 ## Calibration gotcha (already fixed, keep in mind)
 
 `fit_logreg` adds the L2 penalty straight to the gradient → it's brutally strong.
