@@ -44,10 +44,23 @@ math prices off premium ×100, NOT the underlying).
 volume ≥ `MIN_VOL_MULT`; not pinned to a wall; `vs_vwap>MIN` AND `mom15>MIN` →
 **long ATM call**.
 
-**Positive gamma → `_fade_decision` (sticky → mean-revert):**
+**Positive gamma → `_fade_decision` (sticky → mean-revert) — THE validated trade:**
 price must be AT an edge (`within FADE_EDGE_PCT(0.30)` of a wall). At/near the
 **call wall → fade SHORT with a PUT**; at/near the **put wall → fade LONG with a
-CALL**. Mid-range = nothing to fade → stand down.
+CALL**. Mid-range = nothing to fade → stand down. Conviction inputs (all validated
+this session):
+- **ROOM** gate: need `>= FADE_MIN_ROOM_PCT(0.08)` spot→magnet distance, else
+  'nothing to fade'.
+- **COIL**: tight intraday channel (`micro.ch_width_pct <= FADE_COIL_MAX_WIDTH_PCT
+  0.30`) STRENGTHENS the fade — SPY coils FADE (dealer long-gamma suppresses
+  breakouts; tested 3 ways). Coils are a fade signal, never a breakout.
+- **MAGNITUDE-aware grade**: `HIGH` only if coiled AND the expected rest-of-day
+  move (`magnitude.exp_move_realized_pct`) can actually reach the magnet; else
+  `standard`. Target = the pin/magnet.
+
+> This is the system's edge: structural mean-reversion, not direction/breakout.
+> Direction is ~unforecastable (0.52); magnitude is forecastable (IC 0.40). Make
+> the fade good; don't chase the runner-long directional call (shakiest part).
 
 **Unknown regime → stand down.**
 
