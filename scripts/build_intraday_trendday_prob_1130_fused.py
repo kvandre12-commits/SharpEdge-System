@@ -91,6 +91,7 @@ def ensure_table(conn):
       hhll_persistence REAL,
       vwap_proxy REAL,
       signed_vol REAL,
+      lower_wick REAL,
 
       model_version TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -101,6 +102,8 @@ def ensure_table(conn):
     existing = [r[1] for r in conn.execute("PRAGMA table_info(intraday_trendday_prob)")]
     if "signed_vol" not in existing:
         conn.execute("ALTER TABLE intraday_trendday_prob ADD COLUMN signed_vol REAL")
+    if "lower_wick" not in existing:
+        conn.execute("ALTER TABLE intraday_trendday_prob ADD COLUMN lower_wick REAL")
     conn.commit()
 
 def load_daily_labels(conn, symbol):
@@ -199,6 +202,11 @@ def compute_intraday_features(intra_df):
         vtot = float(np.sum(vols_arr))
         signed_vol = float(np.sum(bar_dir * vols_arr) / vtot) if vtot > 0 else 0.0
 
+        # lower-wick fraction of the open->cutoff candle: a long lower tail =
+        # buyers absorbing selling at the lows (rejection of lows) -> trend tell.
+        # Strongest single after-open OHLC-microstructure feature in the OOS lab.
+        lower_wick = (min(o, c) - l) / max(h - l, 1e-9)
+
         rows.append({
             "session_date": session_date,
             "symbol": SYMBOL,
@@ -211,6 +219,7 @@ def compute_intraday_features(intra_df):
             "hhll_persistence": hhll_persistence,
             "vwap_proxy": vwap_proxy,
             "signed_vol": signed_vol,
+            "lower_wick": lower_wick,
         })
     return pd.DataFrame(rows)
 
@@ -281,10 +290,10 @@ def upsert(conn, df):
           dealer_state_hint, gamma_proxy, wall_strike, dist_to_wall_pct,
           ret_open_to_cutoff, orbrange_pct, orb_break_strength,
           range_pct_to_cutoff, true_range_pct_to_cutoff,
-          hhll_persistence, vwap_proxy, signed_vol,
+          hhll_persistence, vwap_proxy, signed_vol, lower_wick,
           model_version
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(session_date, symbol, cutoff_ny) DO UPDATE SET
           prob_trend=excluded.prob_trend,
           prob_range=excluded.prob_range,
@@ -302,6 +311,7 @@ def upsert(conn, df):
           hhll_persistence=excluded.hhll_persistence,
           vwap_proxy=excluded.vwap_proxy,
           signed_vol=excluded.signed_vol,
+          lower_wick=excluded.lower_wick,
           model_version=excluded.model_version
         """, (
             r["session_date"], r["symbol"], r["cutoff_ny"],
@@ -320,6 +330,7 @@ def upsert(conn, df):
             float(r["hhll_persistence"]),
             float(r["vwap_proxy"]),
             float(r["signed_vol"]),
+            float(r["lower_wick"]),
             r["model_version"],
         ))
     conn.commit()
@@ -341,7 +352,8 @@ def main():
         "ret_open_to_cutoff","orbrange_pct","orb_break_strength",
         "range_pct_to_cutoff","true_range_pct_to_cutoff",
         "hhll_persistence","vwap_proxy",
-        "signed_vol",  # net signed-volume share (best OOS after-open feature)
+        "signed_vol",   # net signed-volume share (after-open OOS feature)
+        "lower_wick",   # lower-wick fraction (strongest single OOS feature)
     ]
 
     X = df_train[feature_names].astype(float).values
