@@ -1,15 +1,15 @@
 ROBINHOOD FVG MONITOR
-Created: 2026-06-13T00:01:59.411457+00:00
+Created: 2026-06-16T00:14:06.484442+00:00
 Symbol: SPY
 Decision: no_trade
-Reasons: gap_already_filled, low_sample_n<5
+Reasons: low_sample_n<5, fill_rate<0.55
 
-Gap date: 2026-06-12
+Gap date: 2026-06-15
 Gap direction: UP
-Gap fill level: 737.760009765625
-Fill completed: 1
-Edge fill rate: 1.0 n=2
-Avg time to fill: 120.00000022351742 min
+Gap fill level: 741.75
+Fill completed: 0
+Edge fill rate: 0.0 n=4
+Avg time to fill:  min
 
 Hypothesis: bearish_gap_fill_watch
 Option side watch: puts_or_put_spreads

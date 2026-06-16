@@ -9,26 +9,26 @@
   "broker_order_allowed": false,
   "confidence_evidence_quality": 1.0,
   "confidence_trade_edge": 0.0,
-  "created_ts": "2026-06-13T00:01:59.509321+00:00",
+  "created_ts": "2026-06-16T00:14:06.567111+00:00",
   "decision": "hold",
   "freshness": {
     "max_current_age_days": 3,
     "max_options_age_days": 7,
     "stale_inputs": [
       {
-        "age_days": 24,
+        "age_days": 27,
         "date": "2026-05-20",
         "input": "signal",
         "max_age_days": 3
       },
       {
-        "age_days": 24,
+        "age_days": 27,
         "date": "2026-05-20",
         "input": "regime",
         "max_age_days": 3
       },
       {
-        "age_days": 23,
+        "age_days": 26,
         "date": "2026-05-21",
         "input": "options_positioning",
         "max_age_days": 7

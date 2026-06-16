@@ -9,14 +9,14 @@
     "evidence_quality": 1.0,
     "trade_edge": 0.0
   },
-  "created_ts": "2026-06-13T00:01:59.563282+00:00",
+  "created_ts": "2026-06-16T00:14:06.607491+00:00",
   "focus": {
     "atm_strike": 743.0,
     "dealer_state_hint": "DEFENSIVE",
     "fill_bias": "bearish_gap_fill_watch",
     "gap_direction": "UP",
-    "gap_fill_level": "737.760009765625",
-    "gap_session_date": "2026-06-12",
+    "gap_fill_level": "741.75",
+    "gap_session_date": "2026-06-15",
     "option_side_watch": "puts_or_put_spreads",
     "spot": 742.719970703125
   },
@@ -44,19 +44,19 @@
     "sample_n": 1,
     "stale_inputs": [
       {
-        "age_days": 24,
+        "age_days": 27,
         "date": "2026-05-20",
         "input": "signal",
         "max_age_days": 3
       },
       {
-        "age_days": 24,
+        "age_days": 27,
         "date": "2026-05-20",
         "input": "regime",
         "max_age_days": 3
       },
       {
-        "age_days": 23,
+        "age_days": 26,
         "date": "2026-05-21",
         "input": "options_positioning",
         "max_age_days": 7

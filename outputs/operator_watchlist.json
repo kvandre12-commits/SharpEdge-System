@@ -1,6 +1,6 @@
 {
   "active_count": 0,
-  "created_ts": "2026-06-13T00:01:59.563309+00:00",
+  "created_ts": "2026-06-16T00:14:06.607516+00:00",
   "items": [
     {
       "atm_strike": 743.0,
@@ -14,10 +14,10 @@
       "dealer_state_hint": "DEFENSIVE",
       "fill_bias": "bearish_gap_fill_watch",
       "gap_direction": "UP",
-      "gap_fill_level": "737.760009765625",
-      "gap_session_date": "2026-06-12",
+      "gap_fill_level": "741.75",
+      "gap_session_date": "2026-06-15",
       "headline": "Stand down. Preserve context, but do not act on this setup.",
-      "item_id": "SPY-gap-fill-2026-06-12-up",
+      "item_id": "SPY-gap-fill-2026-06-15-up",
       "monitoring_mode": "artifact_only_manual_review",
       "operator_action": "stand_down",
       "option_side_watch": "puts_or_put_spreads",
