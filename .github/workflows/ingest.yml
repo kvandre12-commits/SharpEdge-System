@@ -109,6 +109,11 @@ jobs:
         run: |
           python scripts/build_regime_spy_daily.py
 
+      - name: Unify overlays into one context layer
+        continue-on-error: true
+        run: |
+          python scripts/build_overlay_context_daily.py || echo "WARN: overlay context degraded" >> outputs/health/warnings.log
+
       # --- SPY gate chain (was never wired here -> the gate rotted stale) ---
       - name: Build SPY features (daily)
         continue-on-error: true
