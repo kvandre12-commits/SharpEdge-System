@@ -77,6 +77,33 @@ def panel_signal(sig: dict) -> str:
     )
 
 
+def panel_magnitude(sig: dict) -> str:
+    """Expected REST-OF-DAY move: realized-vol model vs options-implied."""
+    m = (sig or {}).get("magnitude") or {}
+    if not m:
+        return ""
+    rp, ru = m.get("exp_move_realized_pct", 0), m.get("exp_move_realized_usd", 0)
+    ip, iu = m.get("exp_move_implied_pct", 0), m.get("exp_move_implied_usd", 0)
+    read = m.get("premium_read", "?")
+    # cheap = realized > implied = options underpricing move = buyer edge
+    rcol = GREEN if read == "cheap" else RED
+    rtxt = ("CHEAP - realized vol > implied (move underpriced)" if read == "cheap"
+            else "RICH - implied > realized (move overpriced)")
+    def cell(label, pct, usd, col):
+        return (f'<div style="flex:1"><div style="color:{MUTE};font-size:11px">{label}</div>'
+                f'<div style="color:{col};font-weight:bold;font-size:16px">{pct:.2f}% '
+                f'<span style="font-size:12px">${usd:.2f}</span></div></div>')
+    return _card(
+        f'<b style="font-size:14px">EXPECTED MOVE</b> '
+        f'<span style="color:{MUTE};font-size:11px">rest of day - magnitude IS forecastable</span>'
+        f'<div style="display:flex;gap:10px;margin-top:8px">'
+        f'{cell("realized-vol model", rp, ru, FG)}'
+        f'{cell("options-implied", ip, iu, FG)}</div>'
+        f'<div style="color:{rcol};font-size:12px;margin-top:6px;font-weight:bold">{rtxt}</div>',
+        rcol,
+    )
+
+
 def panel_micro(sig: dict) -> str:
     """Zoom into OHLC microstructure: bar anatomy + Donchian channel."""
     m = (sig or {}).get("micro") or {}
@@ -244,6 +271,7 @@ def render() -> str:
         f'<div style="color:{MUTE};font-size:11px;margin:2px 0 8px">'
         'SIGNAL &#8594; GATE &#8594; DECISION + live scoreboard</div>'
         f'{panel_signal(sig)}'
+        f'{panel_magnitude(sig)}'
         f'{panel_micro(sig)}'
         f'{panel_gate(ctx)}'
         f'{panel_decision(decision)}'
