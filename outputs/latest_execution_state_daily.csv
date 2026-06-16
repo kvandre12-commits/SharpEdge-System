@@ -1,2 +1,2 @@
-session_date,symbol,cluster_score,compression_flag,prob_trend_fused,prob_range_fused,dealer_state_hint,gamma_proxy,wall_strike,dist_to_wall_pct,signal_strength,execution_score,final_bias
-2026-05-20,SPY,0.0,0,0.3423276901149263,0.6576723098850736,NEUTRAL,,730.0,1.5177065767284992,,23.96293830804484,WHIP_WAIT
+session_date,symbol,cluster_score,compression_flag,prob_trend_fused,prob_range_fused,ret_open_to_cutoff,vwap_proxy,dealer_state_hint,gamma_proxy,wall_strike,dist_to_wall_pct,signal_strength,execution_score,final_bias
+2026-06-10,SPY,0.2,0,0.2938959151016272,0.7061040848983728,-0.14590378531690318,-1.0,,,,,,4.084387265244082,RANGE_FADE

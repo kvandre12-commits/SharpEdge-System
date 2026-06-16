@@ -11,6 +11,12 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 PROB_TREND_STRONG = float(os.getenv("PROB_TREND_STRONG", "0.65"))
 PROB_TREND_WEAK   = float(os.getenv("PROB_TREND_WEAK", "0.45"))
+# Range probability is now compounded into the score (it used to be ignored).
+# RANGE_DRAG penalizes the directional score when range prob exceeds trend prob;
+# a range-dominant day with a clear edge becomes an actionable RANGE_FADE state.
+RANGE_DRAG        = float(os.getenv("RANGE_DRAG", "40.0"))
+RANGE_DOMINANT    = float(os.getenv("RANGE_DOMINANT", "0.60"))
+RANGE_MARGIN      = float(os.getenv("RANGE_MARGIN", "0.15"))
 
 # If your signals table uses a different name/column, tweak here
 SIGNALS_TABLE = os.getenv("SIGNALS_TABLE", "signals_daily")
@@ -75,7 +81,9 @@ def load_core(conn):
           session_date,
           symbol,
           prob_trend_fused,
-          prob_range_fused
+          prob_range_fused,
+          ret_open_to_cutoff,
+          vwap_proxy
         FROM intraday_trendday_prob
         WHERE symbol = ? AND cutoff_ny = '11:30'
         """,
@@ -138,6 +146,22 @@ def load_core(conn):
 
     return df
 
+def _direction(row):
+    """+1 long / -1 short / 0 unknown, from the intraday sign carriers.
+
+    vwap_proxy (price vs VWAP at the cutoff) is the primary tell; the signed
+    open->cutoff return breaks ties. This is the 'which way' the engine used to
+    punt on (see the old EXPANSION_FOLLOW comment).
+    """
+    vp = row.get("vwap_proxy")
+    if pd.notna(vp) and float(vp) != 0:
+        return 1 if float(vp) > 0 else -1
+    rc = row.get("ret_open_to_cutoff")
+    if pd.notna(rc) and float(rc) != 0:
+        return 1 if float(rc) > 0 else -1
+    return 0
+
+
 def decide(row):
     pt = row.get("prob_trend_fused")
     pr = row.get("prob_range_fused")
@@ -145,6 +169,7 @@ def decide(row):
     dist = row.get("dist_to_wall_pct")
     comp = int(row.get("compression_flag") or 0)
     sig = row.get("signal_strength")
+    dirn = _direction(row)
 
     # base score from trend probability
     score = 0.0
@@ -152,6 +177,12 @@ def decide(row):
         score += float(pt) * 70.0
     else:
         score += 35.0  # neutral if missing
+
+    # NEW: compound range probability. A range-dominant read drags the
+    # directional score down (chop is not a trend-follow environment). This was
+    # previously computed and then ignored entirely.
+    if pd.notna(pt) and pd.notna(pr):
+        score -= max(0.0, float(pr) - float(pt)) * RANGE_DRAG
 
     # dealer state adjustments
     if st == "chase":
@@ -175,12 +206,26 @@ def decide(row):
 
     score = float(np.clip(score, 0.0, 100.0))
 
-    # final bias rules (simple + deterministic)
+    # final bias rules (simple + deterministic, now direction-aware)
+    range_dominant = (
+        pd.notna(pr)
+        and float(pr) >= RANGE_DOMINANT
+        and pd.notna(pt)
+        and (float(pr) - float(pt)) >= RANGE_MARGIN
+    )
     if (pd.notna(dist) and float(dist) <= 0.25) or st == "pin":
         final = "PIN_FADE"
     elif pd.notna(pt) and float(pt) >= PROB_TREND_STRONG:
-        # direction selection is NOT handled here (needs intraday sign); keep it “expansion” bias.
-        final = "EXPANSION_FOLLOW"
+        # direction now selected from the intraday sign carriers.
+        if dirn > 0:
+            final = "EXPANSION_FOLLOW_LONG"
+        elif dirn < 0:
+            final = "EXPANSION_FOLLOW_SHORT"
+        else:
+            final = "EXPANSION_FOLLOW"  # sign unavailable -> stay non-directional
+    elif range_dominant:
+        # range-dominant day with a clear edge: an actionable fade, not just WHIP.
+        final = "RANGE_FADE"
     elif pd.notna(pt) and float(pt) <= PROB_TREND_WEAK:
         final = "WHIP_WAIT"
     else:
