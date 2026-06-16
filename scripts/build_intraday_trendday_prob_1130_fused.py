@@ -15,8 +15,15 @@ INTRADAY_TS_COL = os.getenv("INTRADAY_TS_COL", "ts")
 CUTOFF_HHMM = os.getenv("CUTOFF_HHMM", "11:30")
 MIN_TRAIN_DAYS = int(os.getenv("MIN_TRAIN_DAYS", "120"))
 
-# logistic fit knobs
-L2 = float(os.getenv("LOGREG_L2", "1.0"))
+# logistic fit knobs.
+# NOTE on L2: in this hand-rolled fit the penalty (l2*w) is added straight to the
+# gradient, so L2 is brutally strong. L2=1.0 crushed every prediction to within
+# +/-0.04 of the ~0.30 trend base rate (std 0.021, max 0.355) -> prob_trend could
+# NEVER cross the 0.65 EXPANSION threshold and the directional states were dead.
+# 0.01 restores discriminative spread (max ~0.70) while keeping mild shrinkage on
+# a thin 591-sample / 7-feature fit. Train AUC ~0.62 either way - the model's
+# real ceiling is feature quality, not regularization.
+L2 = float(os.getenv("LOGREG_L2", "0.01"))
 LR = float(os.getenv("LOGREG_LR", "0.2"))
 STEPS = int(os.getenv("LOGREG_STEPS", "400"))
 
