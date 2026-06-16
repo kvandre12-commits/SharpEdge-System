@@ -90,12 +90,17 @@ def ensure_table(conn):
       true_range_pct_to_cutoff REAL,
       hhll_persistence REAL,
       vwap_proxy REAL,
+      signed_vol REAL,
 
       model_version TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (session_date, symbol, cutoff_ny)
     );
     """)
+    # Safe migration: add signed_vol to pre-existing tables (no-op if present).
+    existing = [r[1] for r in conn.execute("PRAGMA table_info(intraday_trendday_prob)")]
+    if "signed_vol" not in existing:
+        conn.execute("ALTER TABLE intraday_trendday_prob ADD COLUMN signed_vol REAL")
     conn.commit()
 
 def load_daily_labels(conn, symbol):
@@ -185,6 +190,15 @@ def compute_intraday_features(intra_df):
 
         vwap_proxy = float(np.sign(c - o))
 
+        # signed-volume share over the open->cutoff window. Trend days concentrate
+        # volume in one-directional bars; range days have balanced signed volume.
+        # Best after-open feature in the OOS feature lab (+~0.04 walk-forward AUC).
+        opens_arr = g_cut["open"].astype(float).values
+        vols_arr = g_cut["volume"].astype(float).values
+        bar_dir = np.sign(closes - opens_arr)
+        vtot = float(np.sum(vols_arr))
+        signed_vol = float(np.sum(bar_dir * vols_arr) / vtot) if vtot > 0 else 0.0
+
         rows.append({
             "session_date": session_date,
             "symbol": SYMBOL,
@@ -196,6 +210,7 @@ def compute_intraday_features(intra_df):
             "true_range_pct_to_cutoff": true_range_pct_to_cutoff,
             "hhll_persistence": hhll_persistence,
             "vwap_proxy": vwap_proxy,
+            "signed_vol": signed_vol,
         })
     return pd.DataFrame(rows)
 
@@ -266,10 +281,10 @@ def upsert(conn, df):
           dealer_state_hint, gamma_proxy, wall_strike, dist_to_wall_pct,
           ret_open_to_cutoff, orbrange_pct, orb_break_strength,
           range_pct_to_cutoff, true_range_pct_to_cutoff,
-          hhll_persistence, vwap_proxy,
+          hhll_persistence, vwap_proxy, signed_vol,
           model_version
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(session_date, symbol, cutoff_ny) DO UPDATE SET
           prob_trend=excluded.prob_trend,
           prob_range=excluded.prob_range,
@@ -286,6 +301,7 @@ def upsert(conn, df):
           true_range_pct_to_cutoff=excluded.true_range_pct_to_cutoff,
           hhll_persistence=excluded.hhll_persistence,
           vwap_proxy=excluded.vwap_proxy,
+          signed_vol=excluded.signed_vol,
           model_version=excluded.model_version
         """, (
             r["session_date"], r["symbol"], r["cutoff_ny"],
@@ -303,6 +319,7 @@ def upsert(conn, df):
             float(r["true_range_pct_to_cutoff"]),
             float(r["hhll_persistence"]),
             float(r["vwap_proxy"]),
+            float(r["signed_vol"]),
             r["model_version"],
         ))
     conn.commit()
@@ -323,7 +340,8 @@ def main():
     feature_names = [
         "ret_open_to_cutoff","orbrange_pct","orb_break_strength",
         "range_pct_to_cutoff","true_range_pct_to_cutoff",
-        "hhll_persistence","vwap_proxy"
+        "hhll_persistence","vwap_proxy",
+        "signed_vol",  # net signed-volume share (best OOS after-open feature)
     ]
 
     X = df_train[feature_names].astype(float).values
