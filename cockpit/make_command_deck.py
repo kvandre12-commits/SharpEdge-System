@@ -198,6 +198,7 @@ def panel_decision(decision: dict) -> str:
             f'<div style="font-size:16px;font-weight:bold">{_esc(contract)}</div>'
             f'<div style="color:{MUTE};font-size:12px">1 contract @ limit '
             f'${_esc(intent.limit_price)} (est prem ${_esc(leg.get("est_premium", "?"))})</div></div>'
+            f'<div style="color:{MUTE};font-size:11px;margin-top:5px">{_esc(getattr(intent, "rationale", ""))}</div>'
             f'<div style="color:{MUTE};font-size:11px;margin-top:6px">awaiting operator confirm '
             f'- never auto-submitted</div>'
         )
