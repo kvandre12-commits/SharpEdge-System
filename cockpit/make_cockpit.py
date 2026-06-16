@@ -15,6 +15,7 @@ Run it in a loop for live updates; the HTML meta-refreshes to pick them up.
 from __future__ import annotations
 
 import datetime as dt
+import json
 import os
 import re
 from collections import defaultdict
@@ -315,6 +316,81 @@ you own every trade.</p>
 </div></body></html>"""
 
 
+def read_microstructure(rows, lookback=8):
+    """OHLC-only microstructure of the session-so-far candle + a Donchian channel.
+
+    rows = (minute, open, high, low, close, volume). All pure OHLC logic:
+      - bar anatomy: lower/upper wick + body as % of the day range (wick =
+        absorption/rejection; lower_wick is our strongest model feature).
+      - Donchian channel over the last `lookback` bars: where price sits in the
+        channel (0=floor,100=ceiling), channel width %, and channel slope.
+    """
+    if not rows:
+        return {}
+    o = rows[0][1]
+    hi = max(r[2] for r in rows)
+    lo = min(r[3] for r in rows)
+    c = rows[-1][4]
+    rng = max(hi - lo, 1e-9)
+    lower_wick = (min(o, c) - lo) / rng * 100
+    upper_wick = (hi - max(o, c)) / rng * 100
+    body = abs(c - o) / rng * 100
+
+    win = rows[-lookback:] if len(rows) >= lookback else rows
+    ch_hi = max(r[2] for r in win)
+    ch_lo = min(r[3] for r in win)
+    ch_w = max(ch_hi - ch_lo, 1e-9)
+    ch_pos = (c - ch_lo) / ch_w * 100
+    ch_width_pct = ch_w / c * 100
+    # channel slope: midline now vs midline `lookback` bars earlier
+    prev = rows[-2 * lookback:-lookback] if len(rows) >= 2 * lookback else rows[:1]
+    prev_mid = (max(r[2] for r in prev) + min(r[3] for r in prev)) / 2
+    cur_mid = (ch_hi + ch_lo) / 2
+    ch_slope_pct = (cur_mid - prev_mid) / c * 100
+    return {
+        "lower_wick": round(lower_wick, 1),
+        "upper_wick": round(upper_wick, 1),
+        "body": round(body, 1),
+        "ch_pos": round(ch_pos, 1),
+        "ch_hi": round(ch_hi, 2),
+        "ch_lo": round(ch_lo, 2),
+        "ch_width_pct": round(ch_width_pct, 3),
+        "ch_slope_pct": round(ch_slope_pct, 3),
+        "ch_lookback": lookback,
+    }
+
+
+def write_signal(pa, op, gp, gcard, micro=None):
+    """Drop a machine-readable signal.json the trade_intent pipeline can read."""
+    sig = {
+        "schema": "sharpedge.signal.v1",
+        "ts": dt.datetime.now().isoformat(),
+        "symbol": "SPY",
+        "spot": round(pa["spot"], 2),
+        "day_chg": round(pa["day_chg"], 3),
+        "vwap": round(pa["vwap"], 2),
+        "vs_vwap": round(pa["vs_vwap"], 3),
+        "rng_pos": round(pa["rng_pos"], 1),
+        "mom15": round(pa["mom15"], 3),
+        "vol_mult": round(pa["vol_mult"], 2),
+        "call_wall": op.get("call_wall"),
+        "put_wall": op.get("put_wall"),
+        "pcr": round(op.get("pcr", 0), 2),
+        "atm_iv": round(op.get("atm_iv", 0), 4),
+        "exp": op.get("exp"),
+        "gamma_regime": gp.get("regime"),
+        "pin": gp.get("pin"),
+        "max_pain": gp.get("max_pain"),
+        "setup_tag": gcard["tag"] if gcard else None,
+        "setup_bias": gcard["bias"] if gcard else None,
+        "micro": micro or {},
+    }
+    out = os.path.expanduser("~/SharpEdge-System/outputs")
+    os.makedirs(out, exist_ok=True)
+    with open(os.path.join(out, "signal.json"), "w") as f:
+        json.dump(sig, f, indent=2)
+
+
 def main():
     rows = fetch_intraday()
     spot_opt, book = fetch_options()
@@ -327,6 +403,8 @@ def main():
     gcard = gamma_card(gp)
     if gcard:
         setups = [gcard] + setups  # gamma regime sits at the very top
+    micro = read_microstructure(rows)
+    write_signal(pa, op, gp, gcard, micro)  # machine-readable feed for trade_intent
     with open(f"{OUT_DIR}/cockpit_chart.svg", "w") as f:
         f.write(chart_svg(rows, pa))
     with open(f"{OUT_DIR}/cockpit.html", "w") as f:

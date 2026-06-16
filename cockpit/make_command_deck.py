@@ -77,6 +77,51 @@ def panel_signal(sig: dict) -> str:
     )
 
 
+def panel_micro(sig: dict) -> str:
+    """Zoom into OHLC microstructure: bar anatomy + Donchian channel."""
+    m = (sig or {}).get("micro") or {}
+    if not m:
+        return ""
+    lw, bd, uw = m.get("lower_wick", 0), m.get("body", 0), m.get("upper_wick", 0)
+    # bar anatomy: stacked horizontal bar (lower wick | body | upper wick)
+    anatomy = (
+        f'<div style="display:flex;height:16px;border-radius:4px;overflow:hidden;margin:4px 0">'
+        f'<div style="width:{lw}%;background:{GREEN}" title="lower wick"></div>'
+        f'<div style="width:{bd}%;background:{MUTE}" title="body"></div>'
+        f'<div style="width:{uw}%;background:{RED}" title="upper wick"></div></div>'
+        f'<div style="display:flex;justify-content:space-between;font-size:10px;color:{MUTE}">'
+        f'<span style="color:{GREEN}">lower wick {lw}%</span>'
+        f'<span>body {bd}%</span>'
+        f'<span style="color:{RED}">upper wick {uw}%</span></div>'
+    )
+    # Donchian channel position marker
+    pos = max(0.0, min(100.0, m.get("ch_pos", 50)))
+    slope = m.get("ch_slope_pct", 0)
+    scol = GREEN if slope > 0 else RED if slope < 0 else MUTE
+    arrow = "\u2197" if slope > 0 else "\u2198" if slope < 0 else "\u2192"
+    channel = (
+        f'<div style="position:relative;height:10px;background:#0d1117;border:1px solid #30363d;'
+        f'border-radius:5px;margin:8px 0 2px">'
+        f'<div style="position:absolute;left:calc({pos}% - 3px);top:-3px;width:6px;height:14px;'
+        f'background:{BLUE};border-radius:2px"></div></div>'
+        f'<div style="display:flex;justify-content:space-between;font-size:10px;color:{MUTE}">'
+        f'<span>${_esc(m.get("ch_lo"))}</span>'
+        f'<span>{m.get("ch_lookback", "?")}-bar channel - pos {pos:.0f}% - '
+        f'w {m.get("ch_width_pct", 0):.2f}% - <span style="color:{scol}">slope {slope:+.2f}% {arrow}</span></span>'
+        f'<span>${_esc(m.get("ch_hi"))}</span></div>'
+    )
+    lw_col = GREEN if lw >= 25 else MUTE
+    note = (f'<span style="color:{lw_col}">strong lower-wick absorption</span>'
+            if lw >= 25 else f'<span style="color:{MUTE}">no wick rejection</span>')
+    return _card(
+        f'<b style="font-size:14px">MICROSTRUCTURE</b> '
+        f'<span style="color:{MUTE};font-size:11px">OHLC bar anatomy + channel</span>'
+        f'{anatomy}{channel}'
+        f'<div style="font-size:11px;margin-top:4px">{note}</div>',
+        BLUE,
+    )
+
+
 def _prob_bar(pt, pr) -> str:
     if pt is None or pr is None:
         return f'<div style="color:{MUTE};font-size:12px">probs unavailable</div>'
@@ -199,6 +244,7 @@ def render() -> str:
         f'<div style="color:{MUTE};font-size:11px;margin:2px 0 8px">'
         'SIGNAL &#8594; GATE &#8594; DECISION + live scoreboard</div>'
         f'{panel_signal(sig)}'
+        f'{panel_micro(sig)}'
         f'{panel_gate(ctx)}'
         f'{panel_decision(decision)}'
         f'{panel_scoreboard(rec)}'
