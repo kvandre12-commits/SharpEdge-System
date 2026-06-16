@@ -70,6 +70,7 @@ def build_rows(options: list[dict], snap_ts: str, session: str):
         leg[f"{prefix}_oi"] = _num(o.get("open_interest"))
         leg[f"{prefix}_volume"] = _num(o.get("volume"))
         leg[f"{prefix}_gamma"] = _num(o.get("gamma"))
+        leg[f"{prefix}_iv"] = _num(o.get("iv"))
 
     for (expiry, strike), leg in merged.items():
         yield (
@@ -85,6 +86,8 @@ def build_rows(options: list[dict], snap_ts: str, session: str):
             leg.get("put_volume"),
             leg.get("call_gamma"),
             leg.get("put_gamma"),
+            leg.get("call_iv"),
+            leg.get("put_iv"),
         )
 
 

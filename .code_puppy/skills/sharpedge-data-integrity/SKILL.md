@@ -34,9 +34,13 @@ carries real `open_interest`/`volume`/`gamma`/`iv`.
 - Use `scripts/ingest_cboe_options_chain_snapshots.py` (shared store
   `scripts/options_snapshot_store.py`). `scripts/ingest_alpaca_*` is DEPRECATED
   as the OI source.
-- **CBOE serves only the CURRENT snapshot** → historical OI **cannot be backfilled**.
+- **CBOE serves only the CURRENT snapshot** → historical OI/IV **cannot be backfilled**.
   Real OI accrues forward from when the ingester started. Backtests of OI-derived
   gates only get teeth as days accumulate.
+- **IV is now persisted too** (`call_iv`/`put_iv`, added 2026-06; the feed always
+  carried it, we just dropped it before — same lesson as OI). This is what lets us
+  eventually test the 'IV-crush precedes expansion' (coil) hypothesis. Until then,
+  IV history is thin — don't conclude from a handful of days.
 
 ## Law #3: symbol-namespace every output (clobber bug)
 

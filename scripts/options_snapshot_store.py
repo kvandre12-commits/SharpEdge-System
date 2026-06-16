@@ -61,10 +61,17 @@ def ensure_table(con: sqlite3.Connection) -> None:
       put_volume    INTEGER,
       call_gamma    REAL,
       put_gamma     REAL,
+      call_iv       REAL,
+      put_iv        REAL,
       source        TEXT DEFAULT 'cboe',
       PRIMARY KEY (snapshot_ts, underlying, expiry_date, strike)
     );
     """)
+    # Safe migrations for pre-existing tables (no-op if column present).
+    existing = [r[1] for r in con.execute("PRAGMA table_info(options_chain_snapshots)")]
+    for col in ("call_iv", "put_iv"):
+        if col not in existing:
+            con.execute(f"ALTER TABLE options_chain_snapshots ADD COLUMN {col} REAL")
     con.commit()
 
 
@@ -72,7 +79,8 @@ def upsert_row(con: sqlite3.Connection, row: tuple, source: str = "cboe") -> Non
     """Insert/update one merged (expiry, strike) row.
 
     ``row`` = (snapshot_ts, session_date, underlying, expiry_date, dte, strike,
-               call_oi, put_oi, call_volume, put_volume, call_gamma, put_gamma)
+               call_oi, put_oi, call_volume, put_volume, call_gamma, put_gamma,
+               call_iv, put_iv)
     COALESCE keeps an existing real value when a later writer supplies NULL,
     so a single-sided (call-only or put-only) update never wipes the other leg.
     """
@@ -80,9 +88,10 @@ def upsert_row(con: sqlite3.Connection, row: tuple, source: str = "cboe") -> Non
         """
       INSERT INTO options_chain_snapshots (
         snapshot_ts, session_date, underlying, expiry_date, dte, strike,
-        call_oi, put_oi, call_volume, put_volume, call_gamma, put_gamma, source
+        call_oi, put_oi, call_volume, put_volume, call_gamma, put_gamma,
+        call_iv, put_iv, source
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(snapshot_ts, underlying, expiry_date, strike) DO UPDATE SET
         session_date = excluded.session_date,
         dte          = excluded.dte,
@@ -92,6 +101,8 @@ def upsert_row(con: sqlite3.Connection, row: tuple, source: str = "cboe") -> Non
         put_volume   = COALESCE(excluded.put_volume, options_chain_snapshots.put_volume),
         call_gamma   = COALESCE(excluded.call_gamma, options_chain_snapshots.call_gamma),
         put_gamma    = COALESCE(excluded.put_gamma, options_chain_snapshots.put_gamma),
+        call_iv      = COALESCE(excluded.call_iv, options_chain_snapshots.call_iv),
+        put_iv       = COALESCE(excluded.put_iv, options_chain_snapshots.put_iv),
         source       = excluded.source
     """,
         (*row, source),
