@@ -45,6 +45,9 @@ class RobinhoodBetaExecutionTests(unittest.TestCase):
         self.assertEqual(payload["order_preview"]["risk_limits"]["max_capital_risk_pct"], 0.25)
 
     def _patched_paths(self, outputs: Path):
+        # Patch EVERY path build_payload reads, or leftover real artifacts in
+        # ./outputs leak in and break test isolation (the canonical-object
+        # resolvers prefer an existing file over the contract fallback).
         return patch.multiple(
             beta,
             OUTDIR=outputs,
@@ -52,6 +55,10 @@ class RobinhoodBetaExecutionTests(unittest.TestCase):
             CONTRACT_JSON=outputs / "agent_v1_decision.json",
             BRIEF_JSON=outputs / "operator_brief.json",
             DASHBOARD_JSON=outputs / "morning_open_dashboard.json",
+            WORKFLOW_STATE_JSON=outputs / "workflow_state.json",
+            EXECUTION_PLAN_JSON=outputs / "execution_plan.json",
+            APPROVAL_DECISION_JSON=outputs / "approval_decision.json",
+            BETA_JSON=outputs / "robinhood_beta_execution_source.json",
             OUT_JSON=outputs / "robinhood_beta_execution.json",
             OUT_TXT=outputs / "robinhood_beta_execution.txt",
         )
