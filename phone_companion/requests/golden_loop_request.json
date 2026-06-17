@@ -1,0 +1,18 @@
+{
+  "request_id": "req-trading-golden-001",
+  "intent_type": "open_trading_dashboard",
+  "domain": "trading",
+  "artifact_inputs": [
+    "cockpit/cockpit.html",
+    "outputs/approval_decision.json",
+    "outputs/workflow_state.json"
+  ],
+  "preferred_view": "cockpit",
+  "preferred_channel": "brave",
+  "requires_confirmation": false,
+  "constraints": [
+    "do not override approval authority",
+    "stop if required upstream artifacts are missing"
+  ],
+  "notes": "Golden Loop trading proof-of-life request."
+}

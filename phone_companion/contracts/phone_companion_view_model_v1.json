@@ -1,0 +1,36 @@
+{
+  "contract_name": "phone_companion_view_model_v1",
+  "purpose": "Structured mobile-facing view state produced by Code Puppy before launcher/runtime delivery.",
+  "required_fields": [
+    "view_id",
+    "request_id",
+    "domain",
+    "view_type",
+    "headline",
+    "status",
+    "data"
+  ],
+  "optional_fields": [
+    "actions",
+    "artifacts",
+    "warnings",
+    "notes"
+  ],
+  "example": {
+    "view_id": "view-section-gap-001",
+    "request_id": "req-section-gap-001",
+    "domain": "section_gap",
+    "view_type": "pilot_dashboard",
+    "headline": "Fresh produce endcap",
+    "status": "needs_review",
+    "data": {
+      "owner": "produce_lead",
+      "severity": "high",
+      "latest_observation": "ops/section_gap/observations/latest.json"
+    },
+    "actions": [
+      "open_dashboard",
+      "send_alert"
+    ]
+  }
+}

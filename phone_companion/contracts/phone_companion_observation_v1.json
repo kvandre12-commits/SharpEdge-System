@@ -1,0 +1,31 @@
+{
+  "contract_name": "phone_companion_observation_v1",
+  "purpose": "Structured observation emitted after a phone companion action attempt.",
+  "required_fields": [
+    "observation_id",
+    "request_id",
+    "status",
+    "action_type",
+    "target",
+    "started_at",
+    "ended_at"
+  ],
+  "optional_fields": [
+    "result_summary",
+    "artifacts_created",
+    "operator_notes",
+    "fallback_used"
+  ],
+  "example": {
+    "observation_id": "obs-section-gap-001",
+    "request_id": "req-section-gap-001",
+    "status": "success",
+    "action_type": "open_dashboard",
+    "target": "brave",
+    "started_at": "2026-06-17T22:10:00Z",
+    "ended_at": "2026-06-17T22:10:03Z",
+    "result_summary": "Pilot dashboard opened in Brave.",
+    "artifacts_created": [],
+    "fallback_used": false
+  }
+}

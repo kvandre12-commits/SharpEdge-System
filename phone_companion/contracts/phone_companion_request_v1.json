@@ -1,0 +1,31 @@
+{
+  "contract_name": "phone_companion_request_v1",
+  "purpose": "Structured request from planning/artifact layer into phone companion flow selection.",
+  "required_fields": [
+    "request_id",
+    "intent_type",
+    "domain",
+    "artifact_inputs"
+  ],
+  "optional_fields": [
+    "preferred_view",
+    "preferred_channel",
+    "requires_confirmation",
+    "constraints",
+    "notes"
+  ],
+  "example": {
+    "request_id": "req-section-gap-001",
+    "intent_type": "open_section_gap_dashboard",
+    "domain": "section_gap",
+    "artifact_inputs": [
+      "ops/section_gap/events/latest_event.json"
+    ],
+    "preferred_view": "pilot_dashboard",
+    "preferred_channel": "teams",
+    "requires_confirmation": false,
+    "constraints": [
+      "stop if upstream blocker exists"
+    ]
+  }
+}

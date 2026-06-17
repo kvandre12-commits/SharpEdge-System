@@ -1,0 +1,29 @@
+{
+  "domains": {
+    "trading": {
+      "default_view": "command_deck",
+      "default_browser": "brave",
+      "default_launcher": "launchers/run_phone_companion_trading.sh"
+    },
+    "section_gap": {
+      "default_view": "pilot_dashboard",
+      "default_browser": "brave",
+      "default_channel": "teams",
+      "default_launcher": "launchers/run_phone_companion_section_gap.sh"
+    }
+  },
+  "channels": {
+    "teams": {
+      "package_name": "com.microsoft.teams",
+      "handoff_type": "text_share"
+    },
+    "outlook": {
+      "package_name": "com.microsoft.office.outlook",
+      "handoff_type": "text_share"
+    },
+    "brave": {
+      "package_name": "com.brave.browser",
+      "handoff_type": "url_open"
+    }
+  }
+}
