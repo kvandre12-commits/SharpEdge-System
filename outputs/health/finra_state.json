@@ -1,21 +1,31 @@
 {
   "after": {
-    "latest_ingest_ts": "2026-06-10T17:55:11.478596",
-    "latest_week_start": "2026-05-18",
-    "rows": 125
+    "latest_ingest_ts": "2026-06-17T00:00:35.181318",
+    "latest_week_start": "2026-05-25",
+    "rows": 126
   },
   "before": {
-    "latest_ingest_ts": "2026-06-10T17:55:11.478596",
+    "latest_ingest_ts": "2026-06-08T23:51:31.728102",
     "latest_week_start": "2026-05-18",
     "rows": 125
   },
   "cache_ttl_hours": 144.0,
   "failures": 0,
-  "fetched_week_count": 0,
+  "fetched_week_count": 6,
   "force_refresh": false,
-  "network_refresh": false,
-  "overlay_rows": 595,
-  "requested_week_count": 0,
-  "requested_weeks": [],
-  "symbol": "SPY"
+  "network_refresh": true,
+  "overlay_rows": 515,
+  "requested_week_count": 9,
+  "requested_weeks": [
+    "2026-04-20",
+    "2026-04-27",
+    "2026-05-04",
+    "2026-05-11",
+    "2026-05-18",
+    "2026-05-25",
+    "2026-06-01",
+    "2026-06-08",
+    "2026-06-15"
+  ],
+  "symbol": "WMT"
 }
