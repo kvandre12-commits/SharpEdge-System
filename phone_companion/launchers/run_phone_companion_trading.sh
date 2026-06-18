@@ -160,6 +160,7 @@ def main() -> int:
         "intended_url": trace["intended_url"],
         "intended_channel": trace["intended_channel"],
         "artifact_inputs": trace["artifact_inputs"],
+        "signal_summary": trace.get("signal_summary", {}),
         "command": command,
         "command_string": command_string,
     }
@@ -177,6 +178,7 @@ def main() -> int:
         "intended_url": trace["intended_url"],
         "intended_channel": trace["intended_channel"],
         "artifact_inputs": trace["artifact_inputs"],
+        "signal_summary": trace.get("signal_summary", {}),
         "command": command,
         "command_string": command_string,
         "exit_code": completed.returncode,

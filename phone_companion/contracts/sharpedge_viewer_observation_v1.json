@@ -1,0 +1,36 @@
+{
+  "contract_name": "sharpedge_viewer_observation_v1",
+  "purpose": "Native SharpEdge Android viewer render proof emitted after a view-model/signal contract is displayed.",
+  "required_fields": [
+    "observation_type",
+    "request_id",
+    "view_id",
+    "signal_ts",
+    "gate",
+    "score",
+    "bias",
+    "render_status",
+    "observed_at"
+  ],
+  "optional_fields": [
+    "symbol",
+    "spot",
+    "supporting_reasons",
+    "warning_reasons",
+    "viewer_version",
+    "device_model"
+  ],
+  "example": {
+    "observation_type": "sharpedge_viewer_rendered",
+    "request_id": "req-trading-golden-001",
+    "view_id": "view-trading-golden-001",
+    "signal_ts": "2026-06-18T15:09:21.743727",
+    "symbol": "SPY",
+    "spot": 746.05,
+    "gate": "CAUTION",
+    "score": 58,
+    "bias": "NEUTRAL",
+    "render_status": "rendered",
+    "observed_at": "2026-06-18T19:09:38Z"
+  }
+}

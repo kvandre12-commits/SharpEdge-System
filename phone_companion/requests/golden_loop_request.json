@@ -4,6 +4,7 @@
   "domain": "trading",
   "artifact_inputs": [
     "cockpit/cockpit.html",
+    "outputs/signal.json",
     "outputs/approval_decision.json",
     "outputs/workflow_state.json"
   ],

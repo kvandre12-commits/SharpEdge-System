@@ -52,6 +52,8 @@ def _validate_view_model(view_model: dict) -> None:
         raise ValueError("view-model data.preferred_channel is required")
     if "artifact_inputs" not in view_model["data"]:
         raise ValueError("view-model data.artifact_inputs is required")
+    if "signal_summary" not in view_model["data"]:
+        raise ValueError("view-model data.signal_summary is required")
 
 
 
@@ -79,6 +81,7 @@ def emit_prelaunch_trace(
         "intended_url": view_model["data"]["url"],
         "intended_channel": view_model["data"]["preferred_channel"],
         "artifact_inputs": view_model["data"]["artifact_inputs"],
+        "signal_summary": view_model["data"]["signal_summary"],
     }
 
     _validate_trace(trace, view_model)

@@ -27,6 +27,7 @@ REQUIRED_REQUEST_FIELDS = [
 DEFAULT_REQUEST_PATH = Path("phone_companion/requests/golden_loop_request.json")
 DEFAULT_VIEW_MODEL_PATH = Path("phone_companion/views/trading/golden_loop_view_model.json")
 COCKPIT_URL = "http://127.0.0.1:8777/cockpit.html"
+SIGNAL_PATH = Path("outputs/signal.json")
 
 
 def _load_json(path: Path) -> dict:
@@ -56,6 +57,32 @@ def _validate_request(payload: dict) -> None:
 def _build_view_id(request_id: str) -> str:
     suffix = request_id.removeprefix("req-")
     return f"view-{suffix}" if suffix else "view-trading-golden"
+
+
+def _load_signal_summary(signal_path: Path = SIGNAL_PATH) -> dict:
+    if not signal_path.exists():
+        return {
+            "status": "missing",
+            "path": str(signal_path),
+            "warning": "signal.json not found; dashboard can still open",
+        }
+    signal = _load_json(signal_path)
+    trade_permission = signal.get("trade_permission") or {}
+    return {
+        "status": "ready" if trade_permission else "missing_trade_permission",
+        "path": str(signal_path),
+        "signal_ts": signal.get("ts"),
+        "symbol": signal.get("symbol"),
+        "spot": signal.get("spot"),
+        "trade_permission": {
+            "gate": trade_permission.get("trade_gate"),
+            "score": trade_permission.get("trade_permission_score"),
+            "bias": trade_permission.get("bias"),
+            "bias_strength": trade_permission.get("bias_strength"),
+            "supporting_reasons": trade_permission.get("supporting_reasons", []),
+            "warning_reasons": trade_permission.get("warning_reasons", []),
+        },
+    }
 
 
 
@@ -92,12 +119,19 @@ def _validate_view_model(view_model: dict, expected_request_id: str) -> None:
         raise ValueError("view-model data.artifact_inputs must be a non-empty list")
     if "preferred_channel" not in data:
         raise ValueError("view-model data.preferred_channel is required")
+    signal_summary = data.get("signal_summary")
+    if not isinstance(signal_summary, dict):
+        raise ValueError("view-model data.signal_summary must be a JSON object")
+    trade_permission = signal_summary.get("trade_permission", {})
+    if signal_summary.get("status") == "ready" and not trade_permission.get("gate"):
+        raise ValueError("ready signal_summary must include trade_permission.gate")
 
 
 
 def build_view_model(
     request_path: Path = DEFAULT_REQUEST_PATH,
     view_model_path: Path = DEFAULT_VIEW_MODEL_PATH,
+    signal_path: Path = SIGNAL_PATH,
 ) -> dict:
     request = _load_json(request_path)
     _validate_request(request)
@@ -113,6 +147,7 @@ def build_view_model(
             "url": COCKPIT_URL,
             "artifact_inputs": request["artifact_inputs"],
             "preferred_channel": request.get("preferred_channel", "brave"),
+            "signal_summary": _load_signal_summary(signal_path),
         },
     }
 
@@ -130,8 +165,13 @@ def build_view_model(
 def main(argv: list[str]) -> int:
     request_path = Path(argv[1]) if len(argv) > 1 else DEFAULT_REQUEST_PATH
     view_model_path = Path(argv[2]) if len(argv) > 2 else DEFAULT_VIEW_MODEL_PATH
+    signal_path = Path(argv[3]) if len(argv) > 3 else SIGNAL_PATH
 
-    view_model = build_view_model(request_path=request_path, view_model_path=view_model_path)
+    view_model = build_view_model(
+        request_path=request_path,
+        view_model_path=view_model_path,
+        signal_path=signal_path,
+    )
     print(json.dumps(view_model, indent=2))
     return 0
 
