@@ -26,19 +26,23 @@ pandas to compile on Android).
 
 ```bash
 cd cockpit
-python3 make_cockpit.py        # one-shot generate
-./run_cockpit.sh               # live loop + local server (see below)
+python3 make_cockpit.py              # one-shot generate
+./run_local_dashboard.sh             # local server + live loop, no ADB/CDP/browser automation
+./run_cockpit.sh                     # live loop + optional Android browser handoff
 ```
 
-`run_cockpit.sh` regenerates every 45s and serves on http://127.0.0.1:8777 .
-The HTML meta-refreshes every 45s, so the browser stays current.
+`run_local_dashboard.sh` is the Android-native safe default. It regenerates every
+45s, serves only on `127.0.0.1`, and never calls ADB, wireless debugging, CDP,
+`am start`, or browser automation. Open the printed URL manually in any browser
+on the phone:
 
-Open in Brave:
-
-```bash
-am start -a android.intent.action.VIEW -p com.brave.browser \
-  -d http://127.0.0.1:8777/cockpit.html
+```text
+http://127.0.0.1:8777/cockpit.html
 ```
+
+`run_cockpit.sh` is the convenience launcher. It also regenerates every 45s and
+serves on http://127.0.0.1:8777, but may try to open Brave via Android intents
+unless `COCKPIT_NO_BROWSER=1` is set.
 
 ## THE READ (what the panel tells you)
 
