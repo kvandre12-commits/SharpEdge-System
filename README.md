@@ -1,5 +1,56 @@
 # SharpEdge Systems
 
+## What is this?
+
+SharpEdge-System is the signal-generation and trade-gate analytics repo for
+SharpEdge.
+
+It produces `sharpedge.signal.v1` artifacts such as `outputs/signal.json` and
+operator-facing decision-support objects.
+
+## Who uses it?
+
+- The operator running SharpEdge market reads.
+- Phone Companion, which packages contracts for mobile use.
+- SharpEdge Android, which renders the signal contract.
+- Agents working on analytics, cockpit, contracts, and orchestration artifacts.
+
+## What does it own?
+
+- Market/cockpit signal generation.
+- `trade_permission` / Trade Gate analytics.
+- Operator artifacts and approval-state objects.
+- Phone Companion contract packaging.
+- Generated runtime proof artifacts.
+
+## What does it not own?
+
+- Native Android UI rendering.
+- Browser rendering internals.
+- Broker execution.
+- Autonomous live orders.
+
+## How do I test it?
+
+Focused checks:
+
+```bash
+python -m pytest tests/test_trade_permission.py tests/test_phone_companion_golden_loop.py -q
+python phone_companion/export_signal_to_android_viewer.py
+```
+
+Architecture entrypoints for agents:
+
+```text
+docs/architecture/OWNERSHIP_MAP.md
+docs/architecture/SYSTEM_OVERVIEW.md
+docs/architecture/CURRENT_STATE.md
+docs/architecture/REPO_INVENTORY.md
+docs/architecture/CONTRACTS.md
+```
+
+---
+
 SharpEdge Systems is a systematic market data and regime analysis engine focused on
 clarity, discipline, and decision-quality over noise.
 

@@ -15,6 +15,13 @@ venv/
 .env.*
 !.env.example
 
+# Generated runtime/proof artifacts
+outputs/signal.json
+phone_companion/launchers/*.json
+phone_companion/observations/*.json
+phone_companion/requests/*_trace.json
+phone_companion/views/trading/*.json
+
 # OS/editor noise
 .DS_Store
 *.swp
