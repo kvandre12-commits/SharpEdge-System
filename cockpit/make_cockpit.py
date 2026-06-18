@@ -24,6 +24,7 @@ import requests
 
 from gamma import gamma_card, gamma_profile
 from setups import detect_exhaustion, detect_failed_breaks, reference_levels
+from trade_permission import score_trade_permission
 
 UA = {"User-Agent": "Mozilla/5.0"}
 INTRA_URL = (
@@ -275,7 +276,42 @@ def _setup_section(setups):
     return "".join(blocks)
 
 
-def render_html(pa, op, lines, setups):
+def _permission_section(permission):
+    if not permission:
+        return ""
+    gate = permission.get("trade_gate", "BLOCK")
+    score = permission.get("trade_permission_score", 0)
+    bias = permission.get("bias", "NEUTRAL")
+    color = {"PERMIT": "#26a641", "CAUTION": "#d29922"}.get(gate, "#f85149")
+    rows = []
+    for name, item in permission.get("scores", {}).items():
+        label = name.replace("_score", "").replace("_", " ").title()
+        rows.append(
+            f'<tr><td style="padding:3px 8px;color:#7d8590">{label}</td>'
+            f'<td style="padding:3px 8px;color:#e6edf3;text-align:right">'
+            f'{item["score"]}</td>'
+            f'<td style="padding:3px 8px;color:#adbac7">{item["reason"]}</td></tr>'
+        )
+    warnings = "".join(
+        f'<li style="margin:2px 0">{reason}</li>'
+        for reason in permission.get("warning_reasons", [])
+    )
+    return (
+        f'<div style="border:2px solid {color};background:#161b22;'
+        f'padding:12px;margin:8px 0;border-radius:8px">'
+        f'<div style="color:{color};font-weight:bold;font-size:18px">'
+        f'TRADE PERMISSION: {gate} / {score} / {bias}</div>'
+        f'<div style="color:#adbac7;font-size:12px;margin-top:4px">'
+        f'Grey-out score built from structure, acceptance/rejection, location, '
+        f'volume, pressure, time, volatility, and candle personality.</div>'
+        f'<table style="width:100%;border-collapse:collapse;font-size:12px;'
+        f'margin-top:8px">{"".join(rows)}</table>'
+        f'<ul style="color:#d29922;font-size:12px;margin:8px 0 0 16px">'
+        f'{warnings}</ul></div>'
+    )
+
+
+def render_html(pa, op, lines, setups, permission=None):
     stamp = dt.datetime.now().strftime("%H:%M:%S")
     sign = "+" if pa["day_chg"] >= 0 else ""
     cards = []
@@ -304,6 +340,9 @@ ${pa['spot']:.2f}
 {sign}{pa['day_chg']:.2f}% today</span></div>
 <img src="cockpit_chart.svg" style="width:100%;border:1px solid #21262d;
 border-radius:8px">
+<h3 style="font-size:14px;color:#e6edf3;margin:14px 0 4px">TRADE GATE
+(programmed discretionary checklist)</h3>
+{_permission_section(permission)}
 <h3 style="font-size:14px;color:#e6edf3;margin:14px 0 4px">SETUPS
 (failed breaks + exhaustion)</h3>
 {_setup_section(setups)}
@@ -374,9 +413,9 @@ def read_magnitude(rows, spot, atm_iv, K=2.5356):
     if len(rows) < 3:
         return {}
     terms = []
-    for _m, o, h, l, c, _v in rows:
-        if o > 0 and l > 0 and h > 0:
-            terms.append(0.5 * math.log(h / l) ** 2
+    for _m, o, h, low, c, _v in rows:
+        if o > 0 and low > 0 and h > 0:
+            terms.append(0.5 * math.log(h / low) ** 2
                          - (2 * math.log(2) - 1) * math.log(max(c / o, 1e-9)) ** 2)
     if not terms:
         return {}
@@ -396,7 +435,7 @@ def read_magnitude(rows, spot, atm_iv, K=2.5356):
     }
 
 
-def write_signal(pa, op, gp, gcard, micro=None, magnitude=None):
+def write_signal(pa, op, gp, gcard, micro=None, magnitude=None, permission=None):
     """Drop a machine-readable signal.json the trade_intent pipeline can read."""
     sig = {
         "schema": "sharpedge.signal.v1",
@@ -421,6 +460,7 @@ def write_signal(pa, op, gp, gcard, micro=None, magnitude=None):
         "setup_bias": gcard["bias"] if gcard else None,
         "micro": micro or {},
         "magnitude": magnitude or {},
+        "trade_permission": permission or {},
     }
     out = os.path.expanduser("~/SharpEdge-System/outputs")
     os.makedirs(out, exist_ok=True)
@@ -442,16 +482,20 @@ def main():
         setups = [gcard] + setups  # gamma regime sits at the very top
     micro = read_microstructure(rows)
     magnitude = read_magnitude(rows, pa["spot"], op.get("atm_iv", 0))
-    write_signal(pa, op, gp, gcard, micro, magnitude)  # machine-readable feed for trade_intent
+    permission = score_trade_permission(rows, pa, levels, setups, op, gp, magnitude)
+    write_signal(pa, op, gp, gcard, micro, magnitude, permission)  # machine-readable feed
     with open(f"{OUT_DIR}/cockpit_chart.svg", "w") as f:
         f.write(chart_svg(rows, pa))
     with open(f"{OUT_DIR}/cockpit.html", "w") as f:
-        f.write(render_html(pa, op, lines, setups))
+        f.write(render_html(pa, op, lines, setups, permission))
     print(f"spot ${pa['spot']:.2f} | day {pa['day_chg']:+.2f}% | "
           f"vs VWAP {pa['vs_vwap']:+.2f}% | rng {pa['rng_pos']:.0f}% | "
           f"vol {pa['vol_mult']:.1f}x")
     levels_str = " ".join(f"{k}=${v:.2f}" for k, v in levels.items())
     print(f"  levels: {levels_str}")
+    print(f"  trade gate: {permission['trade_gate']} "
+          f"{permission['trade_permission_score']}/100 "
+          f"bias={permission['bias']}")
     if setups:
         for s in setups:
             print(f"  >> {s['tag']} -> {s['bias']}: {s['detail']}")
