@@ -19,11 +19,22 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from scripts.agents.agent_language_views import (
+    read_json,
+    resolve_approval_decision,
+    resolve_execution_plan,
+    resolve_workflow_state,
+)
+
 OUTDIR = Path("outputs")
 MONITOR_JSON = OUTDIR / "robinhood_fvg_monitor.json"
 CONTRACT_JSON = OUTDIR / "agent_v1_decision.json"
 BRIEF_JSON = OUTDIR / "operator_brief.json"
 DASHBOARD_JSON = OUTDIR / "morning_open_dashboard.json"
+BETA_JSON = OUTDIR / "robinhood_beta_execution.json"
+WORKFLOW_STATE_JSON = OUTDIR / "workflow_state.json"
+EXECUTION_PLAN_JSON = OUTDIR / "execution_plan.json"
+APPROVAL_DECISION_JSON = OUTDIR / "approval_decision.json"
 OUT_JSON = OUTDIR / "robinhood_beta_execution.json"
 OUT_TXT = OUTDIR / "robinhood_beta_execution.txt"
 
@@ -35,15 +46,6 @@ BETA_REQUIRE_DEFINED_RISK = os.getenv("ROBINHOOD_BETA_REQUIRE_DEFINED_RISK", "1"
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat()
-
-
-def read_json(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {}
 
 
 def as_float(value: Any, default: float = 0.0) -> float:
@@ -87,26 +89,30 @@ def beta_stage(contract: dict[str, Any], bridge: dict[str, Any]) -> str:
 
 
 def order_preview(
-    brief: dict[str, Any],
-    contract: dict[str, Any],
+    workflow: dict[str, Any],
+    plan: dict[str, Any],
+    approval: dict[str, Any],
     monitor: dict[str, Any],
     stage: str,
 ) -> dict[str, Any]:
-    focus = brief.get("focus", {})
+    context = plan.get("reference_context", {})
     options = monitor.get("options_context", {})
     max_risk_pct = min(
-        as_float(contract.get("max_capital_risk_pct")),
+        as_float(approval.get("risk_limits", {}).get("max_capital_risk_pct")),
         BETA_MAX_RISK_CAP_PCT,
     )
-    strategy_family = option_strategy_family(str(focus.get("option_side_watch", "none")))
+    option_side_watch = context.get("option_side_watch") or workflow.get("market_context", {}).get(
+        "option_side_watch"
+    )
+    strategy_family = option_strategy_family(str(option_side_watch or "none"))
     draft_allowed = stage == "approval_queue_ready" and strategy_family != "no_order_template"
 
     return {
         "draft_allowed": draft_allowed,
-        "symbol": brief.get("symbol", "SPY"),
+        "symbol": workflow.get("symbol", approval.get("symbol", "SPY")),
         "setup_type": "gap_fill_options_context",
-        "headline": brief.get("headline", "No headline available."),
-        "option_side_watch": focus.get("option_side_watch"),
+        "headline": plan.get("objective", "No headline available."),
+        "option_side_watch": option_side_watch,
         "strategy_family": strategy_family,
         "entry_style": "limit_debit" if BETA_REQUIRE_PRICE_LIMIT else "marketable_limit",
         "defined_risk_required": BETA_REQUIRE_DEFINED_RISK,
@@ -116,13 +122,15 @@ def order_preview(
             "max": options.get("dte_max"),
         },
         "reference_levels": {
-            "spot": focus.get("spot"),
-            "atm_strike": focus.get("atm_strike"),
-            "gap_fill_level": focus.get("gap_fill_level"),
+            "spot": context.get("spot"),
+            "atm_strike": context.get("atm_strike"),
+            "gap_fill_level": context.get("gap_fill_level"),
         },
         "risk_limits": {
             "max_capital_risk_pct": round(max_risk_pct, 4),
-            "source_contract_risk_pct": as_float(contract.get("max_capital_risk_pct")),
+            "source_contract_risk_pct": as_float(
+                approval.get("risk_limits", {}).get("max_capital_risk_pct")
+            ),
             "beta_cap_risk_pct": BETA_MAX_RISK_CAP_PCT,
         },
         "leg_selection_rules": [
@@ -140,38 +148,45 @@ def order_preview(
 
 def build_payload() -> dict[str, Any]:
     monitor = read_json(MONITOR_JSON)
-    contract = read_json(CONTRACT_JSON)
-    brief = read_json(BRIEF_JSON)
-    dashboard = read_json(DASHBOARD_JSON)
+    workflow = resolve_workflow_state(WORKFLOW_STATE_JSON, BRIEF_JSON, CONTRACT_JSON)
+    approval = resolve_approval_decision(APPROVAL_DECISION_JSON, CONTRACT_JSON)
+    plan = resolve_execution_plan(EXECUTION_PLAN_JSON, BRIEF_JSON, CONTRACT_JSON, BETA_JSON)
     bridge = monitor_bridge_status(monitor)
-    stage = beta_stage(contract, bridge)
-    preview = order_preview(brief, contract, monitor, stage)
+    stage = beta_stage(approval, bridge)
+    preview = order_preview(workflow, plan, approval, monitor, stage)
 
     bridge_available = bool(bridge.get("available"))
     approval_required = True
     create_order_draft_allowed = bridge_available and preview["draft_allowed"]
+    state = workflow.get("state", {})
+    required_approvals = plan.get("prerequisites", {}).get("required_approvals") or [
+        "operator_trade_confirmation",
+        "price_limit_review",
+        "defined_risk_review",
+        "risk_budget_review",
+    ]
 
     return {
         "schema_version": "robinhood_beta_execution.v1",
         "created_ts": utc_now(),
         "beta_profile": BETA_PROFILE,
         "beta_stage": stage,
-        "symbol": brief.get("symbol", contract.get("symbol", "SPY")),
-        "headline": brief.get("headline", "No headline available."),
-        "operator_action": brief.get("operator_action", "stand_down"),
-        "readiness": dashboard.get("readiness", "blocked"),
-        "broker_integration_status": contract.get(
+        "symbol": workflow.get("symbol", approval.get("symbol", "SPY")),
+        "headline": plan.get("objective", "No headline available."),
+        "operator_action": plan.get("intended_action", state.get("operator_action", "stand_down")),
+        "readiness": state.get("readiness", "blocked"),
+        "broker_integration_status": state.get(
             "broker_integration_status",
             bridge.get("status", "unknown"),
         ),
-        "monitoring_mode": contract.get(
+        "monitoring_mode": state.get(
             "monitoring_mode",
             bridge.get("fallback_mode", "artifact_only_manual_review"),
         ),
-        "trade_allowed": bool(contract.get("trade_allowed")),
+        "trade_allowed": bool(approval.get("trade_allowed")),
         "approval_required": approval_required,
-        "blocking_reasons": contract.get("blocking_reasons", []),
-        "risk_flags": contract.get("risk_flags", []),
+        "blocking_reasons": approval.get("blocking_reasons", []),
+        "risk_flags": approval.get("risk_flags", []),
         "beta_capabilities": {
             "read_account_status": bridge_available,
             "read_positions": bridge_available,
@@ -182,12 +197,7 @@ def build_payload() -> dict[str, Any]:
             "replace_order": False,
             "cancel_order_without_operator_approval": False,
         },
-        "required_approvals": [
-            "operator_trade_confirmation",
-            "price_limit_review",
-            "defined_risk_review",
-            "risk_budget_review",
-        ],
+        "required_approvals": required_approvals,
         "order_preview": preview,
         "robinhood_beta_handoff": {
             "server": bridge.get("server", "robinhood-trading"),

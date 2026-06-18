@@ -1,0 +1,11 @@
+EXECUTION PLAN
+Run id: cdbfc9fc2750
+Symbol: SPY
+Plan status: blocked
+Intended action: stand_down
+Steps:
+- Do nothing until blockers clear: controller_hold, monitor_no_trade, sample_n_below_30, stale_or_missing_inputs.
+- Broker integration is not live; rely on artifact review and manual platform checks.
+- Orders remain blocked by design unless manually confirmed outside the automation loop.
+Required approvals: operator_trade_confirmation, price_limit_review, defined_risk_review, risk_budget_review
+Blocking reasons: controller_hold, monitor_no_trade, sample_n_below_30, stale_or_missing_inputs

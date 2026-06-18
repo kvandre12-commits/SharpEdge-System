@@ -1,0 +1,62 @@
+{
+  "schema": "sharpedge.trade_intent.v1",
+  "created_utc": "2026-06-15T19:18:25.237883+00:00",
+  "status": "awaiting_operator_confirm",
+  "command": "order_submit",
+  "route": "chatgpt_delegate",
+  "approval_policy": "operator_confirm_required",
+  "risk": {
+    "ok": true,
+    "blocks": [],
+    "notes": [
+      "Notional $753.05 within $1500.00 ceiling."
+    ]
+  },
+  "intent": {
+    "symbol": "SPY",
+    "side": "buy",
+    "quantity": 1,
+    "order_type": "limit",
+    "limit_price": 753.05,
+    "asset": "equity",
+    "option_legs": [],
+    "rationale": "TEST MODE path validation (1 share, limit below spot).",
+    "source_signal": {
+      "schema": "sharpedge.signal.v1",
+      "ts": "2026-06-15T15:18:25.026932",
+      "symbol": "SPY",
+      "spot": 755.05,
+      "day_chg": 0.308,
+      "vwap": 754.6,
+      "vs_vwap": 0.06,
+      "rng_pos": 61.6,
+      "mom15": 0.025,
+      "vol_mult": 1.16,
+      "call_wall": 760.0,
+      "put_wall": 720.0,
+      "pcr": 1.02,
+      "atm_iv": 0.1412,
+      "exp": "2026-06-15",
+      "gamma_regime": "positive",
+      "pin": 755.0,
+      "max_pain": 740.0,
+      "setup_tag": "STICKY DAY (calm/chop)",
+      "setup_bias": "FADE the edges - bet on snap-back to the magnet"
+    }
+  },
+  "delegation_payload": {
+    "symbol": "SPY",
+    "asset": "equity",
+    "side": "buy",
+    "quantity": 1,
+    "order_type": "limit",
+    "limit_price": 753.05,
+    "time_in_force": "day",
+    "option_legs": []
+  },
+  "rationale": "TEST MODE path validation (1 share, limit below spot).",
+  "operator_action": "TAP CONFIRM to release this to the ChatGPT Robinhood connector.",
+  "notes": [
+    "Route through approval-gated delegate flow, not direct autonomous submission."
+  ]
+}

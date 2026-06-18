@@ -1,0 +1,55 @@
+from flask import Flask
+from flask_cors import CORS
+import sqlite3
+
+DB_PATH = "../data/spy_truth.db"
+
+app = Flask(__name__)
+CORS(app)
+
+@app.route("/")
+def home():
+    return "SharpEdge live"
+
+@app.route("/market")
+def market():
+
+    con = sqlite3.connect(DB_PATH)
+    con.row_factory = sqlite3.Row
+
+    latest_signal = con.execute("""
+        SELECT *
+        FROM signals_daily
+        ORDER BY date DESC
+        LIMIT 1
+    """).fetchone()
+
+    latest_surface = con.execute("""
+        SELECT *
+        FROM options_positioning_metrics
+        ORDER BY date DESC
+        LIMIT 1
+    """).fetchone()
+
+data = {
+    "symbol": latest_signal["symbol"],
+    "trade_gate": latest_signal["trade_gate"],
+    "pressure_state": latest_signal["pressure_state"],
+    "compression_flag": latest_signal["compression_flag"],
+
+    "spot": latest_surface["spot"],
+    "gamma_proxy": latest_surface["gamma_proxy"],
+    "dealer_state": latest_surface["dealer_state_hint"],
+    "gamma_wall": latest_surface["gamma_wall_strike"],
+    "gamma_flip": latest_surface["gamma_flip_strike"],
+
+    "pcr_oi": latest_surface["pcr_oi"],
+    "pcr_vol": latest_surface["pcr_vol"],
+}
+
+    con.close()
+
+    return data
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

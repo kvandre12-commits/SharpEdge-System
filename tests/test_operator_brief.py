@@ -124,6 +124,30 @@ class OperatorBriefTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
+            (outputs / "trade_journal_hints.json").write_text(
+                json.dumps(
+                    {
+                        "sample_state": {
+                            "total_trades": 3,
+                            "closed_trades": 3,
+                            "low_sample": True,
+                            "minimum_pattern_sample_n": 5,
+                        },
+                        "top_patterns": [
+                            {
+                                "condition": {"setup": "VWAP_FADE", "vwap_behavior": "REJECT"},
+                                "confidence_label": "LOW_SAMPLE",
+                            }
+                        ],
+                        "actionable_hints": [
+                            {"summary": "Observed journal winners cluster around VWAP_FADE + REJECT."}
+                        ],
+                        "metric_collection_priorities": ["MFE", "MAE", "hold_duration_minutes"],
+                        "usage_constraints": ["never override contract"],
+                    }
+                ),
+                encoding="utf-8",
+            )
 
             with self._patched_paths(outputs):
                 payload = brief.build_brief()
@@ -134,6 +158,8 @@ class OperatorBriefTests(unittest.TestCase):
         self.assertIn("manual confirmation still required", payload["headline"])
         self.assertIn("Review the puts_or_put_spreads thesis", payload["next_steps"][0])
         self.assertIn("SHARPEDGE OPERATOR BRIEF", text)
+        self.assertTrue(payload["historical_hints"]["available"])
+        self.assertIn("VWAP_FADE", payload["historical_hints"]["top_pattern_summary"])
         self.assertEqual(watchlist["active_count"], 1)
         self.assertEqual(watchlist["items"][0]["status"], "ready_for_review")
 
@@ -211,6 +237,7 @@ class OperatorBriefTests(unittest.TestCase):
             OUT_TXT=outputs / "operator_brief.txt",
             OUT_WATCHLIST_JSON=outputs / "operator_watchlist.json",
             OUT_JOURNAL_JSONL=outputs / "operator_journal_append.jsonl",
+            TRADE_HINTS_JSON=outputs / "trade_journal_hints.json",
         )
 
 

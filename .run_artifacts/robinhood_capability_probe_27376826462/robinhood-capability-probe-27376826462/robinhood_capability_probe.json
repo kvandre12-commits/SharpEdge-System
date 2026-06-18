@@ -1,0 +1,18 @@
+{
+  "actual_tool_name": "order_submit",
+  "candidate": "order_submit",
+  "classification": "active_trading_write",
+  "created_ts": "2026-06-11T20:55:19.348295+00:00",
+  "live_bridge_note": "Authenticated tools/list validation has not been run from this workflow.",
+  "live_bridge_validated": false,
+  "matched": true,
+  "normalized": "order_submit",
+  "notes": [
+    "Supported as a ChatGPT Robinhood delegate task type.",
+    "Forced to operator_confirm_required."
+  ],
+  "schema_version": "robinhood_capability_probe.v1",
+  "status": "delegate_operator_confirm_required",
+  "summary": "Active-trading capability is approval-gated or blocked in local beta.",
+  "validation_scope": "local_sharpedge_beta_or_delegate"
+}

@@ -1,0 +1,10 @@
+JOURNAL
+Run id: cdbfc9fc2750
+Symbol: SPY
+Entries total: 1
+Latest action: stand_down
+Latest headline: Stand down. Preserve context, but do not act on this setup.
+Lessons:
+- Observed journal winners cluster around VWAP_FADE + REJECT.
+- Profitable VWAP_FADE + REJECT trades usually exited via target.
+- Journal notes already define the next metrics worth collecting.

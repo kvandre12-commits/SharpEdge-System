@@ -1,0 +1,29 @@
+SHARPEDGE TRADE JOURNAL HINTS
+Created: 2026-06-11T22:55:06.741697+00:00
+Trades logged: 3 (closed=3)
+Note count: 1
+Low sample: True
+Minimum pattern sample: 5
+
+Top pattern: VWAP_FADE + REJECT | trades=3 closed=3 win_rate=1.0 avg_r=0.772 label=LOW_SAMPLE
+
+Actionable hints:
+- Observed journal winners cluster around VWAP_FADE + REJECT. Treat as low-sample watch context until at least 5 closed trades exist.
+- Profitable VWAP_FADE + REJECT trades usually exited via target. Preserve planned exits; do not improvise just because dopamine asked nicely.
+- Journal notes already define the next metrics worth collecting. Prefer filling missing execution-attribution fields before inventing new strategy knobs.
+
+Metric collection priorities:
+- MFE (max favorable excursion)
+- MAE (max adverse excursion)
+- Convexity capture ratio
+- Hold duration
+- Entry timing quality
+- Exit timing quality
+- State transition classification
+
+Research hypotheses:
+- optimal strike distance
+- optimal DTE
+- gamma responsiveness
+- expected convexity capture
+- operator extraction efficiency

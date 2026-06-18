@@ -9,7 +9,7 @@
     "evidence_quality": 1.0,
     "trade_edge": 0.0
   },
-  "created_ts": "2026-06-10T22:40:33.220726+00:00",
+  "created_ts": "2026-06-11T22:55:06.816465+00:00",
   "focus": {
     "atm_strike": 743.0,
     "dealer_state_hint": "DEFENSIVE",
@@ -21,6 +21,28 @@
     "spot": 742.719970703125
   },
   "headline": "Stand down. Preserve context, but do not act on this setup.",
+  "historical_hints": {
+    "available": true,
+    "closed_trades": 3,
+    "low_sample": true,
+    "metric_collection_priorities": [
+      "MFE (max favorable excursion)",
+      "MAE (max adverse excursion)",
+      "Convexity capture ratio"
+    ],
+    "minimum_pattern_sample_n": 5,
+    "top_pattern_condition": {
+      "setup": "VWAP_FADE",
+      "vwap_behavior": "REJECT"
+    },
+    "top_pattern_confidence": "LOW_SAMPLE",
+    "top_pattern_summary": "Observed journal winners cluster around VWAP_FADE + REJECT.",
+    "total_trades": 3,
+    "usage_constraints": [
+      "Non-authoritative: never override agent_v1_decision permissions or blockers.",
+      "Low-sample historical patterns are observation aids, not deployment approval."
+    ]
+  },
   "next_steps": [
     "Do nothing until blockers clear: controller_hold, monitor_no_trade, sample_n_below_30, stale_or_missing_inputs.",
     "Broker integration is not live; rely on artifact review and manual platform checks.",

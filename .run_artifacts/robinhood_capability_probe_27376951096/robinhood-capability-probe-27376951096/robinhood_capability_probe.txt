@@ -1,0 +1,15 @@
+ROBINHOOD CAPABILITY PROBE
+Created: 2026-06-11T20:57:38.604256+00:00
+Candidate: create_watchlist
+Normalized: create_watchlist
+Matched: False
+Classification: unsupported_or_unverified
+Status: not_found_in_public_source
+Validation scope: public_robinhood_mcp_source
+Actual tool name: none
+Live bridge validated: False
+
+Summary: Not found in the verified public source inventory.
+Notes:
+- This does not prove the authenticated hosted Robinhood bridge lacks it.
+- It only means the capability was not verified in the public source or local SharpEdge beta flow.

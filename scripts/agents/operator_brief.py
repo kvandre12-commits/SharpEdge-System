@@ -26,6 +26,7 @@ OUT_JSON = OUTDIR / "operator_brief.json"
 OUT_TXT = OUTDIR / "operator_brief.txt"
 OUT_WATCHLIST_JSON = OUTDIR / "operator_watchlist.json"
 OUT_JOURNAL_JSONL = OUTDIR / "operator_journal_append.jsonl"
+TRADE_HINTS_JSON = OUTDIR / "trade_journal_hints.json"
 
 
 def utc_now() -> str:
@@ -51,13 +52,36 @@ def read_warnings() -> list[str]:
     ]
 
 
-def load_inputs() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[str]]:
+def load_inputs() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[str], dict[str, Any]]:
     return (
         read_json(CONTROLLER_JSON),
         read_json(MONITOR_JSON),
         read_json(AGENT_V1_JSON),
         read_warnings(),
+        read_json(TRADE_HINTS_JSON),
     )
+
+
+def summarize_historical_hints(hints: dict[str, Any]) -> dict[str, Any]:
+    if not hints:
+        return {"available": False}
+
+    top_pattern = (hints.get("top_patterns") or [{}])[0]
+    top_condition = top_pattern.get("condition", {})
+    primary_hint = (hints.get("actionable_hints") or [{}])[0]
+    sample_state = hints.get("sample_state", {})
+    return {
+        "available": True,
+        "total_trades": sample_state.get("total_trades", 0),
+        "closed_trades": sample_state.get("closed_trades", 0),
+        "low_sample": sample_state.get("low_sample", True),
+        "minimum_pattern_sample_n": sample_state.get("minimum_pattern_sample_n"),
+        "top_pattern_summary": primary_hint.get("summary"),
+        "top_pattern_condition": top_condition,
+        "top_pattern_confidence": top_pattern.get("confidence_label"),
+        "metric_collection_priorities": hints.get("metric_collection_priorities", [])[:3],
+        "usage_constraints": hints.get("usage_constraints", [])[:2],
+    }
 
 
 def choose_operator_action(contract: dict[str, Any]) -> str:
@@ -135,6 +159,7 @@ def build_brief_payload(
     monitor: dict[str, Any],
     contract: dict[str, Any],
     warnings: list[str],
+    hints: dict[str, Any],
 ) -> dict[str, Any]:
     operator_action = choose_operator_action(contract)
     gap = monitor.get("latest_gap_event", {})
@@ -183,6 +208,7 @@ def build_brief_payload(
             "stale_inputs": stale,
             "sample_n": risk.get("sample_n"),
         },
+        "historical_hints": summarize_historical_hints(hints),
         "next_steps": build_next_steps(operator_action, contract, monitor, warnings),
         "artifacts": {
             "controller": str(CONTROLLER_JSON),
@@ -193,8 +219,8 @@ def build_brief_payload(
 
 
 def build_brief() -> dict[str, Any]:
-    controller, monitor, contract, warnings = load_inputs()
-    return build_brief_payload(controller, monitor, contract, warnings)
+    controller, monitor, contract, warnings, hints = load_inputs()
+    return build_brief_payload(controller, monitor, contract, warnings, hints)
 
 
 def build_watchlist_payload(brief: dict[str, Any]) -> dict[str, Any]:
@@ -288,8 +314,8 @@ def build_journal_entry_payload(
 
 
 def build_journal_entry() -> dict[str, Any]:
-    controller, monitor, contract, warnings = load_inputs()
-    brief = build_brief_payload(controller, monitor, contract, warnings)
+    controller, monitor, contract, warnings, hints = load_inputs()
+    brief = build_brief_payload(controller, monitor, contract, warnings, hints)
     return build_journal_entry_payload(brief, controller, monitor, contract, warnings)
 
 
@@ -317,39 +343,46 @@ def render_text(brief: dict[str, Any]) -> str:
     summary = brief["summary"]
     focus = brief["focus"]
     risk = brief["risk"]
-    return "\n".join(
-        [
-            "SHARPEDGE OPERATOR BRIEF",
-            f"Created: {brief['created_ts']}",
-            f"Symbol: {brief['symbol']}",
-            f"Action: {brief['operator_action']}",
-            f"Headline: {brief['headline']}",
-            "",
-            f"Contract decision: {summary['contract_decision']}",
-            f"Controller decision: {summary['controller_decision']}",
-            f"Monitor decision: {summary['monitor_decision']}",
-            f"Risk state: {summary['risk_state']}",
-            f"Broker integration: {summary['broker_integration_status']} ({summary['monitoring_mode']})",
-            "",
-            f"Gap direction: {focus['gap_direction']}",
-            f"Gap fill level: {focus['gap_fill_level']}",
-            f"Option side watch: {focus['option_side_watch']}",
-            f"Spot / ATM: {focus['spot']} / {focus['atm_strike']}",
-            f"Dealer state: {focus['dealer_state_hint']}",
-            "",
-            f"Blocking reasons: {', '.join(risk['blocking_reasons']) or 'none'}",
-            f"Risk flags: {', '.join(risk['risk_flags']) or 'none'}",
-            "",
-            "Next steps:",
-            *[f"- {step}" for step in brief["next_steps"]],
-        ]
-    ) + "\n"
+    historical = brief.get("historical_hints", {})
+    lines = [
+        "SHARPEDGE OPERATOR BRIEF",
+        f"Created: {brief['created_ts']}",
+        f"Symbol: {brief['symbol']}",
+        f"Action: {brief['operator_action']}",
+        f"Headline: {brief['headline']}",
+        "",
+        f"Contract decision: {summary['contract_decision']}",
+        f"Controller decision: {summary['controller_decision']}",
+        f"Monitor decision: {summary['monitor_decision']}",
+        f"Risk state: {summary['risk_state']}",
+        f"Broker integration: {summary['broker_integration_status']} ({summary['monitoring_mode']})",
+        "",
+        f"Gap direction: {focus['gap_direction']}",
+        f"Gap fill level: {focus['gap_fill_level']}",
+        f"Option side watch: {focus['option_side_watch']}",
+        f"Spot / ATM: {focus['spot']} / {focus['atm_strike']}",
+        f"Dealer state: {focus['dealer_state_hint']}",
+        "",
+        f"Blocking reasons: {', '.join(risk['blocking_reasons']) or 'none'}",
+        f"Risk flags: {', '.join(risk['risk_flags']) or 'none'}",
+    ]
+    if historical.get("available"):
+        lines.extend(
+            [
+                "",
+                "Historical hints:",
+                f"- Top pattern: {historical.get('top_pattern_summary') or 'none'}",
+                f"- Low sample: {historical.get('low_sample')}",
+            ]
+        )
+    lines.extend(["", "Next steps:", *[f"- {step}" for step in brief["next_steps"]]])
+    return "\n".join(lines) + "\n"
 
 
 def main() -> None:
     OUTDIR.mkdir(parents=True, exist_ok=True)
-    controller, monitor, contract, warnings = load_inputs()
-    brief = build_brief_payload(controller, monitor, contract, warnings)
+    controller, monitor, contract, warnings, hints = load_inputs()
+    brief = build_brief_payload(controller, monitor, contract, warnings, hints)
     watchlist = build_watchlist_payload(brief)
     journal_entry = build_journal_entry_payload(
         brief, controller, monitor, contract, warnings

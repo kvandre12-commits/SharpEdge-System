@@ -1,0 +1,9 @@
+WORKFLOW STATE
+Run id: cdbfc9fc2750
+Symbol: SPY
+Lifecycle stage: blocked
+Operator action: stand_down
+Readiness: blocked
+Approval decision: hold
+Blockers: controller_hold, monitor_no_trade, sample_n_below_30, stale_or_missing_inputs
+Risk flags: broker_integration_unavailable, freshness_gate_failed, low_sample, monitor_blocks_trade

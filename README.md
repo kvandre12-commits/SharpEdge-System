@@ -108,6 +108,16 @@ Outputs:
 - `outputs/morning_open_dashboard.txt`
 - `outputs/robinhood_beta_execution.json`
 - `outputs/robinhood_beta_execution.txt`
+- `outputs/trade_journal_hints.json`
+- `outputs/trade_journal_hints.txt`
+- `outputs/workflow_state.json`
+- `outputs/workflow_state.txt`
+- `outputs/execution_plan.json`
+- `outputs/execution_plan.txt`
+- `outputs/approval_decision.json`
+- `outputs/approval_decision.txt`
+- `outputs/journal.json`
+- `outputs/journal.txt`
 
 Extra operator artifacts:
 
@@ -115,12 +125,17 @@ Extra operator artifacts:
 python scripts/agents/operator_session_review.py
 python scripts/agents/morning_open_dashboard.py
 python scripts/agents/robinhood_beta_execution.py
+python scripts/agents/trade_journal_hints.py
+python scripts/agents/agent_language_objects.py
 ```
 
 Design notes:
 
 - `docs/operator_breadcrumbs.md`
 - `docs/robinhood_beta_execution.md`
+- `docs/permission_and_confidence_map.md`
+- `docs/trade_journal_hints.md`
+- `docs/agent_language_protocol.md`
 
 ## Results Summary
 

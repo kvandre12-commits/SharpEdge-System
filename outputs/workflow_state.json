@@ -1,0 +1,105 @@
+{
+  "agent_id": "code-puppy-ce5830",
+  "authority": "informational",
+  "blockers": [
+    "controller_hold",
+    "monitor_no_trade",
+    "sample_n_below_30",
+    "stale_or_missing_inputs"
+  ],
+  "constraints": [
+    "Informational only; use approval_decision for actual permission authority."
+  ],
+  "created_ts": "2026-06-17T22:00:22.697437+00:00",
+  "evidence": {
+    "artifact_readiness_confidence": 1.0,
+    "evidence_quality": 1.0,
+    "trade_edge_confidence": 0.0
+  },
+  "freshness": {
+    "max_current_age_days": 3,
+    "max_options_age_days": 7,
+    "stale_inputs": [
+      {
+        "age_days": 21,
+        "date": "2026-05-20",
+        "input": "signal",
+        "max_age_days": 3
+      },
+      {
+        "age_days": 21,
+        "date": "2026-05-20",
+        "input": "regime",
+        "max_age_days": 3
+      },
+      {
+        "age_days": 20,
+        "date": "2026-05-21",
+        "input": "options_positioning",
+        "max_age_days": 7
+      }
+    ]
+  },
+  "historical_context": {
+    "available": true,
+    "closed_trades": 3,
+    "low_sample": true,
+    "metric_collection_priorities": [
+      "MFE (max favorable excursion)",
+      "MAE (max adverse excursion)",
+      "Convexity capture ratio"
+    ],
+    "minimum_pattern_sample_n": 5,
+    "top_pattern_condition": {
+      "setup": "VWAP_FADE",
+      "vwap_behavior": "REJECT"
+    },
+    "top_pattern_confidence": "LOW_SAMPLE",
+    "top_pattern_summary": "Observed journal winners cluster around VWAP_FADE + REJECT.",
+    "total_trades": 3,
+    "usage_constraints": [
+      "Non-authoritative: never override agent_v1_decision permissions or blockers.",
+      "Low-sample historical patterns are observation aids, not deployment approval."
+    ]
+  },
+  "market_context": {
+    "atm_strike": 743.0,
+    "dealer_state_hint": "DEFENSIVE",
+    "fill_bias": "bullish_gap_fill_watch",
+    "gap_direction": "DOWN",
+    "gap_fill_level": "737.0499877929688",
+    "gap_session_date": "2026-06-10",
+    "option_side_watch": "calls_or_call_spreads",
+    "spot": 742.719970703125
+  },
+  "object_name": "workflow_state",
+  "risk_flags": [
+    "broker_integration_unavailable",
+    "freshness_gate_failed",
+    "low_sample",
+    "monitor_blocks_trade"
+  ],
+  "run_id": "cdbfc9fc2750",
+  "schema_version": "agent_language.v1",
+  "source_artifacts": {
+    "brief": "outputs/operator_brief.json",
+    "contract": "outputs/agent_v1_decision.json",
+    "controller": "outputs/agent_controller_decision.json",
+    "journal_append": "outputs/operator_journal_append.jsonl",
+    "monitor": "outputs/robinhood_fvg_monitor.json",
+    "session_review": "outputs/operator_session_review.json",
+    "trade_hints": "outputs/trade_journal_hints.json"
+  },
+  "state": {
+    "approval_decision": "hold",
+    "broker_integration_status": "disabled",
+    "controller_decision": "hold",
+    "lifecycle_stage": "blocked",
+    "monitor_decision": "no_trade",
+    "monitoring_mode": "artifact_only_manual_review",
+    "operator_action": "stand_down",
+    "readiness": "blocked",
+    "risk_state": "PROBE"
+  },
+  "symbol": "SPY"
+}

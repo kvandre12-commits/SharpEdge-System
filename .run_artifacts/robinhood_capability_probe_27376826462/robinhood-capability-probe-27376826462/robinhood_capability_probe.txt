@@ -1,0 +1,15 @@
+ROBINHOOD CAPABILITY PROBE
+Created: 2026-06-11T20:55:19.348295+00:00
+Candidate: order_submit
+Normalized: order_submit
+Matched: True
+Classification: active_trading_write
+Status: delegate_operator_confirm_required
+Validation scope: local_sharpedge_beta_or_delegate
+Actual tool name: order_submit
+Live bridge validated: False
+
+Summary: Active-trading capability is approval-gated or blocked in local beta.
+Notes:
+- Supported as a ChatGPT Robinhood delegate task type.
+- Forced to operator_confirm_required.

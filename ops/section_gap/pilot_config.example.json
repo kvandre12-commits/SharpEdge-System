@@ -1,0 +1,35 @@
+{
+  "pilot_id": "fresh-produce-pilot-01",
+  "store_id": "store-001",
+  "section_id": "fresh-produce-endcap-01",
+  "section_name": "Fresh produce endcap",
+  "status_values": [
+    "normal",
+    "low",
+    "empty",
+    "needs_review"
+  ],
+  "reference_images": [
+    "refs/fresh-produce-endcap-01-normal-a.jpg",
+    "refs/fresh-produce-endcap-01-normal-b.jpg"
+  ],
+  "owner_route": {
+    "primary_role": "produce_lead",
+    "secondary_role": "stock_team",
+    "escalation_role": "store_manager"
+  },
+  "alert_channel": {
+    "type": "teams",
+    "target": "fresh-ops-alerts"
+  },
+  "severity_rules": {
+    "normal": "none",
+    "low": "medium",
+    "empty": "high",
+    "needs_review": "low"
+  },
+  "notes": [
+    "Start with one physical spot only.",
+    "Manually review borderline detections during v1."
+  ]
+}

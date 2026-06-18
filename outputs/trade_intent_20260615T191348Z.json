@@ -1,0 +1,47 @@
+{
+  "schema": "sharpedge.trade_intent.v1",
+  "created_utc": "2026-06-15T19:13:48.301889+00:00",
+  "status": "awaiting_operator_confirm",
+  "command": "order_submit",
+  "route": "chatgpt_delegate",
+  "approval_policy": "operator_confirm_required",
+  "risk": {
+    "ok": true,
+    "blocks": [],
+    "notes": [
+      "Notional $753.00 within $1500.00 ceiling."
+    ]
+  },
+  "intent": {
+    "symbol": "SPY",
+    "side": "buy",
+    "quantity": 1,
+    "order_type": "limit",
+    "limit_price": 753.0,
+    "asset": "equity",
+    "option_legs": [],
+    "rationale": "TINY LIVE PATH TEST. Cockpit: sticky/chop day, price near VWAP, put wall 720 / call wall 760. 1-share limit below spot to validate the agentic->confirm->connector path, not a conviction trade.",
+    "source_signal": {
+      "spot": 755.85,
+      "vwap": 754.15,
+      "regime": "sticky_chop",
+      "call_wall": 760,
+      "put_wall": 720
+    }
+  },
+  "delegation_payload": {
+    "symbol": "SPY",
+    "asset": "equity",
+    "side": "buy",
+    "quantity": 1,
+    "order_type": "limit",
+    "limit_price": 753.0,
+    "time_in_force": "day",
+    "option_legs": []
+  },
+  "rationale": "TINY LIVE PATH TEST. Cockpit: sticky/chop day, price near VWAP, put wall 720 / call wall 760. 1-share limit below spot to validate the agentic->confirm->connector path, not a conviction trade.",
+  "operator_action": "TAP CONFIRM to release this to the ChatGPT Robinhood connector.",
+  "notes": [
+    "Route through approval-gated delegate flow, not direct autonomous submission."
+  ]
+}

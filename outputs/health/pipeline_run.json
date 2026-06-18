@@ -1,0 +1,83 @@
+{
+  "run_id": "pipeline-20260609T014211Z-8ec0a056",
+  "profile": "full",
+  "status": "failed",
+  "started_at": "2026-06-09T01:42:11.270263+00:00",
+  "finished_at": "2026-06-09T01:42:11.432956+00:00",
+  "repo_root": "/data/data/com.termux/files/home/SharpEdge-System",
+  "db_path": "data/market_data.db",
+  "db_abspath": "/data/data/com.termux/files/home/SharpEdge-System/data/market_data.db",
+  "symbol": "SPY",
+  "dry_run": false,
+  "fail_fast": true,
+  "controller": false,
+  "publish": false,
+  "commit": false,
+  "allow_backfill": false,
+  "from_stage": "signals",
+  "to_stage": null,
+  "only_stages": [],
+  "stages": [
+    {
+      "name": "signals",
+      "description": "Build signals and playbook artifacts",
+      "status": "failed",
+      "started_at": "2026-06-09T01:42:11.270712+00:00",
+      "finished_at": "2026-06-09T01:42:11.432666+00:00",
+      "duration_sec": 0.162,
+      "steps": [
+        {
+          "name": "build_signal_strength_daily",
+          "command": "python scripts/build_signal_strength_daily.py",
+          "required": true,
+          "status": "failed",
+          "started_at": "2026-06-09T01:42:11.270743+00:00",
+          "finished_at": "2026-06-09T01:42:11.432179+00:00",
+          "duration_sec": 0.161,
+          "exit_code": 1,
+          "condition": null,
+          "notes": null,
+          "stdout_tail": "",
+          "stderr_tail": "Traceback (most recent call last):\n  File \"/data/data/com.termux/files/home/SharpEdge-System/scripts/build_signal_strength_daily.py\", line 18, in <module>\n    import pandas as pd\nModuleNotFoundError: No module named 'pandas'\n",
+          "env_updates": {}
+        }
+      ]
+    }
+  ],
+  "warnings": [
+    {
+      "stage": "signals",
+      "step": "build_signal_strength_daily",
+      "status": "failed",
+      "exit_code": 1
+    }
+  ],
+  "controller_decision": "hold",
+  "config": {
+    "repo_root": "/data/data/com.termux/files/home/SharpEdge-System",
+    "db_path": "data/market_data.db",
+    "db_abspath": "/data/data/com.termux/files/home/SharpEdge-System/data/market_data.db",
+    "symbol": "SPY",
+    "dry_run": false,
+    "fail_fast": true,
+    "include_optional": true,
+    "controller": false,
+    "publish": false,
+    "commit": false,
+    "allow_backfill": false,
+    "backfill_start_iso": "2025-04-01T00:00:00Z",
+    "from_stage": "signals",
+    "to_stage": null,
+    "only_stages": []
+  },
+  "summary": {
+    "stage_count": 1,
+    "step_totals": {
+      "ok": 0,
+      "failed": 1,
+      "degraded": 0,
+      "skipped": 0,
+      "dry_run": 0
+    }
+  }
+}

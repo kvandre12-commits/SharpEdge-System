@@ -1,0 +1,141 @@
+{
+  "actionable_hints": [
+    {
+      "authoritative": false,
+      "condition": {
+        "setup": "VWAP_FADE",
+        "vwap_behavior": "REJECT"
+      },
+      "confidence_label": "LOW_SAMPLE",
+      "evidence": {
+        "avg_pnl": 49.0,
+        "avg_r": 0.772,
+        "closed_trades": 3,
+        "preferred_exit_reason": "target",
+        "trades": 3,
+        "win_rate": 1.0
+      },
+      "hint_id": "pattern:vwap_fade:reject",
+      "hint_type": "pattern_repeat_watch",
+      "recommendation": "Treat as low-sample watch context until at least 5 closed trades exist.",
+      "summary": "Observed journal winners cluster around VWAP_FADE + REJECT."
+    },
+    {
+      "authoritative": false,
+      "condition": {
+        "setup": "VWAP_FADE",
+        "vwap_behavior": "REJECT"
+      },
+      "confidence_label": "LOW_SAMPLE",
+      "evidence": {
+        "avg_hold_minutes": 25.3,
+        "preferred_exit_reason": "target",
+        "wins": 3
+      },
+      "hint_id": "exit:vwap_fade:reject",
+      "hint_type": "exit_discipline",
+      "recommendation": "Preserve planned exits; do not improvise just because dopamine asked nicely.",
+      "summary": "Profitable VWAP_FADE + REJECT trades usually exited via target."
+    },
+    {
+      "authoritative": false,
+      "confidence_label": "HIGH",
+      "evidence": {
+        "metric_count": 7
+      },
+      "hint_id": "research:future_metrics",
+      "hint_type": "research_backlog",
+      "recommendation": "Prefer filling missing execution-attribution fields before inventing new strategy knobs.",
+      "summary": "Journal notes already define the next metrics worth collecting."
+    }
+  ],
+  "created_ts": "2026-06-11T22:55:06.741697+00:00",
+  "data_sources": {
+    "journal_notes_dir": "trade_journal",
+    "trade_db": "/data/data/com.termux/files/home/trade_journal/trades.db"
+  },
+  "field_coverage": {
+    "entry_time": {
+      "coverage": 1.0,
+      "missing": 0,
+      "present": 3
+    },
+    "exit_time": {
+      "coverage": 1.0,
+      "missing": 0,
+      "present": 3
+    },
+    "notes": {
+      "coverage": 0.0,
+      "missing": 3,
+      "present": 0
+    },
+    "pnl_r": {
+      "coverage": 1.0,
+      "missing": 0,
+      "present": 3
+    },
+    "risk_dollars": {
+      "coverage": 1.0,
+      "missing": 0,
+      "present": 3
+    }
+  },
+  "metric_collection_priorities": [
+    "MFE (max favorable excursion)",
+    "MAE (max adverse excursion)",
+    "Convexity capture ratio",
+    "Hold duration",
+    "Entry timing quality",
+    "Exit timing quality",
+    "State transition classification"
+  ],
+  "note_categories": [
+    "Execution Attribution"
+  ],
+  "research_hypotheses": [
+    "optimal strike distance",
+    "optimal DTE",
+    "gamma responsiveness",
+    "expected convexity capture",
+    "operator extraction efficiency"
+  ],
+  "sample_state": {
+    "closed_trades": 3,
+    "low_sample": true,
+    "minimum_pattern_sample_n": 5,
+    "note_count": 1,
+    "total_trades": 3
+  },
+  "schema_version": "trade_journal_hints.v1",
+  "symbols": [
+    "SPY"
+  ],
+  "top_patterns": [
+    {
+      "avg_hold_minutes": 25.3,
+      "avg_pnl": 49.0,
+      "avg_r": 0.772,
+      "closed_trades": 3,
+      "condition": {
+        "setup": "VWAP_FADE",
+        "vwap_behavior": "REJECT"
+      },
+      "confidence_label": "LOW_SAMPLE",
+      "flat": 0,
+      "losses": 0,
+      "pattern_id": "vwap_fade__reject",
+      "preferred_exit_reason": "target",
+      "recommendation": "observe_only",
+      "total_pnl": 147.0,
+      "trades": 3,
+      "win_rate": 1.0,
+      "wins": 3
+    }
+  ],
+  "usage_constraints": [
+    "Non-authoritative: never override agent_v1_decision permissions or blockers.",
+    "Low-sample historical patterns are observation aids, not deployment approval.",
+    "Use these hints to improve review quality and logging discipline, not to force trades."
+  ]
+}

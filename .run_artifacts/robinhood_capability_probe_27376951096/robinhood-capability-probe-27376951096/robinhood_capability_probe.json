@@ -1,0 +1,18 @@
+{
+  "actual_tool_name": "",
+  "candidate": "create_watchlist",
+  "classification": "unsupported_or_unverified",
+  "created_ts": "2026-06-11T20:57:38.604256+00:00",
+  "live_bridge_note": "Authenticated tools/list validation has not been run from this workflow.",
+  "live_bridge_validated": false,
+  "matched": false,
+  "normalized": "create_watchlist",
+  "notes": [
+    "This does not prove the authenticated hosted Robinhood bridge lacks it.",
+    "It only means the capability was not verified in the public source or local SharpEdge beta flow."
+  ],
+  "schema_version": "robinhood_capability_probe.v1",
+  "status": "not_found_in_public_source",
+  "summary": "Not found in the verified public source inventory.",
+  "validation_scope": "public_robinhood_mcp_source"
+}

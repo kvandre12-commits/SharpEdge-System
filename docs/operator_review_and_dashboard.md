@@ -38,3 +38,5 @@ and session review. It highlights:
 - permissions and blockers
 - opening checklist items
 - recent review context
+- optional historical hints from `trade_journal_hints.json`
+- canonical agent-language mapping via `workflow_state`, `execution_plan`, `approval_decision`, and `journal`

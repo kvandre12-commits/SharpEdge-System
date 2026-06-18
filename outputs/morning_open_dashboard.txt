@@ -1,5 +1,5 @@
 SHARPEDGE MORNING OPEN DASHBOARD
-Created: 2026-06-10T22:40:33.348656+00:00
+Created: 2026-06-15T14:37:07.995010+00:00
 Readiness: blocked
 Operator action: stand_down
 Headline: Stand down. Preserve context, but do not act on this setup.
@@ -14,7 +14,10 @@ Checklist:
 - [BLOCKED] fresh_inputs: 3 stale input(s) present.
 - [BLOCKED] broker_integration: Broker integration status=disabled.
 - [OK] watchlist_focus: Watchlist items available=1.
-- [BLOCKED] trade_permission: Contract decision=hold.
+- [BLOCKED] trade_permission: Approval decision=hold.
 
 Blocking reasons: controller_hold, monitor_no_trade, sample_n_below_30, stale_or_missing_inputs
 Risk flags: broker_integration_unavailable, freshness_gate_failed, low_sample, monitor_blocks_trade
+
+Historical top pattern: Observed journal winners cluster around VWAP_FADE + REJECT.
+Historical low sample: True

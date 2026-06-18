@@ -1,5 +1,5 @@
 SHARPEDGE OPERATOR BRIEF
-Created: 2026-06-10T22:40:33.220726+00:00
+Created: 2026-06-11T22:55:06.816465+00:00
 Symbol: SPY
 Action: stand_down
 Headline: Stand down. Preserve context, but do not act on this setup.
@@ -18,6 +18,10 @@ Dealer state: DEFENSIVE
 
 Blocking reasons: controller_hold, monitor_no_trade, sample_n_below_30, stale_or_missing_inputs
 Risk flags: broker_integration_unavailable, freshness_gate_failed, low_sample, monitor_blocks_trade
+
+Historical hints:
+- Top pattern: Observed journal winners cluster around VWAP_FADE + REJECT.
+- Low sample: True
 
 Next steps:
 - Do nothing until blockers clear: controller_hold, monitor_no_trade, sample_n_below_30, stale_or_missing_inputs.

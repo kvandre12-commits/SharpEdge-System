@@ -60,8 +60,18 @@ Constants: `WALL_PROXIMITY_PCT=0.20`, `MIN_VOL_MULT=1.2`, `MIN_VS_VWAP=0.05`,
 4. `vol_mult < 1.2` → **stand_down** ("move not confirmed").
 5. within `0.20%` of **call_wall OR put_wall** → **stand_down** ("pinned to wall").
 6. `gamma_regime == "negative"` AND `vs_vwap > 0.05` AND `mom15 > 0.05`
-   → **trade**: buy 1 SPY share, limit at spot ("confirmed bullish runner").
+   → candidate runner long, THEN the **analytics gate** (tighten-only):
+   load daily `execution_state_daily` via `analytics_context.load_execution_state`.
+   If **fresh** (≤5d) AND `prob_range - prob_trend > RANGE_VETO_MARGIN (0.20)`
+   → **stand_down** ("daily regime favors range - runner long vetoed").
+   Otherwise → **trade**: buy 1 SPY share, limit at spot; the analytics note
+   (incl. STALE warnings) is appended to the rationale. Stale/missing analytics
+   never blocks — it is ignored with a visible note.
 7. else → **stand_down** ("no qualifying setup").
+
+> Design law: **analytics may only TIGHTEN execution (veto/annotate), never
+> loosen it**, and is freshness-guarded. See `analytics_context.py` + tests in
+> `tests/test_trade_intent.py` (the first decide() tests).
 
 Always name the gate that fired. Stand_down is the common, correct answer.
 Conservative on purpose: "Honest > busy."

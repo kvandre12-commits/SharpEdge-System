@@ -1,0 +1,90 @@
+{
+  "agent_id": "code-puppy-ce5830",
+  "authority": "authoritative_permission_gate",
+  "authority_policy": {
+    "contract_wins": true,
+    "manual_confirmation_required": true,
+    "notes": [
+      "Downstream layers may summarize this object, but must not override it.",
+      "Trade permission remains blocked until this object explicitly allows it."
+    ]
+  },
+  "blocking_reasons": [
+    "controller_hold",
+    "monitor_no_trade",
+    "sample_n_below_30",
+    "stale_or_missing_inputs"
+  ],
+  "broker_order_allowed": false,
+  "confidence": {
+    "evidence_quality": 1.0,
+    "trade_edge_confidence": 0.0
+  },
+  "created_ts": "2026-06-17T22:00:22.697506+00:00",
+  "decision": "hold",
+  "freshness": {
+    "max_current_age_days": 3,
+    "max_options_age_days": 7,
+    "stale_inputs": [
+      {
+        "age_days": 21,
+        "date": "2026-05-20",
+        "input": "signal",
+        "max_age_days": 3
+      },
+      {
+        "age_days": 21,
+        "date": "2026-05-20",
+        "input": "regime",
+        "max_age_days": 3
+      },
+      {
+        "age_days": 20,
+        "date": "2026-05-21",
+        "input": "options_positioning",
+        "max_age_days": 7
+      }
+    ]
+  },
+  "object_name": "approval_decision",
+  "permissions": {
+    "cancel_order_without_operator_confirmation": false,
+    "monitor_quotes": false,
+    "place_order": false,
+    "read_account_status": false,
+    "read_market_data": true,
+    "read_option_chain": false,
+    "read_positions": false,
+    "replace_order": false
+  },
+  "required_human_action": "none",
+  "risk_flags": [
+    "broker_integration_unavailable",
+    "freshness_gate_failed",
+    "low_sample",
+    "monitor_blocks_trade"
+  ],
+  "risk_limits": {
+    "max_capital_risk_pct": 0.0,
+    "risk_state": "PROBE"
+  },
+  "run_id": "cdbfc9fc2750",
+  "schema_version": "agent_language.v1",
+  "source_artifacts": {
+    "brief": "outputs/operator_brief.json",
+    "contract": "outputs/agent_v1_decision.json",
+    "controller": "outputs/agent_controller_decision.json",
+    "journal_append": "outputs/operator_journal_append.jsonl",
+    "monitor": "outputs/robinhood_fvg_monitor.json",
+    "session_review": "outputs/operator_session_review.json",
+    "trade_hints": "outputs/trade_journal_hints.json"
+  },
+  "source_decisions": {
+    "controller_decision": "hold",
+    "monitor_decision": "no_trade",
+    "risk_deployment_state": "PROBE",
+    "risk_sample_n": 1
+  },
+  "symbol": "SPY",
+  "trade_allowed": false
+}

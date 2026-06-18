@@ -1,0 +1,147 @@
+{
+  "agent_id": "code-puppy-ce5830",
+  "authority": "historical_non_authoritative",
+  "constraints": [
+    "Non-authoritative: never override agent_v1_decision permissions or blockers.",
+    "Low-sample historical patterns are observation aids, not deployment approval.",
+    "Use these hints to improve review quality and logging discipline, not to force trades."
+  ],
+  "created_ts": "2026-06-17T22:00:22.697527+00:00",
+  "entries_reviewed": 1,
+  "entries_total": 1,
+  "journal_mode": "append_only_summary",
+  "latest_entry": {
+    "blocking_reasons": [
+      "controller_hold",
+      "monitor_no_trade",
+      "sample_n_below_30",
+      "stale_or_missing_inputs"
+    ],
+    "created_ts": "2026-06-10T22:35:32.370123+00:00",
+    "entry_id": "bc081419ce0cd040",
+    "headline": "Stand down. Preserve context, but do not act on this setup.",
+    "operator_action": "stand_down",
+    "risk_flags": [
+      "broker_integration_unavailable",
+      "freshness_gate_failed",
+      "low_sample",
+      "monitor_blocks_trade"
+    ],
+    "watchlist_status": "blocked"
+  },
+  "lessons": [
+    "Observed journal winners cluster around VWAP_FADE + REJECT.",
+    "Profitable VWAP_FADE + REJECT trades usually exited via target.",
+    "Journal notes already define the next metrics worth collecting."
+  ],
+  "object_name": "journal",
+  "recent_entries": [
+    {
+      "blocking_reasons": [
+        "controller_hold",
+        "monitor_no_trade",
+        "sample_n_below_30",
+        "stale_or_missing_inputs"
+      ],
+      "created_ts": "2026-06-10T22:35:32.370123+00:00",
+      "entry_id": "bc081419ce0cd040",
+      "headline": "Stand down. Preserve context, but do not act on this setup.",
+      "operator_action": "stand_down",
+      "risk_flags": [
+        "broker_integration_unavailable",
+        "freshness_gate_failed",
+        "low_sample",
+        "monitor_blocks_trade"
+      ],
+      "watchlist_status": "blocked"
+    }
+  ],
+  "recurring_patterns": {
+    "historical_top_pattern": {
+      "avg_hold_minutes": 25.3,
+      "avg_pnl": 49.0,
+      "avg_r": 0.772,
+      "closed_trades": 3,
+      "condition": {
+        "setup": "VWAP_FADE",
+        "vwap_behavior": "REJECT"
+      },
+      "confidence_label": "LOW_SAMPLE",
+      "flat": 0,
+      "losses": 0,
+      "pattern_id": "vwap_fade__reject",
+      "preferred_exit_reason": "target",
+      "recommendation": "observe_only",
+      "total_pnl": 147.0,
+      "trades": 3,
+      "win_rate": 1.0,
+      "wins": 3
+    },
+    "top_blockers": [
+      {
+        "count": 1,
+        "value": "controller_hold"
+      },
+      {
+        "count": 1,
+        "value": "monitor_no_trade"
+      },
+      {
+        "count": 1,
+        "value": "sample_n_below_30"
+      },
+      {
+        "count": 1,
+        "value": "stale_or_missing_inputs"
+      }
+    ],
+    "top_risk_flags": [
+      {
+        "count": 1,
+        "value": "broker_integration_unavailable"
+      },
+      {
+        "count": 1,
+        "value": "freshness_gate_failed"
+      },
+      {
+        "count": 1,
+        "value": "low_sample"
+      },
+      {
+        "count": 1,
+        "value": "monitor_blocks_trade"
+      }
+    ]
+  },
+  "research_backlog": {
+    "metric_collection_priorities": [
+      "MFE (max favorable excursion)",
+      "MAE (max adverse excursion)",
+      "Convexity capture ratio",
+      "Hold duration",
+      "Entry timing quality",
+      "Exit timing quality",
+      "State transition classification"
+    ],
+    "research_hypotheses": [
+      "optimal strike distance",
+      "optimal DTE",
+      "gamma responsiveness",
+      "expected convexity capture",
+      "operator extraction efficiency"
+    ]
+  },
+  "run_id": "cdbfc9fc2750",
+  "schema_version": "agent_language.v1",
+  "source_artifacts": {
+    "brief": "outputs/operator_brief.json",
+    "contract": "outputs/agent_v1_decision.json",
+    "controller": "outputs/agent_controller_decision.json",
+    "journal_append": "outputs/operator_journal_append.jsonl",
+    "monitor": "outputs/robinhood_fvg_monitor.json",
+    "session_review": "outputs/operator_session_review.json",
+    "trade_hints": "outputs/trade_journal_hints.json"
+  },
+  "symbol": "SPY"
+}

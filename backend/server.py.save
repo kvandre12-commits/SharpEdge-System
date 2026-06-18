@@ -1,0 +1,66 @@
+from flask import Flask from flask_cors 
+import CORS import sqlite3
+
+DB_PATH = "../data/spy_truth.db"
+
+app = Flask(__name__)
+CORS(app)
+
+
+@app.route("/market")
+def market():
+
+    con = sqlite3.connect(DB_PATH)
+    con.row_factory = sqlite3.Row
+
+    latest_signal = con.execute("""
+    SELECT *
+    FROM signals_daily
+    ORDER BY date DESC
+    LIMIT 1
+    """).fetchone()
+
+    latest_regime = con.execute("""
+    SELECT *
+    FROM regime_daily
+    ORDER BY date DESC
+    LIMIT 1
+    """).fetchone()
+
+    latest_surface = con.execute("""
+    SELECT *
+    FROM options_surface_state
+    ORDER BY session_date DESC
+    LIMIT 1
+    """).fetchone()
+
+    con.close()
+
+    if latest_signal and latest_regime and latest_surface:
+
+        return {
+            "symbol": "SPY",
+
+            "spot": latest_surface["spot"],
+
+            "active_wall": latest_surface["active_wall"],
+            "gamma_flip": latest_surface["gamma_flip"],
+
+            "trade_gate": latest_signal["trade_gate"],
+            "pressure_state": latest_signal["pressure_state"],
+
+            "regime": latest_regime["regime_label"],
+            "vol_state": latest_regime["vol_state"],
+            "macro_state": latest_regime["macro_state"],
+
+            "dealer_state": latest_surface["dealer_state"],
+
+            "compression_flag": latest_regime["compression_flag"]
+        }
+
+    return {
+        "error": "No market data found"
+    }
+
+
+app.run(host="0.0.0.0", port=5000)
