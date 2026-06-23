@@ -6,13 +6,13 @@
   },
   "before": {
     "earliest_date": "2000-01-03",
-    "latest_date": "2026-06-15",
-    "rows": 26776
+    "latest_date": "2026-06-19",
+    "rows": 26792
   },
   "force_refresh": false,
   "max_lag_days": 5,
-  "network_refresh": true,
+  "network_refresh": false,
   "output_rows": 26792,
   "symbol": "WMT",
-  "upserted_rows": 26792
+  "upserted_rows": 0
 }

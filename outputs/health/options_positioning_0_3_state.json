@@ -1,25 +1,25 @@
 {
   "after": {
-    "metrics_max_snapshot_ts": "2026-06-19T00:12:34Z",
+    "metrics_max_snapshot_ts": "2026-06-23T23:37:34Z",
     "metrics_min_snapshot_ts": "2026-05-27T19:29:56Z",
-    "metrics_rows": 13,
-    "source_max_snapshot_ts": "2026-06-19T00:12:34Z",
+    "metrics_rows": 14,
+    "source_max_snapshot_ts": "2026-06-23T23:37:34Z",
     "source_min_snapshot_ts": "2026-05-27T19:29:56Z",
-    "source_snapshot_count": 13
+    "source_snapshot_count": 14
   },
   "before": {
     "metrics_max_snapshot_ts": "2026-06-19T00:12:34Z",
     "metrics_min_snapshot_ts": "2026-05-27T19:29:56Z",
     "metrics_rows": 13,
-    "source_max_snapshot_ts": "2026-06-19T00:12:34Z",
+    "source_max_snapshot_ts": "2026-06-23T23:37:34Z",
     "source_min_snapshot_ts": "2026-05-27T19:29:56Z",
-    "source_snapshot_count": 13
+    "source_snapshot_count": 14
   },
   "dte_max": 3,
   "dte_min": 0,
   "force_rebuild": false,
   "only_snapshot_ts": null,
-  "requested_snapshot_count": 0,
+  "requested_snapshot_count": 1,
   "underlying": "WMT",
-  "upserted_rows": 0
+  "upserted_rows": 1
 }
