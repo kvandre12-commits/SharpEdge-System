@@ -1,5 +1,12 @@
 name: Ingest SPY data
 
+permissions:
+  contents: write
+
+concurrency:
+  group: sharpedge-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
   schedule:
@@ -37,12 +44,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-         python-version: "3.11"
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
-         python -m pip install --upgrade pip
-         pip install pandas numpy matplotlib yfinance
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Python quality gate
         run: |
@@ -177,7 +186,8 @@ jobs:
 
       - name: Build regime×pressure×DTE expectancy
         continue-on-error: true
-        run: python scripts/analysis/expectancy_engine.py
+        run: |
+          python scripts/analysis/expectancy_engine.py || echo "WARN: expectancy engine degraded" >> outputs/health/warnings.log
 
       - name: Publish SharpEdge 2.0 report
         continue-on-error: true

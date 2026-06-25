@@ -1,3 +1,8 @@
+# Canonical SharpEdge pipeline/runtime dependencies.
+# GitHub workflows and local validation should install this file instead of
+# hardcoding drifting package lists in YAML.
+numpy>=1.26.0
 pandas>=2.0.0
+python-dateutil>=2.8.2
+requests>=2.31.0
 yfinance>=0.2.40
-requests
