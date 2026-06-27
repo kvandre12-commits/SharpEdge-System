@@ -131,7 +131,7 @@ Phone Companion does not invent these. It consumes them.
 
 Required upstream artifacts:
 - `cockpit/cockpit.html`
-- `cockpit/command_deck.html` when present
+- `cockpit/operator_surface.html`
 - `outputs/operator_brief.json`
 - `outputs/morning_open_dashboard.json`
 - `outputs/approval_decision.json`

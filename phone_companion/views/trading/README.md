@@ -4,7 +4,7 @@ This folder holds phone-facing trading view builders and templates.
 
 It may read upstream artifacts such as:
 - `cockpit/cockpit.html`
-- `cockpit/command_deck.html`
+- `cockpit/operator_surface.html`
 - `outputs/operator_brief.json`
 - `outputs/morning_open_dashboard.json`
 - `outputs/approval_decision.json`

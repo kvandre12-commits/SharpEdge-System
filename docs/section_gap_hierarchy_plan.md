@@ -142,8 +142,8 @@ What not to steal:
 - trading terminology
 - market-specific signal logic
 
-### Existing asset: `cockpit/make_command_deck.py`
-This is the best template for a section pilot dashboard.
+### Existing asset: `cockpit/make_operator_surface.py`
+This is the best template for a section operator dashboard.
 
 Why:
 - already thinks in `artifact in -> dashboard out`
@@ -152,7 +152,7 @@ Why:
 
 Repurpose the pattern, not the market semantics.
 
-### Existing assets: `run_cockpit.sh` and `run_command_deck.sh`
+### Existing assets: `run_cockpit.sh` and `run_local_dashboard.sh`
 These belong to L4 delivery.
 
 They are launch wrappers:

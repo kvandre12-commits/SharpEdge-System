@@ -163,9 +163,9 @@ phone_companion/
 Look here for trading-side artifacts and patterns:
 
 - `cockpit/make_cockpit.py`
-- `cockpit/make_command_deck.py`
+- `cockpit/make_operator_surface.py`
 - `cockpit/run_cockpit.sh`
-- `cockpit/run_command_deck.sh`
+- `cockpit/run_local_dashboard.sh`
 - `outputs/operator_brief.json`
 - `outputs/morning_open_dashboard.json`
 - `outputs/approval_decision.json`
@@ -326,7 +326,7 @@ This is how failures stop becoming folklore.
 Phone Companion should **consume**, not invent, the following upstream artifacts:
 
 - `cockpit/cockpit.html`
-- `cockpit/command_deck.html` when present
+- `cockpit/operator_surface.html`
 - `outputs/operator_brief.json`
 - `outputs/morning_open_dashboard.json`
 - `outputs/approval_decision.json`

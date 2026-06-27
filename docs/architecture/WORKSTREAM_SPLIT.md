@@ -98,8 +98,7 @@ Files in this workstream:
 - `cockpit/live_chart_svg.py`
 - `cockpit/live_read_view.py`
 - `cockpit/dashboard_runtime.py`
-- `cockpit/make_command_deck.py`
-- `cockpit/make_pilot_board.py`
+- `cockpit/make_operator_surface.py`
 - `cockpit/make_options.py`
 - `cockpit/make_overlay.py`
 - `cockpit/make_price_volume.py`

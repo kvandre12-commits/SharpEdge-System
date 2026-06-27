@@ -349,13 +349,13 @@ Intent:
   open trading dashboard
 
 Contract:
-  request { domain=trading, preferred_view=command_deck }
+  request { domain=trading, preferred_view=cockpit }
 
 Code Puppy:
   read trading artifacts -> build phone view request
 
 DroidPuppy:
-  open Brave to local command deck URL
+  open Brave to local cockpit or operator surface URL
 
 Phone Action:
   Brave shows trading page
@@ -476,7 +476,7 @@ They should:
 - `run_phone_companion_trading.sh`
 - `run_phone_companion_section_gap.sh`
 
-These should imitate the good parts of `run_cockpit.sh` and `run_command_deck.sh` while dropping domain entanglement.
+These should imitate the good parts of `run_cockpit.sh` and `run_local_dashboard.sh` while dropping domain entanglement.
 
 ---
 
@@ -552,9 +552,9 @@ Observation record back into SharpEdge state
 
 ### Existing files to reuse as patterns
 - `cockpit/make_cockpit.py`
-- `cockpit/make_command_deck.py`
+- `cockpit/make_operator_surface.py`
 - `cockpit/run_cockpit.sh`
-- `cockpit/run_command_deck.sh`
+- `cockpit/run_local_dashboard.sh`
 
 ### Existing files that remain authoritative upstream
 - `scripts/agents/operator_brief.py`

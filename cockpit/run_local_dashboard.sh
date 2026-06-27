@@ -19,6 +19,7 @@ COCKPIT_DIR="$ROOT_DIR/cockpit"
 PORT="${COCKPIT_PORT:-8777}"
 INTERVAL="${COCKPIT_INTERVAL:-45}"
 URL="http://127.0.0.1:${PORT}/cockpit.html"
+OPERATOR_SURFACE_URL="http://127.0.0.1:${PORT}/operator_surface.html"
 LOGDIR="${TMPDIR:-$HOME/.cache}"
 SERVER_LOG="$LOGDIR/sharpedge_cockpit_server_${PORT}.log"
 
@@ -48,7 +49,10 @@ start_server() {
 }
 
 build_once() {
-  python3 make_cockpit.py
+  local failed=0
+  python3 make_cockpit.py || failed=1
+  python3 make_operator_surface.py || failed=1
+  return "$failed"
 }
 
 start_server
@@ -63,7 +67,8 @@ cat <<EOF
 SharpEdge local dashboard is running without ADB/wireless/CDP.
 Open manually in any browser on this phone:
 
-  $URL
+  cockpit:          $URL
+  operator surface: $OPERATOR_SURFACE_URL
 
 Regenerating every ${INTERVAL}s. Press Ctrl+C to stop the refresh loop.
 EOF

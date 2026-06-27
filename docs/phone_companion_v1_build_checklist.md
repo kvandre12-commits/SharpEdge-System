@@ -106,7 +106,7 @@ The following currently exist in the repo but are **not required** for the first
 - `phone_companion/observations/README.md`
 - `phone_companion/launchers/README.md`
 - `phone_companion/configs/README.md`
-- `command_deck.html`
+- `operator_surface.html`
 - `outputs/operator_brief.json`
 - `outputs/morning_open_dashboard.json`
 

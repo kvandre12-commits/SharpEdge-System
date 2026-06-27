@@ -86,8 +86,7 @@ These layers are downstream consumers of the core decision objects:
 
 - `cockpit/live_read_view.py`
 - `cockpit/live_chart_svg.py`
-- `cockpit/make_command_deck.py`
-- `cockpit/make_pilot_board.py`
+- `cockpit/make_operator_surface.py`
 - `cockpit/dashboard_runtime.py`
 - `cockpit/weekly_context_chart.py`
 - `cockpit/monthly_context_chart.py`

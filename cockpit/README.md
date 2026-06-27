@@ -26,23 +26,27 @@ pandas to compile on Android).
 
 ```bash
 cd cockpit
-python3 make_cockpit.py              # one-shot generate
-./run_local_dashboard.sh             # local server + live loop, no ADB/CDP/browser automation
+python3 make_cockpit.py              # one-shot generate for the live cockpit
+python3 make_operator_surface.py     # one-shot generate for the operator surface
+./run_local_dashboard.sh             # local server + live loop for both first-class surfaces
 ./run_cockpit.sh                     # live loop + optional Android browser handoff
 ```
 
 `run_local_dashboard.sh` is the Android-native safe default. It regenerates every
 45s, serves only on `127.0.0.1`, and never calls ADB, wireless debugging, CDP,
-`am start`, or browser automation. Open the printed URL manually in any browser
-on the phone:
+`am start`, or browser automation. The only first-class local pages are:
 
 ```text
 http://127.0.0.1:8777/cockpit.html
+http://127.0.0.1:8777/operator_surface.html
 ```
 
 `run_cockpit.sh` is the convenience launcher. It also regenerates every 45s and
 serves on http://127.0.0.1:8777, but may try to open Brave via Android intents
 unless `COCKPIT_NO_BROWSER=1` is set.
+
+Command deck and pilot board are no longer part of the default local loop. Keep
+this stack small: live market read + operator state, nothing more theatrical.
 
 ## THE READ (what the panel tells you)
 

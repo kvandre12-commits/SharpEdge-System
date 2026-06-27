@@ -141,10 +141,10 @@ This is working as a **draft / review / monitor** system, not as an autonomous e
 The repo still has a coherent trading artifact pattern:
 
 - `cockpit/make_cockpit.py`
-- `cockpit/make_command_deck.py`
+- `cockpit/make_operator_surface.py`
 - `cockpit/run_cockpit.sh`
-- `cockpit/run_command_deck.sh`
-- generated files like `cockpit/cockpit.html`, `cockpit/command_deck.html`, `outputs/signal.json`
+- `cockpit/run_local_dashboard.sh`
+- generated files like `cockpit/cockpit.html`, `cockpit/operator_surface.html`, `outputs/signal.json`
 
 The docs and skill stack consistently describe this as a static-artifact, phone-friendly, no-broker execution support surface.
 

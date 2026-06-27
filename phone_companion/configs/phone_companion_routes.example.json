@@ -1,7 +1,7 @@
 {
   "domains": {
     "trading": {
-      "default_view": "command_deck",
+      "default_view": "cockpit",
       "default_browser": "brave",
       "default_launcher": "launchers/run_phone_companion_trading.sh"
     },
