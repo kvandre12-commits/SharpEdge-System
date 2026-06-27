@@ -33,7 +33,8 @@ python3 make_operator_surface.py     # one-shot generate for the operator surfac
 ```
 
 `run_local_dashboard.sh` is the Android-native safe default. It regenerates every
-45s, serves only on `127.0.0.1`, and never calls ADB, wireless debugging, CDP,
+45s, serves only on `127.0.0.1`, refreshes the operator artifact chain before
+rendering the operator surface, and never calls ADB, wireless debugging, CDP,
 `am start`, or browser automation. The only first-class local pages are:
 
 ```text

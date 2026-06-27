@@ -15,6 +15,13 @@ Intent → Contract → Code Puppy → DroidPuppy → Phone Action → Observati
 
 ## Folder intent
 
+Current notable workflows:
+
+- `export_signal_to_android_viewer.py` refreshes SharpEdge-Android sample assets.
+- `export_operator_packet_to_android.py` packages signal + operator artifacts into one mobile import contract.
+- `launchers/run_phone_companion_android_signal_import.sh` can still push a signal-only contract.
+- `launchers/run_phone_companion_android_operator_import.sh` exports the latest operator packet and pushes it straight into the Android app intent when the app is installed.
+
 Planned subfolders:
 
 - `contracts/` — request and observation schemas

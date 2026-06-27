@@ -130,7 +130,28 @@ def test_operator_surface_render_uses_local_operator_artifacts(tmp_path):
         ),
         encoding="utf-8",
     )
-    (outputs / "signal.json").write_text(json.dumps({"spot": 501.25}), encoding="utf-8")
+    (outputs / "signal.json").write_text(
+        json.dumps(
+            {
+                "ts": "2026-06-27T16:05:00",
+                "spot": 501.25,
+                "vs_vwap": 0.12,
+                "mom15": 0.45,
+                "gamma_regime": "negative",
+                "entry_setup_tag": "FAILED BREAKDOWN",
+                "entry_setup_bias": "CALLS (bullish)",
+                "trade_permission": {
+                    "trade_gate": "PERMIT",
+                    "execution_permission_score": 88,
+                    "setup_conviction": {
+                        "setup_gate": "ACTIONABLE",
+                        "setup_conviction_score": 91,
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
     (outputs / "operator_journal_append.jsonl").write_text(
         json.dumps(
             {
@@ -163,6 +184,8 @@ def test_operator_surface_render_uses_local_operator_artifacts(tmp_path):
     assert "manual_review_required" in html
     assert "first-class surfaces: cockpit.html • operator_surface.html" in html
     assert "artifact freshness" in html
+    assert "live cockpit snapshot" in html
+    assert "FAILED BREAKDOWN" in html
     assert "latest operator journal" in html
     assert "21 DTE ATM CALLS watch for failed breakdown" in html
     assert "permission_score_trend_weakening_-9" in html

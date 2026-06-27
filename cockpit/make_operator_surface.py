@@ -257,6 +257,38 @@ def _artifact_freshness_card() -> str:
     return _card("artifact freshness", body, CYAN)
 
 
+def _live_signal_card(signal: dict[str, Any]) -> str:
+    if not signal:
+        return _card(
+            "live cockpit snapshot",
+            f'<div style="color:{MUTE}">signal.json missing — no live cockpit snapshot available.</div>',
+            CYAN,
+        )
+    permission = signal.get("trade_permission") or {}
+    setup_conviction = permission.get("setup_conviction") or {}
+    body = (
+        _kv_rows(
+            [
+                ("signal ts", signal.get("ts")),
+                ("spot", signal.get("spot")),
+                ("vs VWAP", f"{signal.get('vs_vwap')}%"),
+                ("momentum 15m", f"{signal.get('mom15')}%"),
+                ("gamma regime", signal.get("gamma_regime")),
+                (
+                    "entry setup",
+                    signal.get("entry_setup_tag") or signal.get("setup_tag"),
+                ),
+                ("trade gate", permission.get("trade_gate")),
+                ("execution score", permission.get("execution_permission_score")),
+                ("setup gate", setup_conviction.get("setup_gate")),
+                ("setup score", setup_conviction.get("setup_conviction_score")),
+            ]
+        )
+        + f'<div style="margin-top:8px;color:{FG};font-size:14px;font-weight:bold">{_esc(signal.get("entry_setup_bias") or signal.get("setup_bias") or "No setup bias")}</div>'
+    )
+    return _card("live cockpit snapshot", body, GREEN)
+
+
 def _watchlist_card(watchlist: dict[str, Any]) -> str:
     items = (watchlist.get("items") or [])[:4]
     omitted = (watchlist.get("omitted_candidates") or [])[:3]
@@ -324,6 +356,7 @@ def render() -> str:
     brief = _read_json("operator_brief.json")
     review = _read_json("operator_session_review.json")
     watchlist = _read_json("operator_watchlist.json")
+    signal = _read_json("signal.json")
     journal_entries = _read_jsonl_tail("operator_journal_append.jsonl", limit=3)
     now = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -381,6 +414,7 @@ def render() -> str:
       <div style="color:{MUTE};font-size:12px">first-class surfaces: cockpit.html • operator_surface.html</div>
     </div>
     {_hero_card(workflow, approval, brief, watchlist)}
+    {_live_signal_card(signal)}
     {_artifact_freshness_card()}
     {_recent_work_card()}
     {_connector_card()}

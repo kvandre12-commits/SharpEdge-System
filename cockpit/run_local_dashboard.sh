@@ -51,6 +51,7 @@ start_server() {
 build_once() {
   local failed=0
   python3 make_cockpit.py || failed=1
+  bash ./refresh_operator_surface_inputs.sh || failed=1
   python3 make_operator_surface.py || failed=1
   return "$failed"
 }
