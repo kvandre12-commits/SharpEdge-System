@@ -48,6 +48,7 @@ docs/architecture/CURRENT_STATE.md
 docs/architecture/REPO_INVENTORY.md
 docs/architecture/CONTRACTS.md
 docs/architecture/CHANGE_ZONES.md
+docs/architecture/WORKSTREAM_SPLIT.md
 ```
 
 ---
