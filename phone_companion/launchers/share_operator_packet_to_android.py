@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -79,6 +80,87 @@ def build_share_command(payload_json_text: str) -> list[str]:
     ]
 
 
+def _adb_has_device() -> bool:
+    if shutil.which("adb") is None:
+        return False
+    completed = subprocess.run(
+        ["adb", "devices"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        return False
+    return any(line.endswith("\tdevice") for line in completed.stdout.splitlines())
+
+
+def _adb_push_app_file(local_path: Path, app_file_name: str) -> None:
+    tmp_dir = f"/data/local/tmp/{ANDROID_PACKAGE}_direct_sync"
+    tmp_path = f"{tmp_dir}/{app_file_name}"
+    app_path = f"/data/user/0/{ANDROID_PACKAGE}/files/{app_file_name}"
+    subprocess.run(["adb", "shell", "mkdir", "-p", tmp_dir], check=True)
+    subprocess.run(["adb", "push", str(local_path), tmp_path], check=True)
+    subprocess.run(["adb", "shell", "chmod", "644", tmp_path], check=True)
+    subprocess.run(
+        [
+            "adb",
+            "shell",
+            "run-as",
+            ANDROID_PACKAGE,
+            "/system/bin/mkdir",
+            "-p",
+            f"/data/user/0/{ANDROID_PACKAGE}/files",
+        ],
+        check=True,
+    )
+    subprocess.run(
+        ["adb", "shell", "run-as", ANDROID_PACKAGE, "/system/bin/cp", tmp_path, app_path],
+        check=True,
+    )
+
+
+def _adb_sync_live_files(live_import_path: Path) -> dict[str, Any]:
+    files = {
+        "sharpedge_live_operator_packet.json": live_import_path,
+        "sharpedge_live_cockpit.html": ROOT / "cockpit/cockpit.html",
+        "sharpedge_live_cockpit_chart.svg": ROOT / "cockpit/cockpit_chart.svg",
+        "sharpedge_live_cockpit_weekly_context.svg": ROOT
+        / "cockpit/cockpit_weekly_context.svg",
+        "sharpedge_live_cockpit_monthly_context.svg": ROOT
+        / "cockpit/cockpit_monthly_context.svg",
+    }
+    missing = [str(path) for path in files.values() if not path.exists()]
+    if missing:
+        raise FileNotFoundError(f"missing ADB sync inputs: {', '.join(missing)}")
+    for app_file_name, local_path in files.items():
+        _adb_push_app_file(local_path, app_file_name)
+    subprocess.run(["adb", "shell", "am", "force-stop", ANDROID_PACKAGE], check=True)
+    launch = subprocess.run(
+        [
+            "adb",
+            "shell",
+            "am",
+            "start",
+            "-n",
+            ANDROID_COMPONENT,
+            "-a",
+            "android.intent.action.MAIN",
+            "-c",
+            "android.intent.category.LAUNCHER",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return {
+        "mode": "adb_direct_sync",
+        "synced_files": sorted(files),
+        "exit_code": launch.returncode,
+        "stdout": launch.stdout,
+        "stderr": launch.stderr,
+    }
+
+
 def launch_operator_packet_to_android(
     signal_path: Path = DEFAULT_SIGNAL_PATH,
     android_root: Path = DEFAULT_ANDROID_ROOT,
@@ -86,6 +168,7 @@ def launch_operator_packet_to_android(
     live_import_path: Path = DEFAULT_LIVE_IMPORT_PATH,
     *,
     dry_run: bool = False,
+    adb_sync: bool = False,
 ) -> dict[str, Any]:
     export_proof = export_operator_packet(
         signal_path=signal_path,
@@ -113,8 +196,47 @@ def launch_operator_packet_to_android(
         "payload_bytes": len(payload_json_text.encode("utf-8")),
         "command_preview": command[:-1] + [f"<json:{len(payload_json_text)} chars>"],
         "dry_run": dry_run,
+        "adb_sync": adb_sync,
     }
     _write_json(ATTEMPT_PATH, attempt)
+
+    if adb_sync and not dry_run:
+        if not _adb_has_device():
+            result = {
+                **attempt,
+                "artifact_type": "sharpedge_android_operator_import_result",
+                "status": "adb_device_not_connected",
+                "ended_at": _timestamp(),
+                "exit_code": None,
+                "stdout": "",
+                "stderr": "No connected ADB device was available for direct sync.",
+            }
+            _write_json(RESULT_PATH, result)
+            return result
+        try:
+            sync_result = _adb_sync_live_files(live_import_path)
+            result = {
+                **attempt,
+                "artifact_type": "sharpedge_android_operator_import_result",
+                "status": "accepted_by_adb_sync"
+                if sync_result["exit_code"] == 0
+                else "adb_sync_failed",
+                "ended_at": _timestamp(),
+                **sync_result,
+            }
+        except Exception as exc:  # noqa: BLE001 - launcher must report failures.
+            result = {
+                **attempt,
+                "artifact_type": "sharpedge_android_operator_import_result",
+                "status": "adb_sync_failed",
+                "ended_at": _timestamp(),
+                "exit_code": None,
+                "stdout": "",
+                "stderr": str(exc),
+                "mode": "adb_direct_sync",
+            }
+        _write_json(RESULT_PATH, result)
+        return result
 
     if not installed:
         result = {
@@ -162,9 +284,11 @@ def launch_operator_packet_to_android(
 
 def main(argv: list[str]) -> int:
     dry_run = "--dry-run" in argv
-    result = launch_operator_packet_to_android(dry_run=dry_run)
+    adb_sync = "--adb-sync" in argv
+    result = launch_operator_packet_to_android(dry_run=dry_run, adb_sync=adb_sync)
     print(json.dumps(result, indent=2))
-    return 0 if result["status"] in {"accepted_by_android", "dry_run"} else 2
+    ok_statuses = {"accepted_by_android", "accepted_by_adb_sync", "dry_run"}
+    return 0 if result["status"] in ok_statuses else 2
 
 
 if __name__ == "__main__":
