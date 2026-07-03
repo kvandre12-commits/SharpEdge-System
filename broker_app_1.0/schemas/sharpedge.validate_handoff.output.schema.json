@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.validate_handoff.output.schema.json",
+  "title": "sharpedge.validate_handoff output",
+  "oneOf": [
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        {
+          "type": "object",
+          "required": ["validation"],
+          "properties": {
+            "status": { "const": "ok" },
+            "tool_name": { "const": "sharpedge.validate_handoff" },
+            "authority": { "const": "SharpEdge-Robinhood-Bridge" },
+            "mutability": { "const": "validate_only" },
+            "validation": {
+              "type": "object",
+              "required": [
+                "valid",
+                "route",
+                "approval_policy",
+                "ready_for_delegation",
+                "issues",
+                "warnings"
+              ],
+              "properties": {
+                "valid": { "type": "boolean" },
+                "route": { "$ref": "./common.schema.json#/$defs/route" },
+                "approval_policy": {
+                  "$ref": "./common.schema.json#/$defs/approvalPolicy"
+                },
+                "ready_for_delegation": { "type": "boolean" },
+                "issues": { "$ref": "./common.schema.json#/$defs/stringList" },
+                "warnings": { "$ref": "./common.schema.json#/$defs/stringList" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        { "$ref": "./common.schema.json#/$defs/errorFields" },
+        {
+          "type": "object",
+          "properties": {
+            "status": { "$ref": "./common.schema.json#/$defs/errorStatus" },
+            "tool_name": { "const": "sharpedge.validate_handoff" },
+            "authority": { "const": "SharpEdge-Robinhood-Bridge" },
+            "mutability": { "const": "validate_only" }
+          }
+        }
+      ]
+    }
+  ]
+}

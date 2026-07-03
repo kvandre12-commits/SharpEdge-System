@@ -1,0 +1,61 @@
+{
+  "schema": "argus.tool_aliases.v1",
+  "canonical_names": [
+    "sharpedge.discover_surface",
+    "sharpedge.get_latest_state",
+    "sharpedge.get_execution_card",
+    "sharpedge.explain_permission",
+    "sharpedge.prepare_broker_handoff",
+    "sharpedge.validate_handoff"
+  ],
+  "aliases": [
+    {
+      "argus_tool": "sharpedge.discover_surface",
+      "responsibility": "discover",
+      "implementation_type": "inventory_wrapper",
+      "authority": "Argus-MCP-Wrapper",
+      "current_backing": "broker_app_1.0/runtime/argus_mcp_wrapper.py + broker_app_1.0/bridge/real_surface_inventory.json + broker_app_1.0/docs/authority_map.md",
+      "status": "thin_wrapper_implemented"
+    },
+    {
+      "argus_tool": "sharpedge.get_latest_state",
+      "responsibility": "read",
+      "implementation_type": "artifact_read",
+      "authority": "SharpEdge",
+      "current_backing": "broker_app_1.0/runtime/argus_mcp_wrapper.py + ~/SharpEdge-System/outputs/signal.json",
+      "status": "thin_wrapper_implemented"
+    },
+    {
+      "argus_tool": "sharpedge.get_execution_card",
+      "responsibility": "read",
+      "implementation_type": "artifact_read_or_wrapper",
+      "authority": "SharpEdge",
+      "current_backing": "broker_app_1.0/runtime/argus_mcp_wrapper.py + signal.json.trade_permission + cockpit/execution_card_builder.py",
+      "status": "thin_wrapper_implemented"
+    },
+    {
+      "argus_tool": "sharpedge.explain_permission",
+      "responsibility": "explain",
+      "implementation_type": "explanation_wrapper",
+      "authority": "SharpEdge",
+      "current_backing": "broker_app_1.0/runtime/argus_mcp_wrapper.py + SharpEdge-System trade permission reasons and execution-card fields",
+      "status": "thin_wrapper_implemented"
+    },
+    {
+      "argus_tool": "sharpedge.prepare_broker_handoff",
+      "responsibility": "delegate",
+      "implementation_type": "function_wrapper",
+      "authority": "SharpEdge-Robinhood-Bridge",
+      "current_backing": "broker_app_1.0/runtime/argus_mcp_wrapper.py + SharpEdge-Robinhood-Bridge:cockpit_adapter.plan_signal_handoff / write_handoff_artifact",
+      "status": "thin_wrapper_implemented"
+    },
+    {
+      "argus_tool": "sharpedge.validate_handoff",
+      "responsibility": "delegate",
+      "implementation_type": "function_wrapper",
+      "authority": "SharpEdge-Robinhood-Bridge",
+      "current_backing": "broker_app_1.0/runtime/argus_mcp_wrapper.py + handoff artifact validation over bridge route/approval/payload contracts",
+      "status": "thin_wrapper_implemented"
+    }
+  ]
+}

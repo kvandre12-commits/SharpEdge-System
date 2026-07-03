@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.prepare_broker_handoff.output.schema.json",
+  "title": "sharpedge.prepare_broker_handoff output",
+  "oneOf": [
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        {
+          "type": "object",
+          "required": ["handoff", "artifact_path"],
+          "properties": {
+            "status": { "const": "ok" },
+            "tool_name": { "const": "sharpedge.prepare_broker_handoff" },
+            "authority": { "const": "SharpEdge-Robinhood-Bridge" },
+            "mutability": { "const": "write_artifact" },
+            "handoff": {
+              "type": "object",
+              "required": ["schema"],
+              "properties": {
+                "schema": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "decision": { "type": "object" },
+                "command_plan": { "type": "object" },
+                "delegation": { "type": "object" }
+              }
+            },
+            "artifact_path": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        { "$ref": "./common.schema.json#/$defs/errorFields" },
+        {
+          "type": "object",
+          "properties": {
+            "status": { "$ref": "./common.schema.json#/$defs/errorStatus" },
+            "tool_name": { "const": "sharpedge.prepare_broker_handoff" },
+            "authority": { "const": "SharpEdge-Robinhood-Bridge" },
+            "mutability": { "const": "write_artifact" }
+          }
+        }
+      ]
+    }
+  ]
+}

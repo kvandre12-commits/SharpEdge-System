@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.discover_surface.input.schema.json",
+  "title": "sharpedge.discover_surface input",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "include_resources": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_tools": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_authority_map": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_legacy_aliases": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.validate_handoff.input.schema.json",
+  "title": "sharpedge.validate_handoff input",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "handoff_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "use_latest_if_missing": {
+      "type": "boolean",
+      "default": true
+    },
+    "check_route": {
+      "type": "boolean",
+      "default": true
+    },
+    "check_approval_policy": {
+      "type": "boolean",
+      "default": true
+    },
+    "check_payload_contracts": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "not": {
+          "required": ["handoff_path"]
+        }
+      },
+      "then": {
+        "properties": {
+          "use_latest_if_missing": {
+            "const": true
+          }
+        }
+      }
+    }
+  ]
+}

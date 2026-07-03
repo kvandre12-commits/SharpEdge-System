@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.get_execution_card.output.schema.json",
+  "title": "sharpedge.get_execution_card output",
+  "oneOf": [
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        {
+          "type": "object",
+          "required": ["execution_card"],
+          "properties": {
+            "status": { "const": "ok" },
+            "tool_name": { "const": "sharpedge.get_execution_card" },
+            "authority": { "const": "SharpEdge" },
+            "mutability": { "const": "read_only" },
+            "execution_card": {
+              "type": "object",
+              "required": ["trade_permission_score", "trade_gate", "bias"],
+              "properties": {
+                "schema": { "type": "string" },
+                "trade_permission_score": { "type": "number" },
+                "trade_gate": { "type": "string" },
+                "bias": { "type": "string" },
+                "setup_conviction": { "type": "object" },
+                "execution_flow": { "type": "object" },
+                "execution_hierarchy": { "type": "object" },
+                "supporting_reasons": { "$ref": "./common.schema.json#/$defs/stringList" },
+                "warning_reasons": { "$ref": "./common.schema.json#/$defs/stringList" },
+                "risk": { "type": "object" },
+                "invalidation": { "type": "object" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        { "$ref": "./common.schema.json#/$defs/errorFields" },
+        {
+          "type": "object",
+          "properties": {
+            "status": { "$ref": "./common.schema.json#/$defs/errorStatus" },
+            "tool_name": { "const": "sharpedge.get_execution_card" },
+            "authority": { "const": "SharpEdge" },
+            "mutability": { "const": "read_only" }
+          }
+        }
+      ]
+    }
+  ]
+}

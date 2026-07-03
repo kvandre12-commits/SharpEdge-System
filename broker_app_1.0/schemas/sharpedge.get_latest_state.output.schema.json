@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.get_latest_state.output.schema.json",
+  "title": "sharpedge.get_latest_state output",
+  "oneOf": [
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        {
+          "type": "object",
+          "required": ["state"],
+          "properties": {
+            "status": { "const": "ok" },
+            "tool_name": { "const": "sharpedge.get_latest_state" },
+            "authority": { "const": "SharpEdge" },
+            "mutability": { "const": "read_only" },
+            "state": {
+              "type": "object",
+              "minProperties": 1,
+              "properties": {
+                "schema": { "type": "string" },
+                "symbol": { "type": "string" },
+                "spot": { "type": "number" },
+                "gamma_regime": { "type": "string" },
+                "setup_tag": { "type": "string" },
+                "trade_permission": { "type": "object" }
+              }
+            },
+            "artifact_path": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        { "$ref": "./common.schema.json#/$defs/errorFields" },
+        {
+          "type": "object",
+          "properties": {
+            "status": { "$ref": "./common.schema.json#/$defs/errorStatus" },
+            "tool_name": { "const": "sharpedge.get_latest_state" },
+            "authority": { "const": "SharpEdge" },
+            "mutability": { "const": "read_only" }
+          }
+        }
+      ]
+    }
+  ]
+}

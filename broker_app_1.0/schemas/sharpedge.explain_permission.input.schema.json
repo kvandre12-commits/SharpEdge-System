@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.explain_permission.input.schema.json",
+  "title": "sharpedge.explain_permission input",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "type": "string",
+      "enum": ["latest"],
+      "default": "latest"
+    },
+    "detail_level": {
+      "type": "string",
+      "enum": ["brief", "standard", "deep"],
+      "default": "standard"
+    },
+    "audience": {
+      "type": "string",
+      "minLength": 1,
+      "default": "operator"
+    },
+    "include_risk": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_invalidation": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_reasons": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

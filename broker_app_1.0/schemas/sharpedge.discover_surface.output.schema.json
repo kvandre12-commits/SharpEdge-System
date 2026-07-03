@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.discover_surface.output.schema.json",
+  "title": "sharpedge.discover_surface output",
+  "oneOf": [
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        {
+          "type": "object",
+          "required": ["surface"],
+          "properties": {
+            "status": { "const": "ok" },
+            "tool_name": { "const": "sharpedge.discover_surface" },
+            "authority": { "const": "Argus-MCP-Wrapper" },
+            "mutability": { "const": "read_only" },
+            "surface": {
+              "type": "object",
+              "required": ["tools", "resources", "authority_boundary"],
+              "properties": {
+                "tools": {
+                  "type": "array",
+                  "items": { "$ref": "./common.schema.json#/$defs/surfaceToolEntry" }
+                },
+                "resources": {
+                  "type": "array",
+                  "items": { "$ref": "./common.schema.json#/$defs/surfaceResourceEntry" }
+                },
+                "authority_boundary": {
+                  "$ref": "./common.schema.json#/$defs/authorityBoundary"
+                }
+              }
+            },
+            "legacy_aliases": {
+              "$ref": "./common.schema.json#/$defs/stringList"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        { "$ref": "./common.schema.json#/$defs/errorFields" },
+        {
+          "type": "object",
+          "properties": {
+            "status": { "$ref": "./common.schema.json#/$defs/errorStatus" },
+            "tool_name": { "const": "sharpedge.discover_surface" },
+            "authority": { "const": "Argus-MCP-Wrapper" },
+            "mutability": { "const": "read_only" }
+          }
+        }
+      ]
+    }
+  ]
+}

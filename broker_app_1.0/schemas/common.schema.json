@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/common.schema.json",
+  "title": "Argus MCP Common Schema Definitions",
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "blocked", "invalid_input", "not_found", "error"]
+    },
+    "errorStatus": {
+      "type": "string",
+      "enum": ["blocked", "invalid_input", "not_found", "error"]
+    },
+    "mutability": {
+      "type": "string",
+      "enum": ["read_only", "write_artifact", "validate_only"]
+    },
+    "authority": {
+      "type": "string",
+      "enum": [
+        "Argus-MCP-Wrapper",
+        "SharpEdge",
+        "SharpEdge-Robinhood-Bridge",
+        "Robinhood Bridge"
+      ]
+    },
+    "toolName": {
+      "type": "string",
+      "enum": [
+        "sharpedge.discover_surface",
+        "sharpedge.get_latest_state",
+        "sharpedge.get_execution_card",
+        "sharpedge.explain_permission",
+        "sharpedge.prepare_broker_handoff",
+        "sharpedge.validate_handoff"
+      ]
+    },
+    "resourceName": {
+      "type": "string",
+      "enum": [
+        "sharpedge://state/latest",
+        "sharpedge://execution/card/latest",
+        "sharpedge://permission/latest",
+        "sharpedge://positions/latest",
+        "sharpedge://handoff/latest"
+      ]
+    },
+    "route": {
+      "type": "string",
+      "enum": [
+        "public_mcp_read",
+        "chatgpt_delegate",
+        "custom_logic_local",
+        "custom_logic_required",
+        "unknown"
+      ]
+    },
+    "approvalPolicy": {
+      "type": "string",
+      "enum": ["operator_confirm_required", "not_applicable", "unknown"]
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sourceRefs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "stringList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "genericObject": {
+      "type": "object"
+    },
+    "baseResponseMetadata": {
+      "type": "object",
+      "required": [
+        "status",
+        "tool_name",
+        "authority",
+        "mutability",
+        "generated_at",
+        "source_refs"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "tool_name": {
+          "$ref": "#/$defs/toolName"
+        },
+        "authority": {
+          "$ref": "#/$defs/authority"
+        },
+        "mutability": {
+          "$ref": "#/$defs/mutability"
+        },
+        "generated_at": {
+          "$ref": "#/$defs/generatedAt"
+        },
+        "source_refs": {
+          "$ref": "#/$defs/sourceRefs"
+        }
+      }
+    },
+    "errorFields": {
+      "type": "object",
+      "required": ["error_code", "message", "retryable"],
+      "properties": {
+        "error_code": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "message": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "retryable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authorityBoundary": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "surfaceToolEntry": {
+      "type": "object",
+      "required": ["name", "authority", "purpose", "mutability", "status", "backing"],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/toolName"
+        },
+        "authority": {
+          "$ref": "#/$defs/authority"
+        },
+        "purpose": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "mutability": {
+          "$ref": "#/$defs/mutability"
+        },
+        "status": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "backing": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    },
+    "surfaceResourceEntry": {
+      "type": "object",
+      "required": ["name", "authority", "purpose", "mutability", "status", "backing"],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/resourceName"
+        },
+        "authority": {
+          "$ref": "#/$defs/authority"
+        },
+        "purpose": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "mutability": {
+          "const": "read_only"
+        },
+        "status": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "backing": {
+          "$ref": "#/$defs/stringList"
+        }
+      }
+    }
+  }
+}

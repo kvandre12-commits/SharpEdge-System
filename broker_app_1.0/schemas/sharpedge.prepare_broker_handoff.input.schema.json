@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.prepare_broker_handoff.input.schema.json",
+  "title": "sharpedge.prepare_broker_handoff input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operator_approved"],
+  "properties": {
+    "source": {
+      "type": "string",
+      "enum": ["latest"],
+      "default": "latest"
+    },
+    "command": {
+      "type": "string",
+      "minLength": 1,
+      "default": "order_submit"
+    },
+    "operator_approved": {
+      "const": true
+    },
+    "test": {
+      "type": "boolean",
+      "default": false
+    },
+    "write_latest_artifact": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

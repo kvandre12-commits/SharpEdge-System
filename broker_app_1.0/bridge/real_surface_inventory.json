@@ -1,0 +1,194 @@
+{
+  "schema": "argus.real_surface_inventory.v1",
+  "generated_by": "code-puppy-5841bf",
+  "intent": "Keep Broker App 1.0 aligned to the real SharpEdge + Robinhood Bridge surfaces.",
+  "client_posture": {
+    "mode": "mcp_client",
+    "first_iteration_responsibilities": [
+      "discover",
+      "read",
+      "explain",
+      "delegate"
+    ]
+  },
+  "source_repos": {
+    "sharpedge_system": "/data/data/com.termux/files/home/SharpEdge-System",
+    "sharpedge_robinhood_bridge": "/data/data/com.termux/files/home/SharpEdge-Robinhood-Bridge",
+    "code_puppy": "/data/data/com.termux/files/home/code_puppy_backup_20260617"
+  },
+  "artifacts": {
+    "latest_state": "~/SharpEdge-System/outputs/signal.json",
+    "latest_handoff": "~/SharpEdge-System/outputs/robinhood_execution_handoff.json",
+    "latest_positions": "~/SharpEdge-System/outputs/robinhood_live_positions.json"
+  },
+  "backing_modules": {
+    "argus_wrapper": [
+      "broker_app_1.0/runtime/argus_mcp_wrapper.py",
+      "broker_app_1.0/runtime/__init__.py"
+    ],
+    "argus_mcp": [
+      "broker_app_1.0/mcp/server.py",
+      "broker_app_1.0/mcp/tools.py",
+      "broker_app_1.0/mcp/resources.py",
+      "broker_app_1.0/mcp/auth.py",
+      "broker_app_1.0/mcp/errors.py"
+    ],
+    "sharpedge_system": [
+      "cockpit/execution_card_builder.py",
+      "OWNERSHIP.md"
+    ],
+    "sharpedge_robinhood_bridge": [
+      "src/sharpedge_robinhood_bridge/catalog.py",
+      "src/sharpedge_robinhood_bridge/trade_intent.py",
+      "src/sharpedge_robinhood_bridge/cockpit_adapter.py",
+      "src/sharpedge_robinhood_bridge/payload_contracts.py",
+      "src/sharpedge_robinhood_bridge/position_feedback.py"
+    ],
+    "code_puppy": [
+      "code_puppy/plugins/chatgpt_robinhood_delegate/"
+    ]
+  },
+  "resources": [
+    {
+      "name": "sharpedge://state/latest",
+      "authority": "SharpEdge",
+      "purpose": "Latest market state and current SharpEdge signal context.",
+      "mutability": "read_only",
+      "status": "semantic_backing_exists",
+      "backing": [
+        "~/SharpEdge-System/outputs/signal.json"
+      ]
+    },
+    {
+      "name": "sharpedge://execution/card/latest",
+      "authority": "SharpEdge",
+      "purpose": "Latest execution card and trade-permission view for operator review.",
+      "mutability": "read_only",
+      "status": "semantic_backing_exists",
+      "backing": [
+        "signal.json.trade_permission",
+        "cockpit/execution_card_builder.py"
+      ]
+    },
+    {
+      "name": "sharpedge://permission/latest",
+      "authority": "SharpEdge",
+      "purpose": "Latest permission payload and supporting execution gate information.",
+      "mutability": "read_only",
+      "status": "semantic_backing_exists",
+      "backing": [
+        "sharpedge.trade_permission.v1",
+        "signal.json.trade_permission"
+      ]
+    },
+    {
+      "name": "sharpedge://positions/latest",
+      "authority": "Robinhood Bridge",
+      "purpose": "Latest broker-facing positions snapshot available to SharpEdge workflows.",
+      "mutability": "read_only",
+      "status": "semantic_backing_exists",
+      "backing": [
+        "~/SharpEdge-System/outputs/robinhood_live_positions.json",
+        "position_feedback.load_position_feedback"
+      ]
+    },
+    {
+      "name": "sharpedge://handoff/latest",
+      "authority": "SharpEdge-Robinhood-Bridge",
+      "purpose": "Latest validated execution handoff artifact prepared for downstream delegation.",
+      "mutability": "read_only",
+      "status": "semantic_backing_exists",
+      "backing": [
+        "~/SharpEdge-System/outputs/robinhood_execution_handoff.json",
+        "cockpit_adapter.write_handoff_artifact"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "name": "sharpedge.discover_surface",
+      "authority": "Argus-MCP-Wrapper",
+      "purpose": "Return the current Argus-facing surface, authority map, and supported resources/tools.",
+      "mutability": "read_only",
+      "status": "thin_wrapper_implemented",
+      "backing": [
+        "broker_app_1.0/runtime/argus_mcp_wrapper.py",
+        "broker_app_1.0/bridge/real_surface_inventory.json",
+        "broker_app_1.0/docs/authority_map.md",
+        "broker_app_1.0/tools/argus_tool_aliases.json"
+      ]
+    },
+    {
+      "name": "sharpedge.get_latest_state",
+      "authority": "SharpEdge",
+      "purpose": "Return the latest SharpEdge state packet for operator review.",
+      "mutability": "read_only",
+      "status": "thin_wrapper_implemented",
+      "backing": [
+        "broker_app_1.0/runtime/argus_mcp_wrapper.py",
+        "read outputs/signal.json"
+      ]
+    },
+    {
+      "name": "sharpedge.get_execution_card",
+      "authority": "SharpEdge",
+      "purpose": "Return the latest authoritative execution card without recalculating it in Argus.",
+      "mutability": "read_only",
+      "status": "thin_wrapper_implemented",
+      "backing": [
+        "broker_app_1.0/runtime/argus_mcp_wrapper.py",
+        "read signal.trade_permission",
+        "cockpit/execution_card_builder.py"
+      ]
+    },
+    {
+      "name": "sharpedge.explain_permission",
+      "authority": "SharpEdge",
+      "purpose": "Explain the latest permission card in plain language without changing the underlying score.",
+      "mutability": "read_only",
+      "status": "thin_wrapper_implemented",
+      "backing": [
+        "broker_app_1.0/runtime/argus_mcp_wrapper.py",
+        "trade_permission card reasons",
+        "execution_flow",
+        "execution_hierarchy"
+      ]
+    },
+    {
+      "name": "sharpedge.prepare_broker_handoff",
+      "authority": "SharpEdge-Robinhood-Bridge",
+      "purpose": "Prepare a broker handoff from the authoritative SharpEdge signal and bridge policy.",
+      "mutability": "write_artifact",
+      "status": "thin_wrapper_implemented",
+      "backing": [
+        "broker_app_1.0/runtime/argus_mcp_wrapper.py",
+        "cockpit_adapter.plan_signal_handoff",
+        "cockpit_adapter.write_handoff_artifact"
+      ]
+    },
+    {
+      "name": "sharpedge.validate_handoff",
+      "authority": "SharpEdge-Robinhood-Bridge",
+      "purpose": "Validate route, risk, approval posture, and downstream payload contracts for a handoff.",
+      "mutability": "validate_only",
+      "status": "thin_wrapper_implemented",
+      "backing": [
+        "broker_app_1.0/runtime/argus_mcp_wrapper.py",
+        "trade_intent.risk_check",
+        "router.plan_command",
+        "payload_contracts.build_connector_payload_contracts"
+      ]
+    }
+  ],
+  "governance_truths": [
+    "SharpEdge is execution authority.",
+    "Robinhood order-write style actions remain operator_confirm_required.",
+    "Argus should wrap real contracts instead of duplicating strategy or broker logic.",
+    "No direct broker action should be claimed from Broker App 1.0 without a validated handoff."
+  ],
+  "known_gaps": [
+    "The current MCP layer is an in-process skeleton, not yet wired to a concrete external MCP SDK/runtime.",
+    "No unified Argus app shell yet bundles the existing cross-repo surfaces into one runtime.",
+    "External MCP transport plumbing still needs to be layered on top of the current server skeleton."
+  ]
+}

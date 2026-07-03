@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.get_latest_state.input.schema.json",
+  "title": "sharpedge.get_latest_state input",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "type": "string",
+      "enum": ["latest"],
+      "default": "latest"
+    },
+    "include_artifact_path": {
+      "type": "boolean",
+      "default": true
+    },
+    "include_raw_signal": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

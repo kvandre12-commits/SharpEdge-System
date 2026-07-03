@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sharpedge.local/broker_app_1.0/schemas/sharpedge.explain_permission.output.schema.json",
+  "title": "sharpedge.explain_permission output",
+  "oneOf": [
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        {
+          "type": "object",
+          "required": ["explanation"],
+          "properties": {
+            "status": { "const": "ok" },
+            "tool_name": { "const": "sharpedge.explain_permission" },
+            "authority": { "const": "SharpEdge" },
+            "mutability": { "const": "read_only" },
+            "explanation": {
+              "type": "object",
+              "required": ["score", "gate", "plain_language_summary"],
+              "properties": {
+                "score": { "type": "number" },
+                "gate": { "type": "string" },
+                "plain_language_summary": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "supporting_reasons": { "$ref": "./common.schema.json#/$defs/stringList" },
+                "warning_reasons": { "$ref": "./common.schema.json#/$defs/stringList" },
+                "risk_notes": { "$ref": "./common.schema.json#/$defs/stringList" },
+                "invalidation_notes": { "$ref": "./common.schema.json#/$defs/stringList" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "allOf": [
+        { "$ref": "./common.schema.json#/$defs/baseResponseMetadata" },
+        { "$ref": "./common.schema.json#/$defs/errorFields" },
+        {
+          "type": "object",
+          "properties": {
+            "status": { "$ref": "./common.schema.json#/$defs/errorStatus" },
+            "tool_name": { "const": "sharpedge.explain_permission" },
+            "authority": { "const": "SharpEdge" },
+            "mutability": { "const": "read_only" }
+          }
+        }
+      ]
+    }
+  ]
+}
