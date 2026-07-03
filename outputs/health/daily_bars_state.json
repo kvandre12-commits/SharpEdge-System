@@ -2,14 +2,14 @@
   "after": {
     "earliest_date": "2024-05-28",
     "latest_date": "2026-07-02",
-    "latest_ingest_ts": "2026-07-02T23:41:11.934413+00:00",
+    "latest_ingest_ts": "2026-07-03T23:37:18.050633+00:00",
     "rows": 526
   },
   "before": {
     "earliest_date": "2024-05-28",
-    "latest_date": "2026-07-01",
-    "latest_ingest_ts": "2026-07-01T23:52:51.289643+00:00",
-    "rows": 525
+    "latest_date": "2026-07-02",
+    "latest_ingest_ts": "2026-07-02T23:41:11.934413+00:00",
+    "rows": 526
   },
   "cache_ttl_hours": 12.0,
   "csv_rows": 526,

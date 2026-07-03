@@ -2,15 +2,15 @@
   "after": {
     "earliest_session_date": "2026-05-27",
     "latest_session_date": "2026-07-02",
-    "latest_snapshot_ts": "2026-07-02T23:41:13+00:00",
+    "latest_snapshot_ts": "2026-07-03T23:37:19+00:00",
     "rows": 26
   },
   "bars_table": "wmt_bars_15m",
   "before": {
     "earliest_session_date": "2026-05-27",
-    "latest_session_date": "2026-07-01",
-    "latest_snapshot_ts": "2026-07-01T23:52:52+00:00",
-    "rows": 25
+    "latest_session_date": "2026-07-02",
+    "latest_snapshot_ts": "2026-07-02T23:41:13+00:00",
+    "rows": 26
   },
   "input_sessions": 26,
   "symbol": "WMT",
