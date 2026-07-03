@@ -6,7 +6,7 @@ import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 TOOL_NAMES = (
     "sharpedge.discover_surface",
@@ -130,9 +130,15 @@ def _read_json(path: Path) -> dict[str, Any]:
     return data
 
 
-def _load_surface_files(context: WrapperContext) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-    manifest = _read_json(context.broker_app_root / "manifests" / "argus_mcp_manifest.json")
-    inventory = _read_json(context.broker_app_root / "bridge" / "real_surface_inventory.json")
+def _load_surface_files(
+    context: WrapperContext,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    manifest = _read_json(
+        context.broker_app_root / "manifests" / "argus_mcp_manifest.json"
+    )
+    inventory = _read_json(
+        context.broker_app_root / "bridge" / "real_surface_inventory.json"
+    )
     aliases = _read_json(context.broker_app_root / "tools" / "argus_tool_aliases.json")
     return manifest, inventory, aliases
 
@@ -169,7 +175,9 @@ def _load_signal(context: WrapperContext) -> dict[str, Any]:
 def _load_execution_card(signal: dict[str, Any]) -> dict[str, Any]:
     card = signal.get("trade_permission")
     if not isinstance(card, dict) or not card:
-        raise ValueError("Latest SharpEdge state does not include a usable trade_permission payload.")
+        raise ValueError(
+            "Latest SharpEdge state does not include a usable trade_permission payload."
+        )
     return dict(card)
 
 
@@ -352,7 +360,9 @@ def get_latest_state(
             message=str(exc),
             retryable=False,
         )
-    payload: dict[str, Any] = {"state": signal if include_raw_signal else _summarize_signal(signal)}
+    payload: dict[str, Any] = {
+        "state": signal if include_raw_signal else _summarize_signal(signal)
+    }
     if include_artifact_path:
         payload["artifact_path"] = str(ctx.signal_path)
     return _base_response(
@@ -541,10 +551,14 @@ def explain_permission(
     supporting = _listify(card.get("supporting_reasons")) if include_reasons else []
     warnings = _listify(card.get("warning_reasons")) if include_reasons else []
     explanation = {
-        "score": card.get("trade_permission_score", card.get("execution_permission_score")),
+        "score": card.get(
+            "trade_permission_score", card.get("execution_permission_score")
+        ),
         "gate": card.get("trade_gate"),
         "plain_language_summary": _explanation_summary(
-            score=card.get("trade_permission_score", card.get("execution_permission_score")),
+            score=card.get(
+                "trade_permission_score", card.get("execution_permission_score")
+            ),
             gate=card.get("trade_gate"),
             supporting=supporting,
             warnings=warnings,
@@ -553,7 +567,9 @@ def explain_permission(
         "supporting_reasons": supporting,
         "warning_reasons": warnings,
         "risk_notes": warnings if include_risk else [],
-        "invalidation_notes": _listify(signal.get("invalidation")) if include_invalidation else [],
+        "invalidation_notes": _listify(signal.get("invalidation"))
+        if include_invalidation
+        else [],
         "audience": audience,
     }
     return _base_response(
@@ -633,7 +649,9 @@ def prepare_broker_handoff(
         )
     try:
         bridge = _bridge_exports(ctx)
-        handoff = bridge["plan_signal_handoff"](ctx.signal_path, command=command, test=test)
+        handoff = bridge["plan_signal_handoff"](
+            ctx.signal_path, command=command, test=test
+        )
     except FileNotFoundError as exc:
         return _error_response(
             status="not_found",
@@ -711,7 +729,9 @@ def validate_handoff(
     context: WrapperContext | None = None,
 ) -> dict[str, Any]:
     ctx = _ctx(context)
-    resolved_path = Path(handoff_path).expanduser() if handoff_path.strip() else ctx.handoff_path
+    resolved_path = (
+        Path(handoff_path).expanduser() if handoff_path.strip() else ctx.handoff_path
+    )
     source_refs = _source_ref(
         resolved_path,
         ctx.bridge_root / "src" / "sharpedge_robinhood_bridge" / "catalog.py",
@@ -792,10 +812,16 @@ def validate_handoff(
         )
     if check_payload_contracts and not isinstance(payload_contracts, dict):
         issues.append("payload_contracts must be a JSON object.")
-    if check_payload_contracts and isinstance(payload_contracts, dict) and not payload_contracts:
+    if (
+        check_payload_contracts
+        and isinstance(payload_contracts, dict)
+        and not payload_contracts
+    ):
         issues.append("payload_contracts are missing from the delegation payload.")
     if operator_gate.get("required") is not True:
-        issues.append("operator_gate.required must be true for delegation-ready handoffs.")
+        issues.append(
+            "operator_gate.required must be true for delegation-ready handoffs."
+        )
     if plan_status != "awaiting_operator_confirm":
         warnings.append(f"command_plan.status is '{plan_status}'.")
 

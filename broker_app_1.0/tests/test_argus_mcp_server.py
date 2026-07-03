@@ -1,19 +1,19 @@
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 BROKER_APP_ROOT = Path(__file__).resolve().parents[1]
 if str(BROKER_APP_ROOT) not in sys.path:
     sys.path.insert(0, str(BROKER_APP_ROOT))
 
-from mcp.auth import CapabilityProfile
-from mcp.server import ArgusMCPServer
-from runtime.argus_mcp_wrapper import WrapperContext
+CapabilityProfile = importlib.import_module("mcp.auth").CapabilityProfile
+ArgusMCPServer = importlib.import_module("mcp.server").ArgusMCPServer
+WrapperContext = importlib.import_module("runtime.argus_mcp_wrapper").WrapperContext
 
 
 class ArgusMCPServerTestCase(unittest.TestCase):
@@ -90,7 +90,9 @@ class ArgusMCPServerTestCase(unittest.TestCase):
                 },
                 "delegation": {
                     "broker_payload": {
-                        "payload_contracts": {"schema": "sharpedge.connector_payload_contracts.v1"}
+                        "payload_contracts": {
+                            "schema": "sharpedge.connector_payload_contracts.v1"
+                        }
                     }
                 },
                 "operator_gate": {"required": True},

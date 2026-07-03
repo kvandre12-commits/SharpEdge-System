@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from runtime.argus_mcp_wrapper import WrapperContext
@@ -49,7 +48,9 @@ def run_execution_card_demo(
     }
     if write_artifact:
         target = ctx.outputs_dir / artifact_name
-        target.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        target.write_text(
+            json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
         payload["artifact_path"] = str(target)
     return payload
 

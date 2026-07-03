@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 import tempfile
@@ -10,8 +11,8 @@ BROKER_APP_ROOT = Path(__file__).resolve().parents[1]
 if str(BROKER_APP_ROOT) not in sys.path:
     sys.path.insert(0, str(BROKER_APP_ROOT))
 
-from mcp.demo import run_execution_card_demo
-from runtime.argus_mcp_wrapper import WrapperContext
+run_execution_card_demo = importlib.import_module("mcp.demo").run_execution_card_demo
+WrapperContext = importlib.import_module("runtime.argus_mcp_wrapper").WrapperContext
 
 
 class ArgusMCPDemoTestCase(unittest.TestCase):
@@ -89,7 +90,9 @@ class ArgusMCPDemoTestCase(unittest.TestCase):
         written = json.loads(artifact_path.read_text(encoding="utf-8"))
         self.assertEqual(written["flow"]["tool"], "sharpedge.get_execution_card")
         self.assertEqual(
-            written["execution_card_response"]["execution_card"]["trade_permission_score"],
+            written["execution_card_response"]["execution_card"][
+                "trade_permission_score"
+            ],
             73,
         )
 

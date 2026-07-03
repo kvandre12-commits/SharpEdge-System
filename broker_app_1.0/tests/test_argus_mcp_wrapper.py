@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 import tempfile
@@ -11,7 +12,7 @@ RUNTIME_DIR = Path(__file__).resolve().parents[1] / "runtime"
 if str(RUNTIME_DIR) not in sys.path:
     sys.path.insert(0, str(RUNTIME_DIR))
 
-import argus_mcp_wrapper as wrapper
+wrapper = importlib.import_module("argus_mcp_wrapper")
 
 
 class ArgusWrapperTestCase(unittest.TestCase):
@@ -128,7 +129,9 @@ class ArgusWrapperTestCase(unittest.TestCase):
         explain_payload = wrapper.explain_permission(context=self.context)
         self.assertEqual(explain_payload["status"], "ok")
         self.assertEqual(explain_payload["explanation"]["score"], 73)
-        self.assertIn("Permission is 73", explain_payload["explanation"]["plain_language_summary"])
+        self.assertIn(
+            "Permission is 73", explain_payload["explanation"]["plain_language_summary"]
+        )
 
     def test_prepare_broker_handoff_blocks_without_operator_approval(self) -> None:
         payload = wrapper.prepare_broker_handoff(
@@ -149,7 +152,9 @@ class ArgusWrapperTestCase(unittest.TestCase):
             },
             "delegation": {
                 "broker_payload": {
-                    "payload_contracts": {"schema": "sharpedge.connector_payload_contracts.v1"}
+                    "payload_contracts": {
+                        "schema": "sharpedge.connector_payload_contracts.v1"
+                    }
                 }
             },
             "operator_gate": {"required": True},
@@ -161,7 +166,9 @@ class ArgusWrapperTestCase(unittest.TestCase):
             self.assertFalse(test)
             return handoff
 
-        def fake_write(payload: dict, out_dir: Path | None = None, *, latest_name: str = "") -> Path:
+        def fake_write(
+            payload: dict, out_dir: Path | None = None, *, latest_name: str = ""
+        ) -> Path:
             self.assertEqual(payload, handoff)
             self.assertEqual(out_dir, self.context.outputs_dir)
             self.assertEqual(latest_name, "robinhood_execution_handoff.json")
@@ -180,7 +187,9 @@ class ArgusWrapperTestCase(unittest.TestCase):
             payload = wrapper.prepare_broker_handoff(context=self.context)
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["artifact_path"], str(self.context.handoff_path))
-        self.assertEqual(payload["handoff"]["schema"], "sharpedge.robinhood_execution_handoff.v1")
+        self.assertEqual(
+            payload["handoff"]["schema"], "sharpedge.robinhood_execution_handoff.v1"
+        )
 
     def test_validate_handoff_checks_payload_contracts(self) -> None:
         good_handoff = {
@@ -192,7 +201,9 @@ class ArgusWrapperTestCase(unittest.TestCase):
             },
             "delegation": {
                 "broker_payload": {
-                    "payload_contracts": {"schema": "sharpedge.connector_payload_contracts.v1"}
+                    "payload_contracts": {
+                        "schema": "sharpedge.connector_payload_contracts.v1"
+                    }
                 }
             },
             "operator_gate": {"required": True},

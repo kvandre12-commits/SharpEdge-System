@@ -41,7 +41,9 @@ class ArgusMCPServer:
             "resources": list_resources(self.capabilities),
         }
 
-    def call_tool(self, tool_name: str, request: dict[str, Any] | None = None) -> dict[str, Any]:
+    def call_tool(
+        self, tool_name: str, request: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         try:
             return call_tool(
                 tool_name,

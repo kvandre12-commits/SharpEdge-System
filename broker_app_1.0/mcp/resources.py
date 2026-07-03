@@ -5,7 +5,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Callable
 
-from runtime.argus_mcp_wrapper import WrapperContext, get_execution_card, get_latest_state
+from runtime.argus_mcp_wrapper import (
+    WrapperContext,
+    get_execution_card,
+    get_latest_state,
+)
 
 from .auth import CapabilityProfile
 from .errors import CapabilityDeniedError, InvalidRequestError, UnknownResourceError
@@ -73,7 +77,9 @@ def _state_latest(context: WrapperContext, _: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-def _execution_card_latest(context: WrapperContext, _: dict[str, Any]) -> dict[str, Any]:
+def _execution_card_latest(
+    context: WrapperContext, _: dict[str, Any]
+) -> dict[str, Any]:
     payload = _tool_payload_or_raise(get_execution_card(context=context))
     return _resource_response(
         resource="sharpedge://execution/card/latest",
@@ -112,7 +118,9 @@ def _handoff_latest(context: WrapperContext, _: dict[str, Any]) -> dict[str, Any
     )
 
 
-_RESOURCE_TABLE: dict[str, tuple[str, Callable[[WrapperContext, dict[str, Any]], dict[str, Any]]]] = {
+_RESOURCE_TABLE: dict[
+    str, tuple[str, Callable[[WrapperContext, dict[str, Any]], dict[str, Any]]]
+] = {
     "sharpedge://state/latest": ("read_state", _state_latest),
     "sharpedge://execution/card/latest": (
         "read_execution_card",
@@ -124,7 +132,9 @@ _RESOURCE_TABLE: dict[str, tuple[str, Callable[[WrapperContext, dict[str, Any]],
 }
 
 
-def list_resources(capabilities: CapabilityProfile | None = None) -> list[dict[str, str]]:
+def list_resources(
+    capabilities: CapabilityProfile | None = None,
+) -> list[dict[str, str]]:
     caps = capabilities or CapabilityProfile()
     items: list[dict[str, str]] = []
     for name, (capability, _) in _RESOURCE_TABLE.items():
