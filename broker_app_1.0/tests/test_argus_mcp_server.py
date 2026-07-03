@@ -13,6 +13,7 @@ if str(BROKER_APP_ROOT) not in sys.path:
 
 CapabilityProfile = importlib.import_module("mcp.auth").CapabilityProfile
 ArgusMCPServer = importlib.import_module("mcp.server").ArgusMCPServer
+TRACE_FILE_NAME = importlib.import_module("mcp.tracing").TRACE_FILE_NAME
 WrapperContext = importlib.import_module("runtime.argus_mcp_wrapper").WrapperContext
 
 
@@ -105,6 +106,16 @@ class ArgusMCPServerTestCase(unittest.TestCase):
     def _write_json(self, path: Path, payload: dict) -> None:
         path.write_text(json.dumps(payload), encoding="utf-8")
 
+    def _read_trace_events(self) -> list[dict]:
+        trace_path = self.outputs_dir / TRACE_FILE_NAME
+        if not trace_path.exists():
+            return []
+        return [
+            json.loads(line)
+            for line in trace_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+
     def test_server_describe_exposes_capabilities(self) -> None:
         server = ArgusMCPServer(context=self.context)
         payload = server.describe()
@@ -120,6 +131,12 @@ class ArgusMCPServerTestCase(unittest.TestCase):
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["tool_name"], "sharpedge.get_latest_state")
         self.assertEqual(payload["state"]["symbol"], "SPY")
+        self.assertEqual(payload["api_version"], 1)
+        self.assertIn("request_id", payload)
+        self.assertIn("duration_ms", payload)
+        trace_events = self._read_trace_events()
+        self.assertEqual(trace_events[-1]["target_name"], "sharpedge.get_latest_state")
+        self.assertEqual(trace_events[-1]["wrapper"], "get_latest_state")
 
     def test_server_blocks_capability_gated_tool(self) -> None:
         caps = CapabilityProfile(prepare_handoff=False)
@@ -136,12 +153,16 @@ class ArgusMCPServerTestCase(unittest.TestCase):
         state_payload = server.read_resource("sharpedge://state/latest")
         self.assertEqual(state_payload["status"], "ok")
         self.assertEqual(state_payload["contents"]["symbol"], "SPY")
+        self.assertIn("trace_artifact_path", state_payload)
         handoff_payload = server.read_resource("sharpedge://handoff/latest")
         self.assertEqual(handoff_payload["status"], "ok")
         self.assertEqual(
             handoff_payload["contents"]["schema"],
             "sharpedge.robinhood_execution_handoff.v1",
         )
+        trace_events = self._read_trace_events()
+        self.assertEqual(trace_events[-1]["target_name"], "sharpedge://handoff/latest")
+        self.assertEqual(trace_events[-1]["target_kind"], "resource")
 
     def test_server_returns_unknown_tool_error(self) -> None:
         server = ArgusMCPServer(context=self.context)

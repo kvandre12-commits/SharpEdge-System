@@ -35,7 +35,7 @@ Executable truth does **not** live entirely in this folder.
 - `bridge/` — inventory of the real backing bridge/runtime surfaces
 - `tools/` — Argus tool-name to real-surface alias mapping
 - `runtime/` — thin Python wrapper functions over real SharpEdge and Bridge surfaces
-- `mcp/` — capability-gated MCP server skeleton that delegates to the wrappers
+- `mcp/` — capability-gated MCP server skeleton that delegates to the wrappers and writes append-only request traces
 - `schemas/` — machine-checkable JSON Schemas for the wrapper contract
 - `prompts/` — ChatGPT review/update prompts
 - `examples/` — example review requests
@@ -47,6 +47,7 @@ Key docs:
 - `docs/backing_matrix.md` — explicit backing/source-of-truth matrix
 - `runtime/argus_mcp_wrapper.py` — implemented thin wrapper module
 - `mcp/server.py` — transport-layer MCP skeleton over the wrapper
+- `mcp/tracing.py` — append-only request trace helper for observability
 - `schemas/README.md` — schema inventory and naming rules
 - `bridge/real_surface_inventory.json` — canonical inventory of the real backing endpoints and artifacts
 
