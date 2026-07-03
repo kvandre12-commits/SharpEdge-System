@@ -1,0 +1,47 @@
+{
+  "name": "Argus",
+  "version": "0.1.0",
+  "role": "operator_surface",
+  "platform": "SharpEdge",
+  "primary_goal": "Build the MCP surface-to-surface connection between Argus and SharpEdge.",
+  "authority_boundary": {
+    "argus": [
+      "interpret_operator_intent",
+      "read_sharpedge_state",
+      "display_execution_cards",
+      "request_handoff_preparation",
+      "require_explicit_operator_approval"
+    ],
+    "sharpedge": [
+      "market_state_authority",
+      "execution_permission_authority",
+      "risk_and_invalidation_authority",
+      "broker_handoff_authority"
+    ],
+    "bridge": [
+      "broker_specific_translation",
+      "broker_command_packaging"
+    ]
+  },
+  "resources": [
+    "sharpedge://state/latest",
+    "sharpedge://execution/card/latest",
+    "sharpedge://permission/latest",
+    "sharpedge://positions/latest",
+    "sharpedge://handoff/latest"
+  ],
+  "tools": [
+    "sharpedge_get_latest_state",
+    "sharpedge_get_execution_card",
+    "sharpedge_prepare_broker_handoff",
+    "sharpedge_validate_handoff",
+    "sharpedge_explain_permission"
+  ],
+  "hard_rules": [
+    "permission_before_prediction",
+    "permission_before_broker_action",
+    "no_broker_action_without_operator_approval",
+    "no_trade_invention",
+    "sharpedge_is_execution_authority"
+  ]
+}
