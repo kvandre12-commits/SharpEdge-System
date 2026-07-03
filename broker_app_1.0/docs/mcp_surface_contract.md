@@ -1,8 +1,8 @@
 # Argus MCP Surface Contract
 
-Argus is the operator-facing MCP client surface for SharpEdge.
+Argus is the operator-facing surface for the SharpEdge platform.
 
-The first build goal is not broker execution. The first build goal is a clean MCP surface-to-surface connection between Argus and SharpEdge.
+The first build goal is not broker execution. The first build goal is a clean, real-world orchestration path where Argus reads SharpEdge authority, reads Robinhood authority, and explains the result without inventing either.
 
 ## First-iteration posture
 
@@ -13,6 +13,16 @@ Argus should begin as a disciplined MCP client whose first responsibilities are:
 - delegate validated handoffs to the proper downstream execution path
 
 Argus should not begin as a giant broker-tool bucket.
+
+## Real-world host posture
+
+For the first real-world demo, Argus should be treated as an orchestration layer sitting above two authoritative systems:
+
+- **SharpEdge** for market-state and execution-permission authority
+- **Robinhood** for brokerage and account authority
+
+That means Argus should not try to replace Robinhood's hosted tool surface.
+It should coordinate it.
 
 ## Boundary
 
@@ -37,10 +47,14 @@ SharpEdge does:
 - own trade-card construction
 - emit broker-ready handoff packets
 
+Robinhood does:
+- own account, portfolio, position, order-review, and broker-execution authority
+- expose brokerage reads and review/place/cancel flows to the hosted operator surface
+
 Robinhood Bridge does:
 - translate validated handoff packets into broker-specific command plans
 - keep broker rules separate from SharpEdge scoring
-- own broker execution routing after validation and approval
+- own local broker execution routing after validation and approval
 
 ## Minimum MCP Resources
 
@@ -159,15 +173,34 @@ Current semantic backing:
 
 ## Golden Flow
 
+### Phase 1 — Read SharpEdge
 1. Operator asks Argus for a market or trade review.
 2. Argus reads latest SharpEdge state.
 3. Argus requests an execution card.
-4. SharpEdge returns permission, setup, risk, invalidation, and broker eligibility.
+4. SharpEdge returns permission, setup, risk, invalidation, and execution posture.
 5. Argus explains the card in plain language.
-6. Operator explicitly approves preparation.
-7. Argus calls SharpEdge to prepare a broker handoff.
-8. Argus validates the handoff.
-9. Only then can the Robinhood Bridge receive the handoff.
+
+### Phase 2 — Read Robinhood
+6. Argus reads the relevant Robinhood account, portfolio, position, order, and tradability state.
+7. Robinhood returns brokerage feasibility and current account context.
+
+### Phase 3 — Fuse and decide what is allowed
+8. Argus reports the SharpEdge view, the Robinhood view, and the fused operator-facing conclusion.
+9. If SharpEdge permission is not present, Argus stops even if Robinhood shows buying power.
+10. If SharpEdge permission is present and the operator explicitly approves, Argus can prepare and validate a broker handoff.
+11. Only then should the downstream broker review/place path continue.
+
+## First real-world demo
+
+The first demo that matters is not "MCP exists."
+The first demo that matters is:
+
+1. Argus reads real SharpEdge execution state.
+2. Argus reads real Robinhood account state.
+3. Argus fuses them without inventing authority.
+4. Argus stops correctly when permission is absent.
+
+See `docs/first_real_world_demo.md`.
 
 ## Current gap
 
@@ -176,7 +209,7 @@ The named Argus MCP wrapper surface is not fully implemented yet as a first-clas
 What already exists is the **real contract logic** behind the surface.
 That means Broker App 1.0 should evolve by wrapping and naming the real backing surfaces — not by duplicating or re-inventing them.
 
-The architecture stays cleaner when Argus remains the conversational/MCP client layer over well-defined services instead of pretending to own strategy or broker truth.
+The architecture stays cleaner when Argus remains the conversational/orchestration layer over well-defined services instead of pretending to own strategy or broker truth.
 
 ## Core Rule
 

@@ -4,7 +4,7 @@ You are reviewing `broker_app_1.0/` as the product-facing Argus MCP client surfa
 
 ## Goal
 
-Update the Argus surface so it reflects the **real** SharpEdge + Robinhood Bridge contract instead of speculative app behavior.
+Update the Argus surface so it reflects the **real** SharpEdge + Robinhood + Bridge contract instead of speculative app behavior.
 
 ## Non-negotiable rules
 
@@ -22,12 +22,14 @@ Read these first:
 
 - `broker_app_1.0/manifests/argus_mcp_manifest.json`
 - `broker_app_1.0/docs/mcp_surface_contract.md`
+- `broker_app_1.0/docs/first_real_world_demo.md`
 - `broker_app_1.0/docs/authority_map.md`
 - `broker_app_1.0/docs/argus_mcp_wrapper_spec.md`
 - `broker_app_1.0/docs/backing_matrix.md`
 - `broker_app_1.0/schemas/README.md`
 - `broker_app_1.0/bridge/real_surface_inventory.json`
 - `broker_app_1.0/tools/argus_tool_aliases.json`
+- `broker_app_1.0/prompts/argus_operator_system_prompt.md`
 
 Then verify against the real backing repos:
 

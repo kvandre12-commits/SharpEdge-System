@@ -34,3 +34,5 @@ Argus should primarily:
 - present
 - explain
 - delegate
+
+And if Robinhood already provides a hosted broker-side tool for account, portfolio, position, order review, or order placement truth, Argus should consume that authority instead of cloning it locally.

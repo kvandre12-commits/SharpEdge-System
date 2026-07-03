@@ -4,7 +4,7 @@
   "role": "operator_surface",
   "platform": "SharpEdge",
   "client_mode": "mcp_client",
-  "primary_goal": "Build the MCP surface-to-surface connection between Argus and SharpEdge.",
+  "primary_goal": "Act as the operator interface for SharpEdge by reading authoritative SharpEdge state, reading authoritative Robinhood brokerage state, and safely delegating downstream actions.",
   "first_iteration_responsibilities": [
     "discover",
     "read",
@@ -16,7 +16,9 @@
       "interpret_operator_intent",
       "discover_available_surfaces",
       "read_sharpedge_state",
+      "read_robinhood_brokerage_state",
       "display_execution_cards",
+      "fuse_authoritative_system_outputs",
       "request_handoff_preparation",
       "require_explicit_operator_approval"
     ],
@@ -30,6 +32,13 @@
       "broker_specific_translation",
       "broker_command_packaging",
       "broker_execution_routing"
+    ],
+    "robinhood": [
+      "account_authority",
+      "portfolio_authority",
+      "position_authority",
+      "order_review_authority",
+      "broker_order_execution_authority"
     ]
   },
   "resources": [
@@ -52,6 +61,19 @@
     "permission_before_broker_action",
     "no_broker_action_without_operator_approval",
     "no_trade_invention",
-    "sharpedge_is_execution_authority"
-  ]
+    "sharpedge_is_execution_authority",
+    "robinhood_is_brokerage_authority",
+    "buying_power_is_not_trade_permission"
+  ],
+  "first_real_world_demo": {
+    "name": "sharpedge_permission_plus_robinhood_account_check",
+    "question": "Can I take the next SPY setup right now, and if so, what should I review before any broker action?",
+    "phases": [
+      "read_sharpedge_state",
+      "read_robinhood_account_state",
+      "fuse_and_explain",
+      "stop_or_delegate"
+    ],
+    "success_rule": "Argus must stop when SharpEdge permission is not present even if Robinhood reports sufficient buying power."
+  }
 }
