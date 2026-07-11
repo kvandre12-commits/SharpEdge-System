@@ -37,6 +37,13 @@ def test_export_operator_packet_writes_live_import(tmp_path, monkeypatch):
         "ts": "2026-06-25T21:30:00",
         "symbol": "SPY",
         "spot": 734.3,
+        "edge_token_position": {
+            "suggested_action": "hold",
+            "position_state": "open",
+            "contracts_held": 1,
+            "action_reason": "edge token is still active; keep the single-contract position on.",
+            "recommended_actions": ["hold"],
+        },
         "trade_permission": {
             "trade_gate": "PERMIT",
             "trade_permission_score": 97,
@@ -74,15 +81,23 @@ def test_export_operator_packet_writes_live_import(tmp_path, monkeypatch):
         "top_patterns": [{"pattern_id": "x"}],
     }
     robinhood_beta_execution = {
-        "beta_stage": "artifact_only",
+        "beta_stage": "position_hold",
         "approval_required": True,
+        "edge_token_position": {
+            "contracts_held": 1,
+        },
+        "order_preview": {
+            "token_action": "hold",
+            "position_intent": "hold",
+        },
         "robinhood_beta_handoff": {"bridge_status": {"status": "disabled"}},
     }
 
     _write_json(signal_path, signal)
     _write_text(
         tmp_path / "cockpit/cockpit.html",
-        "<!DOCTYPE html><html><body><h1>Imported cockpit</h1></body></html>",
+        '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="45"></head>'
+        "<body><h1>Imported cockpit</h1></body></html>",
     )
     _write_text(
         tmp_path / "cockpit/cockpit_chart.svg",
@@ -114,17 +129,40 @@ def test_export_operator_packet_writes_live_import(tmp_path, monkeypatch):
     assert packet["product"] == "SharpEdge Robinhood"
     assert packet["approval_decision"]["decision"] == "hold"
     assert packet["operator_watchlist"]["active_count"] == 1
+    assert packet["app_sections"] == [
+        "cockpit",
+        "approvals",
+        "agent_status",
+        "watchlists",
+        "trade_journal",
+        "robinhood_actions",
+    ]
+    assert list(packet["status_summary"]) == [
+        "trade_gate",
+        "trade_permission_score",
+        "workflow_readiness",
+        "approval_decision",
+        "trade_allowed",
+        "watchlist_active_count",
+        "journal_closed_trades",
+        "bridge_status",
+        "connector_audit_available",
+        "connector_status",
+        "connector_fill_status",
+    ]
     assert packet["status_summary"]["bridge_status"] == "disabled"
     assert packet["status_summary"]["connector_status"] == "drafted"
     assert packet["execution_audit"]["available"] is True
-    assert "execution_audit" in packet["app_sections"]
-    assert (
-        packet["artifacts"]["connector_audit"]
-        == "outputs/chatgpt_robinhood_connector_audit.json"
-    )
+    assert packet["robinhood_beta_execution"]["order_preview"]["token_action"] == "hold"
+    assert "execution_audit" not in packet["app_sections"]
+    assert "connector_audit" not in packet["artifacts"]
     assert ANDROID_VIEWER_BUNDLE_KEY in packet
     assert packet[ANDROID_VIEWER_BUNDLE_KEY]["cockpit_html"].startswith(
         "<!DOCTYPE html>"
+    )
+    assert (
+        'http-equiv="refresh"'
+        not in packet[ANDROID_VIEWER_BUNDLE_KEY]["cockpit_html"].lower()
     )
     assert packet[ANDROID_VIEWER_BUNDLE_KEY]["cockpit_weekly_context_svg"].startswith(
         "<svg"
@@ -133,3 +171,5 @@ def test_export_operator_packet_writes_live_import(tmp_path, monkeypatch):
         "<svg"
     )
     assert proof["android_viewer_bundle_included"] is True
+    assert proof["web_viewer_refresh"]["status"] == "refresh_ready"
+    assert proof["web_viewer_refresh"]["cockpit_refresh_seconds"] == 45

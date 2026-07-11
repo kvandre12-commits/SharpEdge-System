@@ -1,16 +1,24 @@
 import json
-import urllib.request
-import urllib.error
+import os
 import textwrap
+import urllib.error
+import urllib.request
 
 MAX = 1900  # keep buffer under 2000
+WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
+
 
 def _post(content: str):
+    if not WEBHOOK:
+        raise RuntimeError("DISCORD_WEBHOOK_URL missing")
     payload = json.dumps({"content": content}).encode("utf-8")
     req = urllib.request.Request(
         WEBHOOK,
         data=payload,
-        headers={"Content-Type": "application/json", "User-Agent": "SharpEdge-System/1.0"},
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "SharpEdge-System/1.0",
+        },
         method="POST",
     )
     try:
@@ -19,6 +27,7 @@ def _post(content: str):
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"Discord HTTP {e.code}: {body}") from e
+
 
 def send(msg: str):
     msg = msg.strip()

@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
+import collections
 import os
 import sqlite3
-from datetime import datetime, timezone
 import time
+from datetime import datetime, timezone
+
 import requests
-import pandas as pd
+
+try:
+    from scripts.utils.pipeline_state import write_state
+except ModuleNotFoundError:  # pragma: no cover - path execution fallback
+    from utils.pipeline_state import write_state
 
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 UNDERLYING = os.getenv("UNDERLYING", "SPY")
 
-ALPACA_TRADING_BASE = os.getenv("ALPACA_TRADING_BASE", "https://paper-api.alpaca.markets")
+ALPACA_TRADING_BASE = os.getenv(
+    "ALPACA_TRADING_BASE", "https://paper-api.alpaca.markets"
+)
 ALPACA_KEY = os.getenv("ALPACA_API_KEY") or os.getenv("APCA_API_KEY_ID")
 ALPACA_SECRET = os.getenv("ALPACA_API_SECRET") or os.getenv("APCA_API_SECRET_KEY")
 
@@ -17,18 +25,22 @@ ALPACA_RETRIES = int(os.getenv("ALPACA_RETRIES", "4"))
 ALPACA_TIMEOUT = int(os.getenv("ALPACA_TIMEOUT", "30"))
 ALPACA_FAIL_OPEN = os.getenv("ALPACA_FAIL_OPEN", "1") == "1"
 
+
 def iso_utc_now():
     return datetime.now(timezone.utc).isoformat()
+
 
 def ny_session_date(now_utc: datetime) -> str:
     # Keep your existing implementation if you already have one elsewhere.
     # Minimal: use UTC date (OK for now; replace with NY logic later if you want).
     return now_utc.date().isoformat()
 
+
 def connect():
     con = sqlite3.connect(DB_PATH)
     con.execute("PRAGMA journal_mode=WAL;")
     return con
+
 
 def ensure_table(con):
     con.execute("""
@@ -45,8 +57,10 @@ def ensure_table(con):
     """)
     con.commit()
 
+
 def upsert_row(con, row):
-    con.execute("""
+    con.execute(
+        """
     INSERT INTO options_open_interest_daily (
       snapshot_ts, session_date, underlying, expiration_date, strike, call_oi, put_oi
     )
@@ -55,7 +69,30 @@ def upsert_row(con, row):
       snapshot_ts=excluded.snapshot_ts,
       call_oi=excluded.call_oi,
       put_oi=excluded.put_oi;
-    """, row)
+    """,
+        row,
+    )
+
+
+def open_interest_state(con):
+    row = con.execute(
+        """
+        SELECT COUNT(*) AS rows,
+               COUNT(DISTINCT session_date) AS session_count,
+               MAX(snapshot_ts) AS latest_snapshot_ts,
+               MAX(session_date) AS latest_session_date
+        FROM options_open_interest_daily
+        WHERE underlying = ?
+        """,
+        (UNDERLYING,),
+    ).fetchone()
+    return {
+        "rows": row[0] or 0,
+        "session_count": row[1] or 0,
+        "latest_snapshot_ts": row[2],
+        "latest_session_date": row[3],
+    }
+
 
 def alpaca_get_contracts_page(underlying: str, page_token: str | None):
     url = f"{ALPACA_TRADING_BASE}/v2/options/contracts"
@@ -75,6 +112,7 @@ def alpaca_get_contracts_page(underlying: str, page_token: str | None):
     r = requests.get(url, headers=headers, params=params, timeout=ALPACA_TIMEOUT)
     r.raise_for_status()
     return r.json()
+
 
 def fetch_all_contracts(underlying: str):
     page_token = None
@@ -98,6 +136,7 @@ def fetch_all_contracts(underlying: str):
         if not page_token:
             return out
 
+
 def main():
     snap_ts = iso_utc_now()
     session = ny_session_date(datetime.now(timezone.utc))
@@ -105,60 +144,128 @@ def main():
     con = connect()
     try:
         ensure_table(con)
+        before = open_interest_state(con)
 
         try:
             contracts = fetch_all_contracts(UNDERLYING)
         except Exception as e:
             if ALPACA_FAIL_OPEN:
+                write_state(
+                    "alpaca_options_open_interest",
+                    {
+                        "underlying": UNDERLYING,
+                        "endpoint": f"{ALPACA_TRADING_BASE}/v2/options/contracts",
+                        "timeout": ALPACA_TIMEOUT,
+                        "retries": ALPACA_RETRIES,
+                        "fail_open": ALPACA_FAIL_OPEN,
+                        "network_refresh": False,
+                        "status": "fetch_failed_open",
+                        "error": str(e),
+                        "before": before,
+                        "after": before,
+                    },
+                )
                 print(f"[alpaca] WARNING: contracts OI ingest failed: {e}")
                 return
             raise
 
         if not contracts:
+            write_state(
+                "alpaca_options_open_interest",
+                {
+                    "underlying": UNDERLYING,
+                    "endpoint": f"{ALPACA_TRADING_BASE}/v2/options/contracts",
+                    "timeout": ALPACA_TIMEOUT,
+                    "retries": ALPACA_RETRIES,
+                    "fail_open": ALPACA_FAIL_OPEN,
+                    "network_refresh": True,
+                    "status": "no_contracts",
+                    "before": before,
+                    "after": before,
+                },
+            )
             print("[alpaca] contracts returned 0 rows")
             return
 
-        # Normalize into strike-buckets with call/put OI
-        rows = []
+        # Normalize into strike-buckets with call/put OI.
+        merged = collections.defaultdict(lambda: {"call": 0, "put": 0})
+        parsed_rows = 0
         for c in contracts:
             exp = c.get("expiration_date") or c.get("expiration") or c.get("expiry")
             strike = c.get("strike_price") or c.get("strike")
             opt_type = (c.get("type") or c.get("option_type") or "").lower()
             oi = c.get("open_interest")
 
-            if exp is None or strike is None or opt_type not in ("call", "put") or oi is None:
+            if (
+                exp is None
+                or strike is None
+                or opt_type not in ("call", "put")
+                or oi is None
+            ):
                 continue
 
-            rows.append((exp, float(strike), opt_type, int(oi)))
+            merged[(str(exp), float(strike))][opt_type] += int(oi)
+            parsed_rows += 1
 
-        df = pd.DataFrame(rows, columns=["expiration_date", "strike", "type", "oi"])
-        if df.empty:
+        if not merged:
+            write_state(
+                "alpaca_options_open_interest",
+                {
+                    "underlying": UNDERLYING,
+                    "endpoint": f"{ALPACA_TRADING_BASE}/v2/options/contracts",
+                    "timeout": ALPACA_TIMEOUT,
+                    "retries": ALPACA_RETRIES,
+                    "fail_open": ALPACA_FAIL_OPEN,
+                    "network_refresh": True,
+                    "status": "no_open_interest_rows",
+                    "fetched_contracts": len(contracts),
+                    "before": before,
+                    "after": before,
+                },
+            )
             print("[alpaca] contracts parsed, but no rows with open_interest")
             return
 
-        pivot = (
-            df.pivot_table(index=["expiration_date", "strike"], columns="type", values="oi", aggfunc="sum", fill_value=0)
-              .reset_index()
-        )
-        if "call" not in pivot.columns:
-            pivot["call"] = 0
-        if "put" not in pivot.columns:
-            pivot["put"] = 0
-
         n = 0
-        for _, r in pivot.iterrows():
-            upsert_row(con, (
-                snap_ts, session, UNDERLYING,
-                r["expiration_date"], float(r["strike"]),
-                int(r["call"]), int(r["put"])
-            ))
+        for (expiration_date, strike), legs in sorted(merged.items()):
+            upsert_row(
+                con,
+                (
+                    snap_ts,
+                    session,
+                    UNDERLYING,
+                    expiration_date,
+                    strike,
+                    int(legs["call"]),
+                    int(legs["put"]),
+                ),
+            )
             n += 1
 
         con.commit()
+        after = open_interest_state(con)
+        write_state(
+            "alpaca_options_open_interest",
+            {
+                "underlying": UNDERLYING,
+                "endpoint": f"{ALPACA_TRADING_BASE}/v2/options/contracts",
+                "timeout": ALPACA_TIMEOUT,
+                "retries": ALPACA_RETRIES,
+                "fail_open": ALPACA_FAIL_OPEN,
+                "network_refresh": True,
+                "status": "ok",
+                "fetched_contracts": len(contracts),
+                "parsed_rows": parsed_rows,
+                "upserted_rows": n,
+                "before": before,
+                "after": after,
+            },
+        )
         print(f"[alpaca] wrote options_open_interest_daily rows={n}")
 
     finally:
         con.close()
+
 
 if __name__ == "__main__":
     main()

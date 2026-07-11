@@ -13,14 +13,12 @@ from __future__ import annotations
 import datetime as dt
 from collections import defaultdict
 
-import requests
+from market_data_sources import fetch_yahoo_chart_result_with_source
 
 SYMBOL = "SPY"
-URL = (
-    f"https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}"
-    "?interval=5m&range=14d"
-)
-OPEN_MIN = 570   # 09:30 ET in minutes-from-midnight
+INTERVAL = "5m"
+RANGE = "14d"
+OPEN_MIN = 570  # 09:30 ET in minutes-from-midnight
 CLOSE_MIN = 960  # 16:00 ET
 SESSION_LEN = CLOSE_MIN - OPEN_MIN  # 390 minutes
 
@@ -31,13 +29,16 @@ PLOT_H = H - PAD_T - PAD_B
 
 
 def fetch():
-    r = requests.get(URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
-    r.raise_for_status()
-    res = r.json()["chart"]["result"][0]
+    res, source = fetch_yahoo_chart_result_with_source(
+        SYMBOL,
+        interval=INTERVAL,
+        range_=RANGE,
+        timeout=20,
+    )
     gmt = res["meta"]["gmtoffset"]  # seconds to add to UTC for exchange wall time
     ts = res["timestamp"]
     closes = res["indicators"]["quote"][0]["close"]
-    return gmt, ts, closes
+    return gmt, ts, closes, source
 
 
 def group_by_day(gmt, ts, closes):
@@ -81,7 +82,7 @@ def build_svg(days):
         f'<rect width="{W}" height="{H}" fill="#0d1117"/>',
         f'<text x="{PAD_L}" y="30" fill="#e6edf3" font-size="20" '
         f'font-weight="bold">SPY intraday overlay — last {len(days)} trading '
-        f'days (normalized % from open)</text>',
+        f"days (normalized % from open)</text>",
     ]
 
     # horizontal gridlines + y labels (% values)
@@ -144,7 +145,7 @@ def build_svg(days):
         parts.append(
             f'<text x="{PAD_L + PLOT_W + 8}" y="{last_y + 4:.1f}" '
             f'fill="{color}" font-size="11" opacity="{max(opacity, 0.6):.2f}">'
-            f'{d.strftime("%m/%d")} {series[-1][1]:+.2f}%</text>'
+            f"{d.strftime('%m/%d')} {series[-1][1]:+.2f}%</text>"
         )
 
     parts.append("</svg>")
@@ -152,13 +153,19 @@ def build_svg(days):
 
 
 def main():
-    gmt, ts, closes = fetch()
+    gmt, ts, closes, source = fetch()
     days = group_by_day(gmt, ts, closes)
     svg = build_svg(days)
     out = "/data/data/com.termux/files/home/spy_overlay/spy_overlay.svg"
     with open(out, "w") as f:
         f.write(svg)
     print(f"trading days plotted: {len(days)}")
+    print(
+        "source: "
+        f"{source['provider']} {source['endpoint']} {source['symbol']} "
+        f"interval={source['interval']} range={source['range']} "
+        f"last_bar_utc={source['last_bar_utc']}"
+    )
     for d, s in days.items():
         chg = (s[-1][1] / s[0][1] - 1) * 100
         print(f"  {d}  bars={len(s):3d}  day_change={chg:+.2f}%")

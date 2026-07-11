@@ -1,79 +1,72 @@
-"""SharpEdge live cockpit: turn real-time SPY motion into data-driven reads.
-
-Goal: reduce time-to-execution. You SEE the move; this CONFIRMS it with
-numbers in the same glance -- range position, VWAP control, momentum,
-volume confirmation, and options walls pinning price.
-
-Two free sources, no auth:
-  - Yahoo 1-min intraday  -> price action / VWAP / momentum / volume
-  - CBOE delayed options   -> OI walls, put/call ratio, ATM IV
-
-Lightweight + DRY: stdlib + requests, writes cockpit.html + cockpit chart svg.
-Run it in a loop for live updates; the HTML meta-refreshes to pick them up.
-"""
+"""SharpEdge live cockpit for fast SPY reads from Yahoo 1m + CBOE options."""
 
 from __future__ import annotations
 
 import datetime as dt
 import json
 import os
-import re
-from collections import defaultdict
+from pathlib import Path
 
-import requests
-
+from ace_snapshot import write_ace_snapshot
+from balance import build_balance_stack
+from context_attachment import build_context_attachment
+from decision_receipts import (
+    append_decision_receipt,
+    build_decision_receipt,
+    build_permission_score_trend,
+    load_recent_receipts,
+)
 from gamma import gamma_card, gamma_profile
-from setups import detect_exhaustion, detect_failed_breaks, reference_levels
+from gate_workflows import primary_context_setup, primary_trade_setup
+from level_state_engine import build_level_state_map
+from live_chart_svg import chart_svg
+from live_read_view import infer_target, render_live_read_html
+from market_data_sources import (
+    fetch_cboe_options_book,
+    fetch_yahoo_intraday_session_rows,
+    read_options_surface,
+)
+from monthly_context_chart import build_monthly_context_svg
+from weekly_context_chart import build_weekly_context_svg
+from range_posture import build_range_posture
+from volume_profile import build_volume_profile
+from vwap_posture import build_vwap_posture
+from setups import (
+    detect_exhaustion,
+    detect_failed_breaks,
+    detect_negative_gamma_continuation,
+    detect_sticky_noise,
+    detect_volatility_coil,
+    read_volatility_structure,
+    reference_levels,
+)
+from regime_refinement import annotate_market_behavior
+from timeframe_agreement import build_timeframe_agreement
+from transition_pressure import build_transition_pressure_packet
+from runner_handoff_live import render_runner_handoff_live_html
+from setup_event_lifecycle import annotate_setup_conviction, primary_setup_event
 from trade_permission import score_trade_permission
 
-UA = {"User-Agent": "Mozilla/5.0"}
-INTRA_URL = (
-    "https://query1.finance.yahoo.com/v8/finance/chart/SPY"
-    "?interval=1m&range=1d"
-)
-CBOE_URL = "https://cdn.cboe.com/api/global/delayed_quotes/options/SPY.json"
-SYM_RE = re.compile(r"^[A-Z]+(\d{6})([CP])(\d{8})$")
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # ----------------------------- data fetch -----------------------------
 def fetch_intraday():
-    r = requests.get(INTRA_URL, headers=UA, timeout=20)
-    r.raise_for_status()
-    res = r.json()["chart"]["result"][0]
-    gmt = res["meta"]["gmtoffset"]
-    ts = res["timestamp"]
-    q = res["indicators"]["quote"][0]
-    rows = []
-    o_, h_, l_ = q["open"], q["high"], q["low"]
-    for i, (t, c, v) in enumerate(zip(ts, q["close"], q["volume"])):
-        if c is None:
-            continue
-        local = dt.datetime.utcfromtimestamp(t + gmt)
-        minute = local.hour * 60 + local.minute
-        if 570 <= minute <= 960:  # regular session 09:30-16:00 ET
-            o = o_[i] if o_[i] is not None else c
-            h = h_[i] if h_[i] is not None else c
-            low = l_[i] if l_[i] is not None else c
-            # bar = (minute_of_session, open, high, low, close, volume)
-            rows.append((minute - 570, o, h, low, c, v or 0))
+    rows, _ = fetch_yahoo_intraday_session_rows("SPY")
     return rows
 
 
+def fetch_intraday_with_source():
+    return fetch_yahoo_intraday_session_rows("SPY")
+
+
 def fetch_options():
-    r = requests.get(CBOE_URL, headers=UA, timeout=30)
-    r.raise_for_status()
-    d = r.json()["data"]
-    spot = float(d.get("current_price") or d.get("close") or 0)
-    book = defaultdict(lambda: defaultdict(dict))
-    for o in d["options"]:
-        m = SYM_RE.match(o["option"])
-        if not m:
-            continue
-        yymmdd, cp, strike8 = m.groups()
-        exp = dt.datetime.strptime(yymmdd, "%y%m%d").date()
-        book[exp][int(strike8) / 1000.0][cp] = o
+    spot, book, _ = fetch_cboe_options_book("SPY")
     return spot, book
+
+
+def fetch_options_with_source():
+    return fetch_cboe_options_book("SPY")
 
 
 # ----------------------------- analytics -----------------------------
@@ -85,6 +78,7 @@ def read_price_action(rows):
     hi, lo = max(closes), min(closes)
     rng = (hi - lo) or 1e-9
     rng_pos = (spot - lo) / rng * 100  # 0=low, 100=high of day
+    balance = build_balance_stack(rows)
 
     # VWAP (who controls the day)
     cum_pv = sum(b[4] * b[5] for b in rows)
@@ -95,55 +89,27 @@ def read_price_action(rows):
     look = min(15, len(closes) - 1)
     mom = (spot / closes[-1 - look] - 1) * 100 if look else 0.0
 
-    # volume confirmation: last 5 bars vs median bar
-    recent = vols[-5:]
-    body = sorted(vols)
-    med = body[len(body) // 2] or 1
-    vol_mult = (sum(recent) / len(recent)) / med
+    volume_profile = build_volume_profile(rows)
+    vol_mult = volume_profile["composite_mult"]
 
     return {
         "spot": spot,
         "day_open": day_open,
         "hi": hi,
         "lo": lo,
+        **balance,
         "rng_pos": rng_pos,
         "day_chg": (spot / day_open - 1) * 100,
         "vwap": vwap,
         "vs_vwap": (spot - vwap) / vwap * 100,
         "mom15": mom,
         "vol_mult": vol_mult,
+        "volume_profile": volume_profile,
     }
 
 
 def read_options(spot, book):
-    today = dt.date.today()
-    future = sorted(e for e in book if e >= today) or sorted(book)
-    exp = future[0]
-    strikes = sorted(book[exp].keys())
-    call_oi = {k: (book[exp][k].get("C", {}).get("open_interest", 0) or 0)
-               for k in strikes}
-    put_oi = {k: (book[exp][k].get("P", {}).get("open_interest", 0) or 0)
-              for k in strikes}
-    # walls: biggest OI strike above (calls) / below (puts) spot
-    calls_above = {k: v for k, v in call_oi.items() if k >= spot}
-    puts_below = {k: v for k, v in put_oi.items() if k <= spot}
-    call_wall = max(calls_above, key=calls_above.get) if calls_above else None
-    put_wall = max(puts_below, key=puts_below.get) if puts_below else None
-    tot_c = sum(call_oi.values()) or 1
-    tot_p = sum(put_oi.values())
-    pcr = tot_p / tot_c
-    # ATM IV
-    atm = min(strikes, key=lambda k: abs(k - spot))
-    civ = book[exp][atm].get("C", {}).get("iv", 0) or 0
-    piv = book[exp][atm].get("P", {}).get("iv", 0) or 0
-    atm_iv = (civ + piv) / 2 if (civ or piv) else 0
-    return {
-        "exp": exp.isoformat(),
-        "call_wall": call_wall,
-        "put_wall": put_wall,
-        "pcr": pcr,
-        "atm_iv": atm_iv,
-    }
+    return read_options_surface(spot, book)
 
 
 def synthesize(pa, op):
@@ -151,210 +117,118 @@ def synthesize(pa, op):
     lines = []
 
     # 1. who controls the tape
-    if pa["vs_vwap"] > 0.05:
-        lines.append(("BULLS in control", "ok",
-                      f"price ${pa['spot']:.2f} is {pa['vs_vwap']:+.2f}% "
-                      f"ABOVE VWAP ${pa['vwap']:.2f}"))
-    elif pa["vs_vwap"] < -0.05:
-        lines.append(("BEARS in control", "bad",
-                      f"price ${pa['spot']:.2f} is {pa['vs_vwap']:+.2f}% "
-                      f"BELOW VWAP ${pa['vwap']:.2f}"))
+    vwap_posture = build_vwap_posture(pa)
+    range_posture = build_range_posture(pa, vwap_posture=vwap_posture)
+    if vwap_posture["has_upside_control"]:
+        lines.append(
+            (
+                "BULLS in control",
+                "ok",
+                f"price ${pa['spot']:.2f} is {pa['vs_vwap']:+.2f}% "
+                f"ABOVE VWAP ${pa['vwap']:.2f}",
+            )
+        )
+    elif vwap_posture["has_downside_control"]:
+        lines.append(
+            (
+                "BEARS in control",
+                "bad",
+                f"price ${pa['spot']:.2f} is {pa['vs_vwap']:+.2f}% "
+                f"BELOW VWAP ${pa['vwap']:.2f}",
+            )
+        )
     else:
-        lines.append(("BALANCED / chop", "warn",
-                      f"price hugging VWAP ${pa['vwap']:.2f} "
-                      f"({pa['vs_vwap']:+.2f}%) - no edge, wait"))
+        label = "hugging" if vwap_posture["state"] == "hugging_vwap" else "near"
+        lines.append(
+            (
+                "BALANCED / chop",
+                "warn",
+                f"price {label} VWAP ${pa['vwap']:.2f} "
+                f"({pa['vs_vwap']:+.2f}%) - no edge, wait",
+            )
+        )
 
     # 2. where in the day's range
     rp = pa["rng_pos"]
-    if rp >= 80:
-        lines.append(("At day HIGHS", "warn",
-                      f"{rp:.0f}% of range - breakout OR exhaustion zone"))
-    elif rp <= 20:
-        lines.append(("At day LOWS", "warn",
-                      f"{rp:.0f}% of range - breakdown OR reclaim zone"))
+    if (
+        bool(range_posture.get("is_pressing_edge"))
+        and str(range_posture.get("side")) == "upside"
+    ):
+        lines.append(
+            (
+                "At day HIGHS",
+                "warn",
+                f"{rp:.0f}% of range | {pa['balance_state']} {pa['balance_reference']} balance at {pa['position_in_balance']:.2f} - breakout OR exhaustion zone",
+            )
+        )
+    elif (
+        bool(range_posture.get("is_pressing_edge"))
+        and str(range_posture.get("side")) == "downside"
+    ):
+        lines.append(
+            (
+                "At day LOWS",
+                "warn",
+                f"{rp:.0f}% of range | {pa['balance_state']} {pa['balance_reference']} balance at {pa['position_in_balance']:.2f} - breakdown OR reclaim zone",
+            )
+        )
     else:
-        lines.append(("Mid-range", "info",
-                      f"{rp:.0f}% of day range (lo ${pa['lo']:.2f} / "
-                      f"hi ${pa['hi']:.2f})"))
+        lines.append(
+            (
+                "Mid-range",
+                "info",
+                f"{rp:.0f}% of day range | {pa['balance_state']} {pa['balance_reference']} balance at {pa['position_in_balance']:.2f} "
+                f"(lo ${pa['balance_low']:.2f} / hi ${pa['balance_high']:.2f})",
+            )
+        )
 
     # 3. momentum real or fading
     if abs(pa["mom15"]) < 0.05:
-        lines.append(("Momentum FLAT", "info",
-                      f"{pa['mom15']:+.2f}% last 15m - no thrust"))
+        lines.append(
+            ("Momentum FLAT", "info", f"{pa['mom15']:+.2f}% last 15m - no thrust")
+        )
     elif pa["mom15"] > 0:
-        lines.append(("Momentum UP", "ok",
-                      f"{pa['mom15']:+.2f}% last 15m"))
+        lines.append(("Momentum UP", "ok", f"{pa['mom15']:+.2f}% last 15m"))
     else:
-        lines.append(("Momentum DOWN", "bad",
-                      f"{pa['mom15']:+.2f}% last 15m"))
+        lines.append(("Momentum DOWN", "bad", f"{pa['mom15']:+.2f}% last 15m"))
 
     # 4. volume confirming?
     vm = pa["vol_mult"]
-    if vm >= 1.5:
-        lines.append(("Volume SURGE", "ok",
-                      f"{vm:.1f}x normal - move is CONFIRMED"))
-    elif vm <= 0.7:
-        lines.append(("Volume THIN", "warn",
-                      f"{vm:.1f}x normal - move NOT confirmed, fade risk"))
+    volume_profile = pa.get("volume_profile") or {}
+    confirmation = volume_profile.get("confirmation")
+    detail = volume_profile.get("reason") or f"{vm:.1f}x blended participation"
+    if confirmation == "confirmed":
+        lines.append(("Move volume CONFIRMS", "ok", detail))
+    elif confirmation == "participating":
+        lines.append(("Move volume participating", "info", detail))
+    elif confirmation == "missing":
+        lines.append(("Move volume MISSING", "warn", detail + " - fade/trap risk"))
     else:
-        lines.append(("Volume normal", "info", f"{vm:.1f}x typical bar"))
+        lines.append(("Move volume mixed", "warn", detail))
 
     # 5. options walls (magnets / levels)
     cw, pw = op["call_wall"], op["put_wall"]
     if cw is not None and pw is not None:
-        lines.append(("Options box", "info",
-                      f"put wall ${pw:g} (support) <-> call wall ${cw:g} "
-                      f"(resistance) | exp {op['exp']}"))
-    lines.append(("Sentiment", "info",
-                  f"P/C OI {op['pcr']:.2f} | ATM IV {op['atm_iv'] * 100:.1f}%"))
+        lines.append(
+            (
+                "Options box",
+                "info",
+                f"put wall ${pw:g} (support) <-> call wall ${cw:g} "
+                f"(resistance) | exp {op['exp']}",
+            )
+        )
+    lines.append(
+        (
+            "Sentiment",
+            "info",
+            f"P/C OI {op['pcr']:.2f} | ATM IV {op['atm_iv'] * 100:.1f}%",
+        )
+    )
 
     return lines
 
 
 # ----------------------------- rendering -----------------------------
-def chart_svg(rows, pa):
-    W, H, PL, PR, PT, PB = 1000, 320, 60, 70, 20, 28
-    pw, ph = W - PL - PR, H - PT - PB
-    closes = [b[4] for b in rows]
-    n = len(closes)
-    lo, hi = min(closes), max(closes)
-    span = (hi - lo) or 1
-    pad = span * 0.08
-    lo -= pad
-    hi += pad
-    span = hi - lo
-
-    def x(i):
-        return PL + i / max(n - 1, 1) * pw
-
-    def y(p):
-        return PT + (1 - (p - lo) / span) * ph
-
-    s = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
-         f'viewBox="0 0 {W} {H}" font-family="monospace">',
-         f'<rect width="{W}" height="{H}" fill="#0d1117"/>']
-    # VWAP line
-    vy = y(pa["vwap"])
-    s.append(f'<line x1="{PL}" y1="{vy:.1f}" x2="{PL+pw}" y2="{vy:.1f}" '
-             f'stroke="#ffd33d" stroke-width="1" stroke-dasharray="5 4"/>')
-    s.append(f'<text x="{PL+pw+4}" y="{vy+4:.1f}" fill="#ffd33d" '
-             f'font-size="10">VWAP {pa["vwap"]:.2f}</text>')
-    # price line, colored by vwap control
-    col = "#26a641" if pa["vs_vwap"] >= 0 else "#f85149"
-    pts = " ".join(f"{x(i):.1f},{y(closes[i]):.1f}" for i in range(n))
-    s.append(f'<polyline points="{pts}" fill="none" stroke="{col}" '
-             f'stroke-width="1.8"/>')
-    # last dot
-    s.append(f'<circle cx="{x(n-1):.1f}" cy="{y(closes[-1]):.1f}" r="3.5" '
-             f'fill="#58a6ff"/>')
-    s.append(f'<text x="{PL+pw+4}" y="{y(closes[-1])+4:.1f}" fill="#58a6ff" '
-             f'font-size="11" font-weight="bold">${closes[-1]:.2f}</text>')
-    s.append("</svg>")
-    return "\n".join(s)
-
-
-CLR = {"ok": "#26a641", "bad": "#f85149", "warn": "#d29922", "info": "#58a6ff"}
-
-
-def _setup_section(setups):
-    if not setups:
-        return ('<div style="border:1px dashed #30363d;background:#0d1117;'
-                'padding:12px;margin:8px 0;border-radius:6px;color:#7d8590;'
-                'font-size:13px">No failed-break or exhaustion setup right now '
-                '- stand down, wait for the trap.</div>')
-    blocks = []
-    for s in setups:
-        c = CLR.get(s["kind"], "#58a6ff")
-        blocks.append(
-            f'<div style="border:2px solid {c};background:#161b22;'
-            f'padding:12px;margin:8px 0;border-radius:8px">'
-            f'<div style="color:{c};font-weight:bold;font-size:17px">'
-            f'{s["tag"]} &#8594; {s["bias"]}</div>'
-            f'<div style="color:#adbac7;font-size:13px;margin-top:4px">'
-            f'{s["detail"]}</div></div>'
-        )
-    return "".join(blocks)
-
-
-def _permission_section(permission):
-    if not permission:
-        return ""
-    gate = permission.get("trade_gate", "BLOCK")
-    score = permission.get("trade_permission_score", 0)
-    bias = permission.get("bias", "NEUTRAL")
-    color = {"PERMIT": "#26a641", "CAUTION": "#d29922"}.get(gate, "#f85149")
-    rows = []
-    for name, item in permission.get("scores", {}).items():
-        label = name.replace("_score", "").replace("_", " ").title()
-        rows.append(
-            f'<tr><td style="padding:3px 8px;color:#7d8590">{label}</td>'
-            f'<td style="padding:3px 8px;color:#e6edf3;text-align:right">'
-            f'{item["score"]}</td>'
-            f'<td style="padding:3px 8px;color:#adbac7">{item["reason"]}</td></tr>'
-        )
-    warnings = "".join(
-        f'<li style="margin:2px 0">{reason}</li>'
-        for reason in permission.get("warning_reasons", [])
-    )
-    return (
-        f'<div style="border:2px solid {color};background:#161b22;'
-        f'padding:12px;margin:8px 0;border-radius:8px">'
-        f'<div style="color:{color};font-weight:bold;font-size:18px">'
-        f'TRADE PERMISSION: {gate} / {score} / {bias}</div>'
-        f'<div style="color:#adbac7;font-size:12px;margin-top:4px">'
-        f'Grey-out score built from structure, acceptance/rejection, location, '
-        f'volume, pressure, time, volatility, and candle personality.</div>'
-        f'<table style="width:100%;border-collapse:collapse;font-size:12px;'
-        f'margin-top:8px">{"".join(rows)}</table>'
-        f'<ul style="color:#d29922;font-size:12px;margin:8px 0 0 16px">'
-        f'{warnings}</ul></div>'
-    )
-
-
-def render_html(pa, op, lines, setups, permission=None):
-    stamp = dt.datetime.now().strftime("%H:%M:%S")
-    sign = "+" if pa["day_chg"] >= 0 else ""
-    cards = []
-    for title, kind, detail in lines:
-        c = CLR.get(kind, "#58a6ff")
-        cards.append(
-            f'<div style="border-left:4px solid {c};background:#161b22;'
-            f'padding:10px 12px;margin:8px 0;border-radius:6px">'
-            f'<div style="color:{c};font-weight:bold;font-size:15px">{title}'
-            f'</div><div style="color:#adbac7;font-size:13px;margin-top:3px">'
-            f'{detail}</div></div>'
-        )
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="45">
-<title>SharpEdge Cockpit</title></head>
-<body style="margin:0;background:#0d1117;color:#e6edf3;font-family:monospace">
-<div style="padding:12px">
-<div style="display:flex;justify-content:space-between;align-items:baseline">
-<h2 style="margin:0;font-size:18px">SharpEdge Live Read - SPY</h2>
-<span style="color:#7d8590;font-size:12px">updated {stamp} | auto 45s</span>
-</div>
-<div style="font-size:26px;font-weight:bold;margin:6px 0">
-${pa['spot']:.2f}
-<span style="font-size:16px;color:{'#26a641' if pa['day_chg']>=0 else '#f85149'}">
-{sign}{pa['day_chg']:.2f}% today</span></div>
-<img src="cockpit_chart.svg" style="width:100%;border:1px solid #21262d;
-border-radius:8px">
-<h3 style="font-size:14px;color:#e6edf3;margin:14px 0 4px">TRADE GATE
-(programmed discretionary checklist)</h3>
-{_permission_section(permission)}
-<h3 style="font-size:14px;color:#e6edf3;margin:14px 0 4px">SETUPS
-(failed breaks + exhaustion)</h3>
-{_setup_section(setups)}
-<h3 style="font-size:14px;color:#7d8590;margin:14px 0 4px">THE READ
-(context)</h3>
-{''.join(cards)}
-<p style="color:#484f58;font-size:11px;margin-top:14px">
-Free data (Yahoo 1m + CBOE delayed options). Decision support only -
-you own every trade.</p>
-</div></body></html>"""
-
-
 def read_microstructure(rows, lookback=8):
     """OHLC-only microstructure of the session-so-far candle + a Donchian channel.
 
@@ -382,7 +256,7 @@ def read_microstructure(rows, lookback=8):
     ch_pos = (c - ch_lo) / ch_w * 100
     ch_width_pct = ch_w / c * 100
     # channel slope: midline now vs midline `lookback` bars earlier
-    prev = rows[-2 * lookback:-lookback] if len(rows) >= 2 * lookback else rows[:1]
+    prev = rows[-2 * lookback : -lookback] if len(rows) >= 2 * lookback else rows[:1]
     prev_mid = (max(r[2] for r in prev) + min(r[3] for r in prev)) / 2
     cur_mid = (ch_hi + ch_lo) / 2
     ch_slope_pct = (cur_mid - prev_mid) / c * 100
@@ -410,13 +284,16 @@ def read_magnitude(rows, spot, atm_iv, K=2.5356):
     realized > implied => options underpricing the move ('cheap'); else 'rich'.
     """
     import math
+
     if len(rows) < 3:
         return {}
     terms = []
     for _m, o, h, low, c, _v in rows:
         if o > 0 and low > 0 and h > 0:
-            terms.append(0.5 * math.log(h / low) ** 2
-                         - (2 * math.log(2) - 1) * math.log(max(c / o, 1e-9)) ** 2)
+            terms.append(
+                0.5 * math.log(h / low) ** 2
+                - (2 * math.log(2) - 1) * math.log(max(c / o, 1e-9)) ** 2
+            )
     if not terms:
         return {}
     gk = math.sqrt(max(sum(terms) / len(terms), 0.0)) * 100  # % per-bar vol
@@ -435,32 +312,154 @@ def read_magnitude(rows, spot, atm_iv, K=2.5356):
     }
 
 
-def write_signal(pa, op, gp, gcard, micro=None, magnitude=None, permission=None):
+def write_signal(
+    pa,
+    op,
+    gp,
+    gcard,
+    signal_ts,
+    setups=None,
+    micro=None,
+    magnitude=None,
+    permission=None,
+    volatility_structure=None,
+    target_plan=None,
+    decision_receipt=None,
+    permission_score_trend=None,
+    edge_token_position=None,
+    regime_refinement=None,
+    source_freshness=None,
+    reference_levels=None,
+    level_states=None,
+    timeframe_agreement=None,
+    transition_pressure=None,
+):
     """Drop a machine-readable signal.json the trade_intent pipeline can read."""
+
+    def rounded(value, digits):
+        return round(value, digits) if isinstance(value, (int, float)) else None
+
+    volatility_structure = volatility_structure or {}
+    reference_levels = reference_levels or {}
+    level_states = level_states or {}
+    source_freshness = {
+        "signal_generated_at": signal_ts,
+        **(source_freshness or {}),
+    }
+    entry_setup = primary_trade_setup(setups)
+    context_setup = primary_context_setup(setups)
+    effective_entry_gate = (
+        ((permission or {}).get("setup_conviction") or {}).get("entry_gate")
+        or (decision_receipt or {}).get("entry_gate")
+        or {}
+    )
+    effective_context_gate = (
+        ((permission or {}).get("setup_conviction") or {}).get("context_gate")
+        or (decision_receipt or {}).get("context_gate")
+        or {}
+    )
     sig = {
         "schema": "sharpedge.signal.v1",
-        "ts": dt.datetime.now().isoformat(),
+        "ts": signal_ts,
         "symbol": "SPY",
         "spot": round(pa["spot"], 2),
         "day_chg": round(pa["day_chg"], 3),
         "vwap": round(pa["vwap"], 2),
         "vs_vwap": round(pa["vs_vwap"], 3),
+        "balance_high": round(pa["balance_high"], 2),
+        "balance_low": round(pa["balance_low"], 2),
+        "position_in_balance": round(pa["position_in_balance"], 3),
+        "balance_state": pa["balance_state"],
+        "balance_label": pa["balance_label"],
+        "balance_width_pct": round(pa["balance_width_pct"], 3),
+        "balance_window_bars": pa["balance_window_bars"],
+        "balance_reference": pa["balance_reference"],
+        "dominant_balance_name": pa["dominant_balance_name"],
+        "dominant_balance_reason": pa["dominant_balance_reason"],
+        "dominant_balance_previous_name": pa["dominant_balance_previous_name"],
+        "dominant_balance_flip": pa["dominant_balance_flip"],
+        "balance_models": pa["balance_models"],
+        "balance_confluence": pa["balance_confluence"],
+        "balance_disagreement": pa["balance_disagreement"],
+        "session_position_in_range": round(pa["session_position_in_range"], 3),
         "rng_pos": round(pa["rng_pos"], 1),
         "mom15": round(pa["mom15"], 3),
         "vol_mult": round(pa["vol_mult"], 2),
+        "volume_profile": pa.get("volume_profile") or {},
         "call_wall": op.get("call_wall"),
         "put_wall": op.get("put_wall"),
+        "call_volume_wall": op.get("call_volume_wall"),
+        "put_volume_wall": op.get("put_volume_wall"),
         "pcr": round(op.get("pcr", 0), 2),
+        "pcvr": round(op.get("pcvr", 0), 2),
+        "call_volume_total": rounded(op.get("call_volume_total"), 0),
+        "put_volume_total": rounded(op.get("put_volume_total"), 0),
+        "atm_strike": op.get("atm_strike"),
         "atm_iv": round(op.get("atm_iv", 0), 4),
+        "atm_call_iv": rounded(op.get("atm_call_iv"), 4),
+        "atm_put_iv": rounded(op.get("atm_put_iv"), 4),
+        "atm_iv_skew": rounded(op.get("atm_iv_skew"), 4),
+        "atm_call_delta": rounded(op.get("atm_call_delta"), 4),
+        "atm_put_delta": rounded(op.get("atm_put_delta"), 4),
+        "atm_call_theta": rounded(op.get("atm_call_theta"), 4),
+        "atm_put_theta": rounded(op.get("atm_put_theta"), 4),
+        "atm_call_vega": rounded(op.get("atm_call_vega"), 4),
+        "atm_put_vega": rounded(op.get("atm_put_vega"), 4),
+        "atm_call_rho": rounded(op.get("atm_call_rho"), 4),
+        "atm_put_rho": rounded(op.get("atm_put_rho"), 4),
+        "atm_call_theo": rounded(op.get("atm_call_theo"), 2),
+        "atm_put_theo": rounded(op.get("atm_put_theo"), 2),
+        "atm_call_last_trade_price": rounded(op.get("atm_call_last_trade_price"), 2),
+        "atm_put_last_trade_price": rounded(op.get("atm_put_last_trade_price"), 2),
+        "atm_call_bid": rounded(op.get("atm_call_bid"), 2),
+        "atm_call_ask": rounded(op.get("atm_call_ask"), 2),
+        "atm_put_bid": rounded(op.get("atm_put_bid"), 2),
+        "atm_put_ask": rounded(op.get("atm_put_ask"), 2),
+        "atm_call_spread": rounded(op.get("atm_call_spread"), 2),
+        "atm_put_spread": rounded(op.get("atm_put_spread"), 2),
+        "atm_call_spread_pct": rounded(op.get("atm_call_spread_pct"), 4),
+        "atm_put_spread_pct": rounded(op.get("atm_put_spread_pct"), 4),
+        "atm_straddle_mid": rounded(op.get("atm_straddle_mid"), 2),
         "exp": op.get("exp"),
         "gamma_regime": gp.get("regime"),
         "pin": gp.get("pin"),
         "max_pain": gp.get("max_pain"),
         "setup_tag": gcard["tag"] if gcard else None,
         "setup_bias": gcard["bias"] if gcard else None,
+        "entry_setup_tag": effective_entry_gate.get("tag") or entry_setup.get("tag"),
+        "entry_setup_bias": effective_entry_gate.get("bias") or entry_setup.get("bias"),
+        "context_setup_tag": effective_context_gate.get("tag")
+        or context_setup.get("tag"),
+        "context_setup_bias": effective_context_gate.get("bias")
+        or context_setup.get("bias"),
+        "setup_cards": setups or [],
+        "reference_levels": reference_levels,
+        "level_states": level_states,
+        "execution_structure_state": (permission or {}).get("structure_state") or {},
+        "execution_acceptance_state": (permission or {}).get("acceptance_state") or {},
+        "execution_location_state": (permission or {}).get("location_state") or {},
+        "execution_dealer_state": (permission or {}).get("dealer_state") or {},
+        "execution_volume_state": (permission or {}).get("volume_state") or {},
+        "execution_trend_state": (permission or {}).get("trend_state") or {},
+        "execution_time_state": (permission or {}).get("time_state") or {},
+        "volatility_state": volatility_structure.get("volatility_state"),
+        "structure_state": volatility_structure.get("structure_state"),
+        "volatility_structure": volatility_structure,
         "micro": micro or {},
         "magnitude": magnitude or {},
         "trade_permission": permission or {},
+        "target_plan": target_plan or {},
+        "entry_gate": (decision_receipt or {}).get("entry_gate") or {},
+        "context_gate": (decision_receipt or {}).get("context_gate") or {},
+        "decision_receipt": decision_receipt or {},
+        "permission_score_trend": permission_score_trend or {},
+        "edge_token_position": edge_token_position or {},
+        "regime_refinement": regime_refinement or {},
+        "weekly_context": pa.get("weekly_context") or {},
+        "monthly_context": pa.get("monthly_context") or {},
+        "timeframe_agreement": timeframe_agreement or {},
+        "transition_pressure": transition_pressure or {},
+        "source_freshness": source_freshness,
     }
     out = os.path.expanduser("~/SharpEdge-System/outputs")
     os.makedirs(out, exist_ok=True)
@@ -469,38 +468,250 @@ def write_signal(pa, op, gp, gcard, micro=None, magnitude=None, permission=None)
 
 
 def main():
-    rows = fetch_intraday()
-    spot_opt, book = fetch_options()
+    rows, price_source = fetch_intraday_with_source()
+    _spot_opt, book, options_source = fetch_options_with_source()
     pa = read_price_action(rows)
     op = read_options(pa["spot"], book)
     lines = synthesize(pa, op)
     levels = reference_levels(rows)
-    setups = detect_failed_breaks(rows, levels) + detect_exhaustion(rows, pa)
+    level_states = build_level_state_map(rows, levels)
+    volatility_structure = read_volatility_structure(rows, pa)
     gp = gamma_profile(book, pa["spot"])
     gcard = gamma_card(gp)
+
+    force_cards = []
+    continuation = detect_negative_gamma_continuation(pa, op, gp, bars=rows)
+    if continuation:
+        force_cards.append(continuation)
+    sticky_noise = detect_sticky_noise(pa, op, gp)
+    if sticky_noise:
+        force_cards.append(sticky_noise)
+
+    setups = (
+        force_cards + detect_failed_breaks(rows, levels) + detect_exhaustion(rows, pa)
+    )
+    coil = detect_volatility_coil(rows, pa, volatility_structure)
+    if coil:
+        setups.append(coil)
     if gcard:
         setups = [gcard] + setups  # gamma regime sits at the very top
     micro = read_microstructure(rows)
     magnitude = read_magnitude(rows, pa["spot"], op.get("atm_iv", 0))
-    permission = score_trade_permission(rows, pa, levels, setups, op, gp, magnitude)
-    write_signal(pa, op, gp, gcard, micro, magnitude, permission)  # machine-readable feed
+    context_attachment = build_context_attachment(rows, spot=pa["spot"])
+    weekly_context = context_attachment["weekly_context"]
+    monthly_context = context_attachment["monthly_context"]
+    weekly_context_rows = context_attachment["weekly_rows"]
+    monthly_context_rows = context_attachment["monthly_rows"]
+    carry_levels = context_attachment["carry_levels"]
+    monthly_levels = context_attachment["monthly_levels"]
+    pa["weekly_context"] = weekly_context
+    pa["monthly_context"] = monthly_context
+    permission = score_trade_permission(
+        rows, pa, levels, setups, op, gp, magnitude, volatility_structure
+    )
+    timeframe_agreement = build_timeframe_agreement(
+        pa,
+        weekly_context,
+        monthly_context_rows,
+        permission,
+    )
+    target_plan = infer_target(pa, op, permission, gp, micro, magnitude, setups)
+    signal_ts = dt.datetime.now().isoformat()
+    out_dir = os.path.expanduser("~/SharpEdge-System/outputs")
+    receipt_path = os.path.join(out_dir, "permission_receipts_spy.jsonl")
+    prior_receipts = load_recent_receipts(Path(receipt_path))
+    decision_receipt = build_decision_receipt(
+        signal_ts,
+        "SPY",
+        pa.get("spot"),
+        permission,
+        target_plan,
+        setups,
+        prior_receipts[-1] if prior_receipts else None,
+    )
+    annotate_setup_conviction(permission, decision_receipt.get("setup_events") or [])
+    decision_receipt["setup_conviction"] = permission.get("setup_conviction") or {}
+    decision_receipt["setup"] = (permission.get("setup_conviction") or {}).get(
+        "setup_tag"
+    ) or decision_receipt.get("setup")
+    decision_receipt["setup_bias"] = (
+        ((permission.get("setup_conviction") or {}).get("entry_gate") or {}).get("bias")
+    ) or decision_receipt.get("setup_bias")
+    decision_receipt["entry_gate"] = (
+        ((permission.get("setup_conviction") or {}).get("entry_gate"))
+        or decision_receipt.get("entry_gate")
+        or {}
+    )
+    decision_receipt["primary_setup_event"] = primary_setup_event(
+        decision_receipt.get("setup_events") or [], decision_receipt.get("setup")
+    )
+    permission_score_trend = build_permission_score_trend(
+        decision_receipt, prior_receipts
+    )
+    transition_pressure = build_transition_pressure_packet(
+        pa,
+        op,
+        gp,
+        volatility_structure,
+        setups,
+        decision_receipt,
+        prior_receipts,
+        level_states=level_states,
+    )
+    edge_token_position = {}
+    regime_refinement = annotate_market_behavior(
+        pa,
+        op,
+        gp,
+        permission,
+        target_plan,
+        magnitude,
+        setups,
+        edge_token_position,
+    )
+    append_decision_receipt(Path(receipt_path), decision_receipt)
+    write_signal(
+        pa,
+        op,
+        gp,
+        gcard,
+        signal_ts,
+        setups,
+        micro,
+        magnitude,
+        permission,
+        volatility_structure,
+        target_plan,
+        decision_receipt,
+        permission_score_trend,
+        edge_token_position,
+        regime_refinement,
+        {
+            "price": price_source,
+            "options": options_source,
+        },
+        levels,
+        level_states,
+        timeframe_agreement,
+        transition_pressure,
+    )
+    write_ace_snapshot(rows, pa, levels, op, gp, out_dir)
     with open(f"{OUT_DIR}/cockpit_chart.svg", "w") as f:
-        f.write(chart_svg(rows, pa))
+        f.write(
+            chart_svg(
+                rows,
+                pa,
+                levels,
+                setups,
+                volatility_structure,
+                level_states=level_states,
+            )
+        )
+    with open(f"{OUT_DIR}/cockpit_weekly_context.svg", "w") as f:
+        f.write(
+            build_weekly_context_svg(
+                weekly_context_rows,
+                carry_levels,
+                symbol="SPY",
+                lookback_days=5,
+            )
+        )
+    with open(f"{OUT_DIR}/cockpit_monthly_context.svg", "w") as f:
+        f.write(
+            build_monthly_context_svg(
+                monthly_context_rows,
+                monthly_levels,
+                symbol="SPY",
+                lookback_months=6,
+            )
+        )
+    stamp = dt.datetime.now().strftime("%H:%M:%S")
     with open(f"{OUT_DIR}/cockpit.html", "w") as f:
-        f.write(render_html(pa, op, lines, setups, permission))
-    print(f"spot ${pa['spot']:.2f} | day {pa['day_chg']:+.2f}% | "
-          f"vs VWAP {pa['vs_vwap']:+.2f}% | rng {pa['rng_pos']:.0f}% | "
-          f"vol {pa['vol_mult']:.1f}x")
+        f.write(
+            render_live_read_html(
+                pa,
+                op,
+                lines,
+                setups,
+                permission,
+                micro,
+                magnitude,
+                gp,
+                permission_score_trend,
+                edge_token_position,
+                regime_refinement,
+                weekly_context,
+                monthly_context,
+                stamp,
+                level_states=level_states,
+                timeframe_agreement=timeframe_agreement,
+                transition_pressure=transition_pressure,
+            )
+        )
+    with open(f"{OUT_DIR}/runner_handoff_live.html", "w") as f:
+        f.write(
+            render_runner_handoff_live_html(
+                pa,
+                op,
+                lines,
+                setups,
+                permission,
+                micro,
+                magnitude,
+                gp,
+                permission_score_trend,
+                edge_token_position,
+                regime_refinement,
+                weekly_context,
+                monthly_context,
+                stamp,
+                decision_receipt.get("setup_events") or [],
+                timeframe_agreement=timeframe_agreement,
+                transition_pressure=transition_pressure,
+            )
+        )
+    print(
+        f"spot ${pa['spot']:.2f} | day {pa['day_chg']:+.2f}% | "
+        f"vs VWAP {pa['vs_vwap']:+.2f}% | balance {pa['position_in_balance']:.2f} "
+        f"({pa['balance_state']}) | rng {pa['rng_pos']:.0f}% | vol {pa['vol_mult']:.1f}x"
+    )
     levels_str = " ".join(f"{k}=${v:.2f}" for k, v in levels.items())
     print(f"  levels: {levels_str}")
-    print(f"  trade gate: {permission['trade_gate']} "
-          f"{permission['trade_permission_score']}/100 "
-          f"bias={permission['bias']}")
+    setup_conviction = permission.get("setup_conviction") or {}
+    print(
+        f"  setup conviction: {setup_conviction.get('setup_gate', 'NONE')} "
+        f"{setup_conviction.get('setup_conviction_score', 0)}/100 "
+        f"bias={setup_conviction.get('bias', 'NEUTRAL')}"
+    )
+    print(
+        f"  execution gate: {permission['trade_gate']} "
+        f"{permission['trade_permission_score']}/100 "
+        f"bias={permission['bias']}"
+    )
+    print(
+        f"  authority engine: {permission.get('authority_engine', 'legacy')} "
+        f"mode={permission.get('authority_mode', 'full_contract')}"
+    )
+    print(
+        f"  transition pressure: {transition_pressure.get('transition_state', 'unknown')} "
+        f"{transition_pressure.get('transition_pressure_score', 0)}/100 "
+        f"attention={transition_pressure.get('attention_state', 'watch')}"
+    )
+    spine = permission.get("bucket_conditioned_spine") or {}
+    print(
+        f"  spine authority: {spine.get('gate', 'BLOCK')} "
+        f"{spine.get('score', permission['trade_permission_score'])}/100 "
+        f"action={spine.get('recommended_action', 'watch_only')}"
+    )
+    print(
+        f"  behavior: {regime_refinement.get('primary_behavior')} -> "
+        f"{regime_refinement.get('behavior_summary')}"
+    )
     if setups:
         for s in setups:
             print(f"  >> {s['tag']} -> {s['bias']}: {s['detail']}")
     else:
-        print("  >> no failed-break/exhaustion setup right now")
+        print("  >> no failed-break/exhaustion/compression setup right now")
     for t, k, d in lines:
         print(f"  [{k:4}] {t}: {d}")
 

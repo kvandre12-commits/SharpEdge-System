@@ -26,6 +26,10 @@ import sys
 import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from scripts.utils.pipeline_state import write_state  # noqa: E402
+except ModuleNotFoundError:  # pragma: no cover - path execution fallback
+    from utils.pipeline_state import write_state  # noqa: E402
 from options_snapshot_store import (  # noqa: E402
     connect,
     dte,
@@ -71,6 +75,13 @@ def build_rows(options: list[dict], snap_ts: str, session: str):
         leg[f"{prefix}_volume"] = _num(o.get("volume"))
         leg[f"{prefix}_gamma"] = _num(o.get("gamma"))
         leg[f"{prefix}_iv"] = _num(o.get("iv"))
+        leg[f"{prefix}_theta"] = _num(o.get("theta"))
+        leg[f"{prefix}_vega"] = _num(o.get("vega"))
+        leg[f"{prefix}_rho"] = _num(o.get("rho"))
+        leg[f"{prefix}_theo"] = _num(o.get("theo"))
+        leg[f"{prefix}_last_trade_price"] = _num(o.get("last_trade_price"))
+        leg[f"{prefix}_bid"] = _num(o.get("bid"))
+        leg[f"{prefix}_ask"] = _num(o.get("ask"))
 
     for (expiry, strike), leg in merged.items():
         yield (
@@ -88,6 +99,20 @@ def build_rows(options: list[dict], snap_ts: str, session: str):
             leg.get("put_gamma"),
             leg.get("call_iv"),
             leg.get("put_iv"),
+            leg.get("call_theta"),
+            leg.get("put_theta"),
+            leg.get("call_vega"),
+            leg.get("put_vega"),
+            leg.get("call_rho"),
+            leg.get("put_rho"),
+            leg.get("call_theo"),
+            leg.get("put_theo"),
+            leg.get("call_last_trade_price"),
+            leg.get("put_last_trade_price"),
+            leg.get("call_bid"),
+            leg.get("call_ask"),
+            leg.get("put_bid"),
+            leg.get("put_ask"),
         )
 
 
@@ -106,6 +131,26 @@ def verify(con) -> None:
     print(f"rows={tot} days={days} rows_with_OI>0={oi} cboe_rows_with_OI>0={cboe}")
 
 
+def snapshot_state(con) -> dict[str, object]:
+    row = con.execute(
+        """
+        SELECT COUNT(*) AS rows,
+               COUNT(DISTINCT session_date) AS session_count,
+               MAX(snapshot_ts) AS latest_snapshot_ts,
+               MAX(session_date) AS latest_session_date
+        FROM options_chain_snapshots
+        WHERE underlying = ? AND source = 'cboe'
+        """,
+        (UNDERLYING,),
+    ).fetchone()
+    return {
+        "rows": row[0] or 0,
+        "session_count": row[1] or 0,
+        "latest_snapshot_ts": row[2],
+        "latest_session_date": row[3],
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--verify", action="store_true", help="print coverage and exit")
@@ -118,14 +163,33 @@ def main() -> int:
         con.close()
         return 0
 
+    before = snapshot_state(con)
     snap_ts = iso_utc_now()
     session = ny_session_date()
     try:
         options = fetch_chain()
     except Exception as e:  # noqa: BLE001 - network is best-effort
         if FAIL_OPEN:
-            print(f"[cboe] WARNING: chain fetch failed: {e} - continuing without snapshot.")
+            write_state(
+                "cboe_options_chain",
+                {
+                    "underlying": UNDERLYING,
+                    "endpoint": CBOE_URL,
+                    "timeout": TIMEOUT,
+                    "fail_open": FAIL_OPEN,
+                    "network_refresh": False,
+                    "status": "fetch_failed_open",
+                    "error": str(e),
+                    "before": before,
+                    "after": before,
+                },
+            )
+            print(
+                f"[cboe] WARNING: chain fetch failed: {e} - continuing without snapshot."
+            )
+            con.close()
             return 0
+        con.close()
         raise
 
     count = 0
@@ -133,6 +197,22 @@ def main() -> int:
         upsert_row(con, row, source="cboe")
         count += 1
     con.commit()
+    after = snapshot_state(con)
+    write_state(
+        "cboe_options_chain",
+        {
+            "underlying": UNDERLYING,
+            "endpoint": CBOE_URL,
+            "timeout": TIMEOUT,
+            "fail_open": FAIL_OPEN,
+            "network_refresh": True,
+            "status": "ok",
+            "fetched_contracts": len(options),
+            "upserted_rows": count,
+            "before": before,
+            "after": after,
+        },
+    )
     print(f"[cboe] upserted {count} merged option rows for {session} ({UNDERLYING})")
     verify(con)
     con.close()

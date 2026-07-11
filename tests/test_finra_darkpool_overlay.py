@@ -3,7 +3,6 @@ from __future__ import annotations
 import datetime as dt
 import unittest
 
-import pandas as pd
 from unittest.mock import patch
 
 import scripts.ingest_finra_darkpool_overlay as finra
@@ -43,20 +42,25 @@ class FinraDarkpoolOverlayTests(unittest.TestCase):
             "rows": 125,
         }
 
-        with patch.object(finra, "CACHE_TTL_HOURS", 24), patch.object(finra, "REFRESH_LOOKBACK_WEEKS", 2):
+        with (
+            patch.object(finra, "CACHE_TTL_HOURS", 24),
+            patch.object(finra, "REFRESH_LOOKBACK_WEEKS", 2),
+        ):
             weeks = finra.weeks_to_fetch(state, today=dt.date(2026, 6, 10), force=False)
 
         self.assertEqual(weeks[0], dt.date(2026, 5, 4))
         self.assertEqual(weeks[-1], dt.date(2026, 6, 8))
         self.assertLess(len(weeks), 10)
 
-    def test_export_weekly_frame_preserves_legacy_week_start_column(self) -> None:
-        frame = pd.DataFrame({"week_start": ["2026-05-18"], "symbol": ["SPY"]})
+    def test_export_weekly_rows_preserves_legacy_week_start_column(self) -> None:
+        rows = [{"week_start": "2026-05-18", "symbol": "SPY"}]
 
-        exported = finra.export_weekly_frame(frame)
+        exported = finra.export_weekly_rows(rows)
 
-        self.assertEqual(list(exported.columns), ["weekStartDate", "week_start", "symbol"])
-        self.assertEqual(exported.loc[0, "weekStartDate"], "2026-05-18")
+        self.assertEqual(
+            list(exported[0].keys())[:3], ["weekStartDate", "week_start", "symbol"]
+        )
+        self.assertEqual(exported[0]["weekStartDate"], "2026-05-18")
 
     def test_weeks_to_fetch_force_refresh_starts_from_configured_start(self) -> None:
         state = {
@@ -70,6 +74,49 @@ class FinraDarkpoolOverlayTests(unittest.TestCase):
 
         self.assertEqual(weeks[0], dt.date(2026, 4, 27))
         self.assertEqual(weeks[-1], dt.date(2026, 5, 18))
+
+    def test_aggregate_raw_weekly_groups_symbol_rows(self) -> None:
+        rows = [
+            {
+                "weekStartDate": "2025-06-23",
+                "issueSymbolIdentifier": "SPY",
+                "MPID": "A",
+                "marketParticipantName": "Alpha ATS",
+                "totalWeeklyShareQuantity": "10",
+                "totalWeeklyTradeCount": "2",
+                "totalNotionalSum": "1000",
+                "lastReportedDate": "2025-06-27",
+                "lastUpdateDate": "2025-07-14",
+                "initialPublishedDate": "2025-07-14",
+            },
+            {
+                "weekStartDate": "2025-06-23",
+                "issueSymbolIdentifier": "SPY",
+                "MPID": "B",
+                "marketParticipantName": "Beta ATS",
+                "totalWeeklyShareQuantity": "15",
+                "totalWeeklyTradeCount": "3",
+                "totalNotionalSum": "1800",
+                "lastReportedDate": "2025-06-28",
+                "lastUpdateDate": "2025-07-15",
+                "initialPublishedDate": "2025-07-15",
+            },
+        ]
+
+        weekly = finra.aggregate_raw_weekly(rows)
+
+        self.assertEqual(len(weekly), 1)
+        self.assertEqual(weekly[0]["ats_weekly_shares"], 25.0)
+        self.assertEqual(weekly[0]["ats_weekly_trades"], 5.0)
+        self.assertEqual(weekly[0]["ats_weekly_notional"], 2800.0)
+        self.assertEqual(weekly[0]["ats_venue_count"], 2)
+        self.assertEqual(weekly[0]["top_mpid"], "B")
+        self.assertEqual(weekly[0]["top_market_participant_name"], "Beta ATS")
+        self.assertAlmostEqual(weekly[0]["top_mpid_share"], 0.6)
+        self.assertAlmostEqual(weekly[0]["venue_hhi"], 0.52)
+        self.assertEqual(weekly[0]["last_reported_date"], "2025-06-28")
+        self.assertEqual(weekly[0]["last_update_date"], "2025-07-15")
+        self.assertEqual(weekly[0]["initial_published_date"], "2025-07-15")
 
 
 if __name__ == "__main__":

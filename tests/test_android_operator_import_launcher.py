@@ -16,6 +16,11 @@ def _write_json(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def _write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
 def test_launch_operator_packet_to_android_dry_run_writes_result(tmp_path, monkeypatch):
     signal_path = tmp_path / "outputs/signal.json"
     android_root = tmp_path / "SharpEdge-Android"
@@ -41,6 +46,11 @@ def test_launch_operator_packet_to_android_dry_run_writes_result(tmp_path, monke
             "ts": "2026-06-25T21:30:00",
             "symbol": "SPY",
             "spot": 734.3,
+            "edge_token_position": {
+                "suggested_action": "hold",
+                "position_state": "open",
+                "contracts_held": 1,
+            },
             "trade_permission": {
                 "trade_gate": "PERMIT",
                 "trade_permission_score": 97,
@@ -50,6 +60,15 @@ def test_launch_operator_packet_to_android_dry_run_writes_result(tmp_path, monke
                 "scores": {},
             },
         },
+    )
+    _write_text(
+        tmp_path / "cockpit/cockpit.html",
+        '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="45"></head>'
+        "<body><h1>SharpEdge Cockpit</h1></body></html>",
+    )
+    _write_text(
+        tmp_path / "cockpit/cockpit_chart.svg",
+        "<svg xmlns='http://www.w3.org/2000/svg'><rect width='10' height='10'/></svg>",
     )
     _write_json(output_dir / "operator_brief.json", {"headline": "Stand down."})
     _write_json(output_dir / "workflow_state.json", {"state": {"readiness": "blocked"}})
@@ -67,7 +86,9 @@ def test_launch_operator_packet_to_android_dry_run_writes_result(tmp_path, monke
     _write_json(
         output_dir / "robinhood_beta_execution.json",
         {
-            "beta_stage": "artifact_only",
+            "beta_stage": "position_hold",
+            "edge_token_position": {"contracts_held": 1},
+            "order_preview": {"token_action": "hold", "position_intent": "hold"},
             "robinhood_beta_handoff": {"bridge_status": {"status": "disabled"}},
         },
     )

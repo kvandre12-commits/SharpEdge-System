@@ -30,13 +30,14 @@ def test_export_signal_to_android_viewer_copies_trade_gate_contract(tmp_path):
     live_import_path = (
         tmp_path / "phone_companion/views/trading/sharpedge_android_live_import.json"
     )
-    cockpit_html = "<!DOCTYPE html><html><body><h1>SharpEdge Cockpit</h1></body></html>"
+    cockpit_html = (
+        '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="45"></head>'
+        "<body><h1>SharpEdge Cockpit</h1></body></html>"
+    )
     cockpit_chart = (
         "<svg xmlns='http://www.w3.org/2000/svg'><rect width='10' height='10'/></svg>"
     )
-    cockpit_weekly = (
-        "<svg xmlns='http://www.w3.org/2000/svg'><text>weekly</text></svg>"
-    )
+    cockpit_weekly = "<svg xmlns='http://www.w3.org/2000/svg'><text>weekly</text></svg>"
     cockpit_monthly = (
         "<svg xmlns='http://www.w3.org/2000/svg'><text>monthly</text></svg>"
     )
@@ -81,8 +82,12 @@ def test_export_signal_to_android_viewer_copies_trade_gate_contract(tmp_path):
     contract = android_root / "app_contracts/sharpedge.signal.v1.sample.json"
     html_asset = android_root / "app/src/main/assets/sample_cockpit.html"
     chart_asset = android_root / "app/src/main/assets/sample_cockpit_chart.svg"
-    weekly_asset = android_root / "app/src/main/assets/sample_cockpit_weekly_context.svg"
-    monthly_asset = android_root / "app/src/main/assets/sample_cockpit_monthly_context.svg"
+    weekly_asset = (
+        android_root / "app/src/main/assets/sample_cockpit_weekly_context.svg"
+    )
+    monthly_asset = (
+        android_root / "app/src/main/assets/sample_cockpit_monthly_context.svg"
+    )
     live_import = json.loads(live_import_path.read_text())
     assert proof["status"] == "exported"
     assert proof["trade_permission"] == {
@@ -92,15 +97,25 @@ def test_export_signal_to_android_viewer_copies_trade_gate_contract(tmp_path):
     }
     assert json.loads(signal_asset.read_text()) == signal
     assert json.loads(contract.read_text()) == signal
-    assert html_asset.read_text() == cockpit_html
+    html_asset_text = html_asset.read_text()
+    assert 'http-equiv="refresh"' not in html_asset_text.lower()
+    assert "SharpEdge Cockpit" in html_asset_text
     assert chart_asset.read_text() == cockpit_chart
     assert weekly_asset.read_text() == cockpit_weekly
     assert monthly_asset.read_text() == cockpit_monthly
     assert live_import["schema"] == "sharpedge.signal.v1"
-    assert live_import[ANDROID_VIEWER_BUNDLE_KEY]["cockpit_html"] == cockpit_html
+    live_html = live_import[ANDROID_VIEWER_BUNDLE_KEY]["cockpit_html"]
+    assert 'http-equiv="refresh"' not in live_html.lower()
+    assert "SharpEdge Cockpit" in live_html
     assert live_import[ANDROID_VIEWER_BUNDLE_KEY]["cockpit_chart_svg"] == cockpit_chart
-    assert live_import[ANDROID_VIEWER_BUNDLE_KEY]["cockpit_weekly_context_svg"] == cockpit_weekly
-    assert live_import[ANDROID_VIEWER_BUNDLE_KEY]["cockpit_monthly_context_svg"] == cockpit_monthly
+    assert (
+        live_import[ANDROID_VIEWER_BUNDLE_KEY]["cockpit_weekly_context_svg"]
+        == cockpit_weekly
+    )
+    assert (
+        live_import[ANDROID_VIEWER_BUNDLE_KEY]["cockpit_monthly_context_svg"]
+        == cockpit_monthly
+    )
     proof_json = json.loads(proof_path.read_text())
     assert proof_json["status"] == "exported"
     assert proof_json["live_import_path"] == str(live_import_path)

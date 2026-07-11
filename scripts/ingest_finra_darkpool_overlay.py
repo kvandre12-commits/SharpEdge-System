@@ -8,15 +8,17 @@ runs do not re-fetch years of weekly history for no reason.
 
 from __future__ import annotations
 
+import csv
 import datetime as dt
 import json
+import math
 import os
 import sqlite3
 import time
 from pathlib import Path
+from statistics import stdev
 from typing import Any
 
-import pandas as pd
 import requests
 from requests.auth import HTTPBasicAuth
 
@@ -38,10 +40,39 @@ LIMIT = int(os.getenv("FINRA_LIMIT", "5000"))
 SLEEP_S = float(os.getenv("FINRA_SLEEP_S", "0.25"))
 CACHE_TTL_HOURS = float(os.getenv("FINRA_CACHE_TTL_HOURS", "144"))
 REFRESH_LOOKBACK_WEEKS = int(os.getenv("FINRA_REFRESH_LOOKBACK_WEEKS", "4"))
-FORCE_REFRESH = os.getenv("FINRA_FORCE_REFRESH", "0").strip().lower() in {"1", "true", "yes", "y"}
+FORCE_REFRESH = os.getenv("FINRA_FORCE_REFRESH", "0").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "y",
+}
 
 OUTPUT_WEEKLY = Path("outputs/spy_finra_ats_weekly.csv")
 OUTPUT_STATE = Path("outputs/health/finra_state.json")
+WEEKLY_EXPORT_COLUMNS = [
+    "weekStartDate",
+    "week_start",
+    "symbol",
+    "ats_weekly_shares",
+    "ats_weekly_trades",
+    "ats_weekly_notional",
+    "ats_venue_count",
+    "top_mpid",
+    "top_market_participant_name",
+    "top_mpid_share",
+    "venue_hhi",
+    "last_reported_date",
+    "last_update_date",
+    "initial_published_date",
+    "avg_trade_size",
+    "shares_vs_13w_avg",
+    "trades_vs_13w_avg",
+    "shares_z_26w",
+    "ingest_ts",
+]
+
+
+WeekRecord = dict[str, Any]
 
 
 def utc_now() -> dt.datetime:
@@ -90,13 +121,49 @@ def cache_is_fresh(latest_ingest_ts: Any, now: dt.datetime | None = None) -> boo
     return 0 <= age_hours < CACHE_TTL_HOURS
 
 
-def build_payload(week_start: str) -> dict[str, Any]:
+def build_historic_payload(week_start: str) -> dict[str, Any]:
+    """Build a FINRA historical payload using only allowed query fields."""
     return {
         "compareFilters": [
-            {"compareType": "equal", "fieldName": "issueSymbolIdentifier", "fieldValue": SYMBOL},
-            {"compareType": "equal", "fieldName": "tierIdentifier", "fieldValue": TIER},
-            {"compareType": "equal", "fieldName": "summaryTypeCode", "fieldValue": SUMMARY_TYPE},
-            {"compareType": "equal", "fieldName": "weekStartDate", "fieldValue": week_start},
+            {
+                "compareType": "equal",
+                "fieldName": "weekStartDate",
+                "fieldValue": week_start,
+            },
+            {
+                "compareType": "equal",
+                "fieldName": "tierIdentifier",
+                "fieldValue": TIER,
+            },
+        ],
+        "limit": LIMIT,
+        "offset": 0,
+    }
+
+
+def build_current_payload(week_start: str) -> dict[str, Any]:
+    return {
+        "compareFilters": [
+            {
+                "compareType": "equal",
+                "fieldName": "issueSymbolIdentifier",
+                "fieldValue": SYMBOL,
+            },
+            {
+                "compareType": "equal",
+                "fieldName": "tierIdentifier",
+                "fieldValue": TIER,
+            },
+            {
+                "compareType": "equal",
+                "fieldName": "summaryTypeCode",
+                "fieldValue": SUMMARY_TYPE,
+            },
+            {
+                "compareType": "equal",
+                "fieldName": "weekStartDate",
+                "fieldValue": week_start,
+            },
         ],
         "limit": LIMIT,
         "offset": 0,
@@ -118,12 +185,25 @@ def safe_rows(resp: requests.Response) -> list[dict[str, Any]]:
     return []
 
 
-def post_rows(dataset: str, payload: dict[str, Any], headers: dict[str, str], auth: HTTPBasicAuth) -> list[dict[str, Any]]:
+def post_rows(
+    dataset: str,
+    payload: dict[str, Any],
+    headers: dict[str, str],
+    auth: HTTPBasicAuth | None,
+) -> list[dict[str, Any]]:
     url = f"{BASE_URL}/{dataset}"
-    resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=60, auth=auth)
+    resp = requests.post(
+        url,
+        headers=headers,
+        data=json.dumps(payload),
+        timeout=60,
+        auth=auth,
+    )
 
     if resp.status_code in (401, 403):
-        raise PermissionError("FINRA auth failed (401/403). Check FINRA_CLIENT_ID/FINRA_CLIENT_SECRET.")
+        raise PermissionError(
+            "FINRA auth failed (401/403). Check FINRA_CLIENT_ID/FINRA_CLIENT_SECRET."
+        )
     if resp.status_code >= 400:
         snippet = (resp.text or "")[:200].replace("\n", " ")
         raise RuntimeError(f"FINRA HTTP {resp.status_code}: {snippet}")
@@ -131,13 +211,42 @@ def post_rows(dataset: str, payload: dict[str, Any], headers: dict[str, str], au
     return safe_rows(resp)
 
 
-def fetch_week(week_start: dt.date, headers: dict[str, str], auth: HTTPBasicAuth) -> pd.DataFrame:
-    payload = build_payload(week_start.isoformat())
+def filter_symbol_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    wanted = SYMBOL.upper()
+    return [
+        row
+        for row in rows
+        if str(row.get("issueSymbolIdentifier") or "").upper() == wanted
+    ]
+
+
+def fetch_week(
+    week_start: dt.date,
+    headers: dict[str, str],
+    auth: HTTPBasicAuth | None,
+) -> list[dict[str, Any]]:
+    week_text = week_start.isoformat()
+    historic_rows: list[dict[str, Any]] = []
     try:
-        rows = post_rows(DATASET_PRIMARY, payload, headers, auth)
+        historic_rows = post_rows(
+            DATASET_PRIMARY,
+            build_historic_payload(week_text),
+            headers,
+            auth,
+        )
     except Exception:
-        rows = post_rows(DATASET_FALLBACK, payload, headers, auth)
-    return pd.DataFrame(rows) if rows else pd.DataFrame()
+        historic_rows = []
+
+    filtered_historic = filter_symbol_rows(historic_rows)
+    if filtered_historic:
+        return filtered_historic
+
+    return post_rows(
+        DATASET_FALLBACK,
+        build_current_payload(week_text),
+        headers,
+        auth,
+    )
 
 
 def ensure_tables(con: sqlite3.Connection) -> None:
@@ -148,7 +257,15 @@ def ensure_tables(con: sqlite3.Connection) -> None:
           symbol TEXT NOT NULL,
           ats_weekly_shares REAL,
           ats_weekly_trades REAL,
+          ats_weekly_notional REAL,
           ats_venue_count INTEGER,
+          top_mpid TEXT,
+          top_market_participant_name TEXT,
+          top_mpid_share REAL,
+          venue_hhi REAL,
+          last_reported_date TEXT,
+          last_update_date TEXT,
+          initial_published_date TEXT,
           avg_trade_size REAL,
           shares_vs_13w_avg REAL,
           trades_vs_13w_avg REAL,
@@ -158,6 +275,19 @@ def ensure_tables(con: sqlite3.Connection) -> None:
         )
         """
     )
+    existing = {row[1] for row in con.execute("PRAGMA table_info(ats_weekly)")}
+    for col, decl in (
+        ("ats_weekly_notional", "REAL"),
+        ("top_mpid", "TEXT"),
+        ("top_market_participant_name", "TEXT"),
+        ("top_mpid_share", "REAL"),
+        ("venue_hhi", "REAL"),
+        ("last_reported_date", "TEXT"),
+        ("last_update_date", "TEXT"),
+        ("initial_published_date", "TEXT"),
+    ):
+        if col not in existing:
+            con.execute(f"ALTER TABLE ats_weekly ADD COLUMN {col} {decl}")
     con.execute(
         """
         CREATE TABLE IF NOT EXISTS overlays_daily (
@@ -186,15 +316,32 @@ def latest_finra_state(con: sqlite3.Connection) -> dict[str, Any]:
     ).fetchone()
     if not row:
         return {"latest_week_start": None, "latest_ingest_ts": None, "rows": 0}
-    return {"latest_week_start": row[0], "latest_ingest_ts": row[1], "rows": row[2] or 0}
+    return {
+        "latest_week_start": row[0],
+        "latest_ingest_ts": row[1],
+        "rows": row[2] or 0,
+    }
 
 
-def weeks_to_fetch(state: dict[str, Any], today: dt.date | None = None, force: bool = FORCE_REFRESH) -> list[dt.date]:
+def weeks_to_fetch(
+    state: dict[str, Any],
+    today: dt.date | None = None,
+    force: bool = FORCE_REFRESH,
+) -> list[dt.date]:
     start = dt.date.fromisoformat(START)
     end = monday_of_week(today or dt.date.today())
     latest_week = parse_date(state.get("latest_week_start"))
+    freshness_now = (
+        dt.datetime.combine(today, dt.time(12, 0, 0))
+        if today is not None
+        else utc_now()
+    )
 
-    if latest_week and not force and cache_is_fresh(state.get("latest_ingest_ts")):
+    if (
+        latest_week
+        and not force
+        and cache_is_fresh(state.get("latest_ingest_ts"), now=freshness_now)
+    ):
         return []
 
     if latest_week and not force:
@@ -203,120 +350,350 @@ def weeks_to_fetch(state: dict[str, Any], today: dt.date | None = None, force: b
     return list(daterange_mondays(start, end))
 
 
-def pick_column(frame: pd.DataFrame, candidates: list[str]) -> str:
-    for column in candidates:
-        if column in frame.columns:
-            return column
-    raise KeyError(f"None of these columns found: {candidates}")
+def _first_present(row: dict[str, Any], candidates: list[str]) -> Any:
+    for key in candidates:
+        if key in row:
+            return row[key]
+    return None
 
 
-def aggregate_raw_weekly(raw: pd.DataFrame) -> pd.DataFrame:
-    if raw.empty:
-        return pd.DataFrame()
+def _to_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
-    col_week = pick_column(raw, ["weekStartDate", "weekstartdate"])
-    col_symbol = pick_column(raw, ["issueSymbolIdentifier", "issuesymbolidentifier"])
-    col_mpid = pick_column(raw, ["marketParticipantIdentifier", "marketparticipantidentifier", "MPID", "mpid"])
-    col_shares = pick_column(raw, ["totalWeeklyShareQuantity", "totalweeklysharequantity", "totalsharequantitysum"])
-    col_trades = pick_column(raw, ["totalWeeklyTradeCount", "totalweeklytradecount", "totaltradecountsum"])
 
-    raw = raw.copy()
-    raw[col_week] = pd.to_datetime(raw[col_week], errors="coerce")
-    raw[col_shares] = pd.to_numeric(raw[col_shares], errors="coerce")
-    raw[col_trades] = pd.to_numeric(raw[col_trades], errors="coerce")
+def _later_date(current: str | None, candidate: str | None) -> str | None:
+    if not candidate:
+        return current
+    if not current or candidate > current:
+        return candidate
+    return current
 
-    weekly = (
-        raw.groupby(raw[col_week], as_index=False)
-        .agg(
-            week_start=(col_week, "first"),
-            symbol=(col_symbol, "first"),
-            ats_weekly_shares=(col_shares, "sum"),
-            ats_weekly_trades=(col_trades, "sum"),
-            ats_venue_count=(col_mpid, pd.Series.nunique),
+
+def _normalize_weekly_rows(raw_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for row in raw_rows:
+        week_date = parse_date(_first_present(row, ["weekStartDate", "weekstartdate"]))
+        symbol = _first_present(row, ["issueSymbolIdentifier", "issuesymbolidentifier"])
+        mpid = _first_present(
+            row,
+            [
+                "marketParticipantIdentifier",
+                "marketparticipantidentifier",
+                "MPID",
+                "mpid",
+            ],
         )
-        .dropna(subset=["week_start"])
-    )
-    weekly["week_start"] = pd.to_datetime(weekly["week_start"]).dt.strftime("%Y-%m-%d")
+        market_participant_name = _first_present(
+            row,
+            ["marketParticipantName", "marketparticipantname"],
+        )
+        shares = _to_float(
+            _first_present(
+                row,
+                [
+                    "totalWeeklyShareQuantity",
+                    "totalweeklysharequantity",
+                    "totalsharequantitysum",
+                ],
+            )
+        )
+        trades = _to_float(
+            _first_present(
+                row,
+                [
+                    "totalWeeklyTradeCount",
+                    "totalweeklytradecount",
+                    "totaltradecountsum",
+                ],
+            )
+        )
+        notional = _to_float(
+            _first_present(
+                row,
+                ["totalNotionalSum", "totalnotionalsum"],
+            )
+        )
+        last_reported_date = _first_present(
+            row,
+            ["lastReportedDate", "lastreporteddate"],
+        )
+        last_update_date = _first_present(
+            row,
+            ["lastUpdateDate", "lastupdatedate"],
+        )
+        initial_published_date = _first_present(
+            row,
+            ["initialPublishedDate", "initialpublisheddate"],
+        )
+        if week_date is None or not symbol:
+            continue
+        normalized.append(
+            {
+                "week_start": week_date.isoformat(),
+                "symbol": str(symbol).upper(),
+                "mpid": "" if mpid in (None, "") else str(mpid),
+                "market_participant_name": (
+                    ""
+                    if market_participant_name in (None, "")
+                    else str(market_participant_name)
+                ),
+                "shares": shares or 0.0,
+                "trades": trades or 0.0,
+                "notional": notional or 0.0,
+                "last_reported_date": str(last_reported_date or "") or None,
+                "last_update_date": str(last_update_date or "") or None,
+                "initial_published_date": str(initial_published_date or "") or None,
+            }
+        )
+    return normalized
+
+
+def aggregate_raw_weekly(raw_rows: list[dict[str, Any]]) -> list[WeekRecord]:
+    grouped: dict[tuple[str, str], WeekRecord] = {}
+    for row in _normalize_weekly_rows(raw_rows):
+        key = (row["symbol"], row["week_start"])
+        bucket = grouped.setdefault(
+            key,
+            {
+                "week_start": row["week_start"],
+                "symbol": row["symbol"],
+                "ats_weekly_shares": 0.0,
+                "ats_weekly_trades": 0.0,
+                "ats_weekly_notional": 0.0,
+                "_mpids": set(),
+                "_shares_by_mpid": {},
+                "_names_by_mpid": {},
+                "last_reported_date": None,
+                "last_update_date": None,
+                "initial_published_date": None,
+            },
+        )
+        bucket["ats_weekly_shares"] += row["shares"]
+        bucket["ats_weekly_trades"] += row["trades"]
+        bucket["ats_weekly_notional"] += row["notional"]
+        bucket["last_reported_date"] = _later_date(
+            bucket.get("last_reported_date"), row.get("last_reported_date")
+        )
+        bucket["last_update_date"] = _later_date(
+            bucket.get("last_update_date"), row.get("last_update_date")
+        )
+        bucket["initial_published_date"] = _later_date(
+            bucket.get("initial_published_date"), row.get("initial_published_date")
+        )
+        if row["mpid"]:
+            bucket["_mpids"].add(row["mpid"])
+            bucket["_shares_by_mpid"][row["mpid"]] = (
+                float(bucket["_shares_by_mpid"].get(row["mpid"], 0.0)) + row["shares"]
+            )
+            if row.get("market_participant_name"):
+                bucket["_names_by_mpid"][row["mpid"]] = row["market_participant_name"]
+
+    weekly: list[WeekRecord] = []
+    for bucket in grouped.values():
+        total_shares = float(bucket["ats_weekly_shares"] or 0.0)
+        shares_by_mpid = bucket.get("_shares_by_mpid") or {}
+        top_mpid = None
+        top_mpid_shares = 0.0
+        if shares_by_mpid:
+            top_mpid = max(shares_by_mpid, key=shares_by_mpid.get)
+            top_mpid_shares = float(shares_by_mpid[top_mpid])
+        top_mpid_share = (
+            top_mpid_shares / total_shares if total_shares > 0 and top_mpid else None
+        )
+        venue_hhi = None
+        if total_shares > 0 and shares_by_mpid:
+            venue_hhi = sum(
+                (float(shares) / total_shares) ** 2
+                for shares in shares_by_mpid.values()
+            )
+        weekly.append(
+            {
+                "week_start": bucket["week_start"],
+                "symbol": bucket["symbol"],
+                "ats_weekly_shares": total_shares,
+                "ats_weekly_trades": bucket["ats_weekly_trades"],
+                "ats_weekly_notional": bucket["ats_weekly_notional"],
+                "ats_venue_count": len(bucket["_mpids"]),
+                "top_mpid": top_mpid,
+                "top_market_participant_name": (
+                    (bucket.get("_names_by_mpid") or {}).get(top_mpid)
+                    if top_mpid
+                    else None
+                ),
+                "top_mpid_share": top_mpid_share,
+                "venue_hhi": venue_hhi,
+                "last_reported_date": bucket.get("last_reported_date"),
+                "last_update_date": bucket.get("last_update_date"),
+                "initial_published_date": bucket.get("initial_published_date"),
+            }
+        )
+    weekly.sort(key=lambda row: (row["week_start"], row["symbol"]))
     return weekly
 
 
-def load_existing_weekly(con: sqlite3.Connection) -> pd.DataFrame:
-    return pd.read_sql_query(
+def load_existing_weekly(con: sqlite3.Connection) -> list[WeekRecord]:
+    rows = con.execute(
         """
-        SELECT week_start, symbol, ats_weekly_shares, ats_weekly_trades, ats_venue_count
+        SELECT week_start, symbol, ats_weekly_shares, ats_weekly_trades,
+               ats_weekly_notional, ats_venue_count, top_mpid,
+               top_market_participant_name, top_mpid_share, venue_hhi,
+               last_reported_date, last_update_date, initial_published_date
         FROM ats_weekly
         WHERE symbol = ?
         ORDER BY week_start ASC
         """,
-        con,
-        params=(SYMBOL,),
-    )
+        (SYMBOL,),
+    ).fetchall()
+    return [
+        {
+            "week_start": row[0],
+            "symbol": row[1],
+            "ats_weekly_shares": float(row[2] or 0.0),
+            "ats_weekly_trades": float(row[3] or 0.0),
+            "ats_weekly_notional": float(row[4] or 0.0),
+            "ats_venue_count": int(row[5] or 0),
+            "top_mpid": row[6],
+            "top_market_participant_name": row[7],
+            "top_mpid_share": float(row[8]) if row[8] is not None else None,
+            "venue_hhi": float(row[9]) if row[9] is not None else None,
+            "last_reported_date": row[10],
+            "last_update_date": row[11],
+            "initial_published_date": row[12],
+        }
+        for row in rows
+    ]
 
 
-def recompute_metrics(weekly: pd.DataFrame, ingest_ts: str) -> pd.DataFrame:
-    if weekly.empty:
-        return weekly
-    weekly = weekly.copy()
-    weekly["week_start"] = pd.to_datetime(weekly["week_start"], errors="coerce")
-    weekly["ats_weekly_shares"] = pd.to_numeric(weekly["ats_weekly_shares"], errors="coerce")
-    weekly["ats_weekly_trades"] = pd.to_numeric(weekly["ats_weekly_trades"], errors="coerce")
-    weekly = weekly.dropna(subset=["week_start"]).sort_values("week_start").reset_index(drop=True)
-
-    weekly["avg_trade_size"] = weekly["ats_weekly_shares"] / weekly["ats_weekly_trades"].replace(0, pd.NA)
-    weekly["shares_vs_13w_avg"] = weekly["ats_weekly_shares"] / weekly["ats_weekly_shares"].rolling(13, min_periods=4).mean()
-    weekly["trades_vs_13w_avg"] = weekly["ats_weekly_trades"] / weekly["ats_weekly_trades"].rolling(13, min_periods=4).mean()
-    rolling_mean = weekly["ats_weekly_shares"].rolling(26, min_periods=8).mean()
-    rolling_std = weekly["ats_weekly_shares"].rolling(26, min_periods=8).std()
-    weekly["shares_z_26w"] = (weekly["ats_weekly_shares"] - rolling_mean) / rolling_std
-    weekly["week_start"] = weekly["week_start"].dt.strftime("%Y-%m-%d")
-    weekly["ingest_ts"] = ingest_ts
-    return weekly
+def _rolling_mean(
+    values: list[float], end_index: int, window: int, min_periods: int
+) -> float | None:
+    start = max(0, end_index - window + 1)
+    sample = values[start : end_index + 1]
+    if len(sample) < min_periods:
+        return None
+    return sum(sample) / len(sample)
 
 
-def merge_weekly(existing: pd.DataFrame, fetched: pd.DataFrame, ingest_ts: str) -> pd.DataFrame:
-    frames = [frame for frame in [existing, fetched] if not frame.empty]
-    if not frames:
-        return pd.DataFrame()
-    combined = pd.concat(frames, ignore_index=True)
-    combined["symbol"] = combined["symbol"].fillna(SYMBOL).astype(str).str.upper()
-    combined = combined[combined["symbol"] == SYMBOL.upper()]
-    combined = combined.drop_duplicates(subset=["symbol", "week_start"], keep="last")
-    return recompute_metrics(combined, ingest_ts)
+def _rolling_std(
+    values: list[float], end_index: int, window: int, min_periods: int
+) -> float | None:
+    start = max(0, end_index - window + 1)
+    sample = values[start : end_index + 1]
+    if len(sample) < min_periods:
+        return None
+    if len(sample) < 2:
+        return None
+    return stdev(sample)
 
 
-def fetch_finra_weeks(weeks: list[dt.date]) -> tuple[pd.DataFrame, int]:
+def _safe_ratio(numerator: float, denominator: float | None) -> float | None:
+    if denominator in (None, 0):
+        return None
+    return numerator / denominator
+
+
+def recompute_metrics(weekly: list[WeekRecord], ingest_ts: str) -> list[WeekRecord]:
+    if not weekly:
+        return []
+
+    rows = sorted(weekly, key=lambda row: row["week_start"])
+    shares_values = [float(row.get("ats_weekly_shares") or 0.0) for row in rows]
+    trades_values = [float(row.get("ats_weekly_trades") or 0.0) for row in rows]
+
+    for index, row in enumerate(rows):
+        shares = shares_values[index]
+        trades = trades_values[index]
+        shares_avg_13 = _rolling_mean(shares_values, index, window=13, min_periods=4)
+        trades_avg_13 = _rolling_mean(trades_values, index, window=13, min_periods=4)
+        shares_mean_26 = _rolling_mean(shares_values, index, window=26, min_periods=8)
+        shares_std_26 = _rolling_std(shares_values, index, window=26, min_periods=8)
+
+        row["ats_weekly_shares"] = shares
+        row["ats_weekly_trades"] = trades
+        row["ats_weekly_notional"] = float(row.get("ats_weekly_notional") or 0.0)
+        row["avg_trade_size"] = _safe_ratio(shares, trades)
+        row["shares_vs_13w_avg"] = _safe_ratio(shares, shares_avg_13)
+        row["trades_vs_13w_avg"] = _safe_ratio(trades, trades_avg_13)
+        if shares_mean_26 is None or shares_std_26 in (None, 0):
+            row["shares_z_26w"] = None
+        else:
+            row["shares_z_26w"] = (shares - shares_mean_26) / shares_std_26
+        row["ingest_ts"] = ingest_ts
+    return rows
+
+
+def merge_weekly(
+    existing: list[WeekRecord],
+    fetched: list[WeekRecord],
+    ingest_ts: str,
+) -> list[WeekRecord]:
+    combined: dict[tuple[str, str], WeekRecord] = {}
+    for row in existing + fetched:
+        symbol = str(row.get("symbol") or SYMBOL).upper()
+        if symbol != SYMBOL.upper():
+            continue
+        week_start = str(row["week_start"])
+        combined[(symbol, week_start)] = {
+            "week_start": week_start,
+            "symbol": symbol,
+            "ats_weekly_shares": float(row.get("ats_weekly_shares") or 0.0),
+            "ats_weekly_trades": float(row.get("ats_weekly_trades") or 0.0),
+            "ats_weekly_notional": float(row.get("ats_weekly_notional") or 0.0),
+            "ats_venue_count": int(row.get("ats_venue_count") or 0),
+            "top_mpid": row.get("top_mpid"),
+            "top_market_participant_name": row.get("top_market_participant_name"),
+            "top_mpid_share": row.get("top_mpid_share"),
+            "venue_hhi": row.get("venue_hhi"),
+            "last_reported_date": row.get("last_reported_date"),
+            "last_update_date": row.get("last_update_date"),
+            "initial_published_date": row.get("initial_published_date"),
+        }
+    return recompute_metrics(list(combined.values()), ingest_ts)
+
+
+def fetch_finra_weeks(weeks: list[dt.date]) -> tuple[list[WeekRecord], int]:
     if not weeks:
-        return pd.DataFrame(), 0
-    if not FINRA_CLIENT_ID or not FINRA_CLIENT_SECRET:
-        raise RuntimeError("Missing FINRA_CLIENT_ID or FINRA_CLIENT_SECRET env vars for FINRA refresh.")
+        return [], 0
 
-    auth = HTTPBasicAuth(FINRA_CLIENT_ID, FINRA_CLIENT_SECRET)
+    auth = None
+    if FINRA_CLIENT_ID and FINRA_CLIENT_SECRET:
+        auth = HTTPBasicAuth(FINRA_CLIENT_ID, FINRA_CLIENT_SECRET)
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
         "User-Agent": "spy-finra-darkpool/2.1",
     }
-    frames: list[pd.DataFrame] = []
+    raw_rows: list[dict[str, Any]] = []
     failures = 0
     for week in weeks:
         try:
-            frame = fetch_week(week, headers, auth)
-            if not frame.empty:
-                frames.append(frame)
+            raw_rows.extend(fetch_week(week, headers, auth))
         except Exception:
             failures += 1
         time.sleep(SLEEP_S)
-    raw = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    return aggregate_raw_weekly(raw), failures
+    return aggregate_raw_weekly(raw_rows), failures
 
 
-def upsert_weekly(con: sqlite3.Connection, weekly: pd.DataFrame) -> None:
+def upsert_weekly(con: sqlite3.Connection, weekly: list[WeekRecord]) -> None:
     cols = [
         "week_start",
         "symbol",
         "ats_weekly_shares",
         "ats_weekly_trades",
+        "ats_weekly_notional",
         "ats_venue_count",
+        "top_mpid",
+        "top_market_participant_name",
+        "top_mpid_share",
+        "venue_hhi",
+        "last_reported_date",
+        "last_update_date",
+        "initial_published_date",
         "avg_trade_size",
         "shares_vs_13w_avg",
         "trades_vs_13w_avg",
@@ -324,48 +701,75 @@ def upsert_weekly(con: sqlite3.Connection, weekly: pd.DataFrame) -> None:
         "ingest_ts",
     ]
     upsert = f"""
-    INSERT INTO ats_weekly ({','.join(cols)})
-    VALUES ({','.join(['?'] * len(cols))})
+    INSERT INTO ats_weekly ({",".join(cols)})
+    VALUES ({",".join(["?"] * len(cols))})
     ON CONFLICT(symbol, week_start) DO UPDATE SET
       ats_weekly_shares=excluded.ats_weekly_shares,
       ats_weekly_trades=excluded.ats_weekly_trades,
+      ats_weekly_notional=excluded.ats_weekly_notional,
       ats_venue_count=excluded.ats_venue_count,
+      top_mpid=excluded.top_mpid,
+      top_market_participant_name=excluded.top_market_participant_name,
+      top_mpid_share=excluded.top_mpid_share,
+      venue_hhi=excluded.venue_hhi,
+      last_reported_date=excluded.last_reported_date,
+      last_update_date=excluded.last_update_date,
+      initial_published_date=excluded.initial_published_date,
       avg_trade_size=excluded.avg_trade_size,
       shares_vs_13w_avg=excluded.shares_vs_13w_avg,
       trades_vs_13w_avg=excluded.trades_vs_13w_avg,
       shares_z_26w=excluded.shares_z_26w,
       ingest_ts=excluded.ingest_ts
     """
-    con.executemany(upsert, weekly[cols].values.tolist())
+    rows = [tuple(row.get(col) for col in cols) for row in weekly]
+    con.executemany(upsert, rows)
     con.commit()
 
 
-def z_to_strength(z_value: float) -> float:
-    if z_value is None or pd.isna(z_value):
+def z_to_strength(z_value: float | None) -> float:
+    if z_value is None or math.isnan(z_value):
         return 0.0
     return float(max(0.0, min(1.0, (z_value - 1.0) / 1.5)))
 
 
-def rebuild_daily_overlays(con: sqlite3.Connection, weekly: pd.DataFrame) -> int:
-    days = pd.read_sql_query(
-        "SELECT date FROM bars_daily WHERE symbol=? ORDER BY date ASC",
-        con,
-        params=(SYMBOL,),
-    )
-    if days.empty or weekly.empty:
+def rebuild_daily_overlays(con: sqlite3.Connection, weekly: list[WeekRecord]) -> int:
+    if not weekly:
         return 0
 
-    days["date"] = pd.to_datetime(days["date"])
-    days["week_start"] = days["date"].map(lambda value: monday_of_week(value.date()))
-    days["week_start"] = pd.to_datetime(days["week_start"])
+    days = con.execute(
+        "SELECT date FROM bars_daily WHERE symbol=? ORDER BY date ASC",
+        (SYMBOL,),
+    ).fetchall()
+    if not days:
+        return 0
 
-    weekly = weekly.copy()
-    weekly["week_start"] = pd.to_datetime(weekly["week_start"])
-    joined = days.merge(weekly[["week_start", "shares_z_26w"]], on="week_start", how="left")
-    joined["overlay_strength"] = joined["shares_z_26w"].apply(z_to_strength)
-    joined["notes"] = joined["shares_z_26w"].apply(
-        lambda z_value: f"finra_ats_shares_z_26w={z_value:.2f}" if pd.notna(z_value) else "finra_ats_missing"
-    )
+    weekly_by_week = {
+        str(row["week_start"]): row for row in weekly if row.get("week_start")
+    }
+    rows = []
+    for (day_text,) in days:
+        day = parse_date(day_text)
+        if day is None:
+            continue
+        week_start = monday_of_week(day).isoformat()
+        weekly_row = weekly_by_week.get(week_start) or {}
+        z_value = weekly_row.get("shares_z_26w")
+        note = (
+            f"finra_ats_shares_z_26w={z_value:.2f}"
+            if z_value is not None and not math.isnan(z_value)
+            else "finra_ats_missing"
+        )
+        top_mpid = weekly_row.get("top_mpid")
+        top_share = weekly_row.get("top_mpid_share")
+        venue_count = weekly_row.get("ats_venue_count")
+        if top_mpid:
+            top_share_text = (
+                f"{top_share:.2f}" if isinstance(top_share, (int, float)) else "na"
+            )
+            note += f" | top_mpid={top_mpid} share={top_share_text}"
+        if isinstance(venue_count, int) and venue_count > 0:
+            note += f" | venues={venue_count}"
+        rows.append((day.isoformat(), SYMBOL, z_to_strength(z_value), note))
 
     write_overlay = """
     INSERT INTO overlays_daily (date, symbol, overlay_type, overlay_strength, notes)
@@ -374,27 +778,32 @@ def rebuild_daily_overlays(con: sqlite3.Connection, weekly: pd.DataFrame) -> int
       overlay_strength=excluded.overlay_strength,
       notes=excluded.notes
     """
-    rows = [
-        (day.strftime("%Y-%m-%d"), SYMBOL, float(strength), str(note))
-        for day, strength, note in zip(joined["date"], joined["overlay_strength"], joined["notes"])
-    ]
     con.executemany(write_overlay, rows)
     con.commit()
     return len(rows)
 
 
-def export_weekly_frame(weekly: pd.DataFrame) -> pd.DataFrame:
-    exported = weekly.copy()
-    if "weekStartDate" not in exported.columns and "week_start" in exported.columns:
-        exported.insert(0, "weekStartDate", exported["week_start"])
-    return exported
+def export_weekly_rows(weekly: list[WeekRecord]) -> list[dict[str, Any]]:
+    rows = []
+    for row in weekly:
+        exported = {"weekStartDate": row.get("week_start")}
+        for column in WEEKLY_EXPORT_COLUMNS[1:]:
+            exported[column] = row.get(column)
+        rows.append(exported)
+    return rows
 
 
-def write_outputs(weekly: pd.DataFrame, state: dict[str, Any]) -> None:
+def write_outputs(weekly: list[WeekRecord], state: dict[str, Any]) -> None:
     OUTPUT_WEEKLY.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_STATE.parent.mkdir(parents=True, exist_ok=True)
-    export_weekly_frame(weekly).to_csv(OUTPUT_WEEKLY, index=False)
-    OUTPUT_STATE.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+    exported_rows = export_weekly_rows(weekly)
+    with OUTPUT_WEEKLY.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=WEEKLY_EXPORT_COLUMNS)
+        writer.writeheader()
+        writer.writerows(exported_rows)
+    OUTPUT_STATE.write_text(
+        json.dumps(state, indent=2, sort_keys=True), encoding="utf-8"
+    )
 
 
 def main() -> None:
@@ -406,12 +815,18 @@ def main() -> None:
         requested_weeks = weeks_to_fetch(before_state)
         fetched, failures = fetch_finra_weeks(requested_weeks)
         existing = load_existing_weekly(con)
-        weekly = merge_weekly(existing, fetched, ingest_ts if not fetched.empty else before_state.get("latest_ingest_ts") or ingest_ts)
+        weekly = merge_weekly(
+            existing,
+            fetched,
+            ingest_ts if fetched else before_state.get("latest_ingest_ts") or ingest_ts,
+        )
 
-        if weekly.empty:
-            raise RuntimeError("No FINRA rows available from API or persisted ats_weekly state.")
+        if not weekly:
+            raise RuntimeError(
+                "No FINRA rows available from API or persisted ats_weekly state."
+            )
 
-        if not fetched.empty:
+        if fetched:
             upsert_weekly(con, weekly)
 
         overlay_rows = rebuild_daily_overlays(con, weekly)
@@ -426,7 +841,7 @@ def main() -> None:
         "network_refresh": bool(requested_weeks),
         "requested_weeks": [week.isoformat() for week in requested_weeks],
         "requested_week_count": len(requested_weeks),
-        "fetched_week_count": 0 if fetched.empty else len(fetched),
+        "fetched_week_count": len(fetched),
         "failures": failures,
         "overlay_rows": overlay_rows,
         "before": before_state,
@@ -436,7 +851,7 @@ def main() -> None:
     mode = "network_refresh" if requested_weeks else "cache_rebuild_only"
     print(
         f"OK: {OUTPUT_WEEKLY} | mode={mode} | weeks={len(weekly)} | "
-        f"requested={len(requested_weeks)} | fetched={output_state['fetched_week_count']} | "
+        f"requested={len(requested_weeks)} | fetched={len(fetched)} | "
         f"overlay_rows={overlay_rows} | failures={failures}"
     )
 

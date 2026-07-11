@@ -289,6 +289,130 @@ def _live_signal_card(signal: dict[str, Any]) -> str:
     return _card("live cockpit snapshot", body, GREEN)
 
 
+def _interaction_badge(classification: Any) -> str:
+    text = str(classification or "").lower()
+    color = {
+        "strongly_good": GREEN,
+        "weakly_good": BLUE,
+        "strongly_bad": RED,
+        "weakly_bad": AMBER,
+    }.get(text, MUTE)
+    label = text.replace("_", " ") or "unclassified"
+    return _chip(label, color)
+
+
+def _execution_vector_interactions_card(signal: dict[str, Any]) -> str:
+    permission = signal.get("trade_permission") or {}
+    packet = permission.get("execution_vector_interactions") or {}
+    if not packet:
+        return _card(
+            "vector interactions",
+            f'<div style="color:{MUTE}">No execution-vector interaction packet yet.</div>',
+            CYAN,
+        )
+    summary = packet.get("summary") or {}
+    favorable = packet.get("best") or []
+    warnings = packet.get("warnings") or []
+
+    def render_items(items: list[dict[str, Any]], empty: str) -> str:
+        if not items:
+            return f'<div style="color:{MUTE}">{_esc(empty)}</div>'
+        return "".join(
+            f'<div style="padding:8px 0;border-bottom:1px solid {GRID}">'
+            f'<div style="color:{FG};font-size:14px;font-weight:bold">{_esc(item.get("label") or item.get("interaction_id") or "interaction")}</div>'
+            f'<div style="margin-top:4px">{_interaction_badge(item.get("classification"))}</div>'
+            f'<div style="color:{MUTE};font-size:12px;margin-top:4px">{_esc(item.get("reason") or "")}</div>'
+            "</div>"
+            for item in items
+        )
+
+    accent = {
+        "favorable": GREEN,
+        "adverse": RED,
+        "mixed": AMBER,
+        "sparse": CYAN,
+    }.get(str(summary.get("interaction_balance") or "").lower(), CYAN)
+    body = (
+        _kv_rows(
+            [
+                ("interaction balance", summary.get("interaction_balance")),
+                ("favorable", summary.get("favorable_count")),
+                ("warnings", summary.get("warning_count")),
+                ("strong favorable", summary.get("strong_favorable_count")),
+                ("strong warnings", summary.get("strong_warning_count")),
+            ]
+        )
+        + f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:10px">'
+        f'<div><div style="color:{MUTE};font-size:11px;margin-bottom:6px">Good interactions</div>{render_items(favorable, "no favorable interactions surfaced")}</div>'
+        f'<div><div style="color:{MUTE};font-size:11px;margin-bottom:6px">Bad interactions</div>{render_items(warnings, "no warning interactions surfaced")}</div>'
+        "</div>"
+    )
+    return _card("vector interactions", body, accent)
+
+
+def _execution_state_card(signal: dict[str, Any], beta: dict[str, Any]) -> str:
+    edge_token = (beta.get("edge_token_position") or {}) or (
+        signal.get("edge_token_position") or {}
+    )
+    preview = beta.get("order_preview") or {}
+    if not edge_token and not beta:
+        return _card(
+            "execution state",
+            f'<div style="color:{MUTE}">No beta execution or edge-token artifacts yet.</div>',
+            PURPLE,
+        )
+    action = (
+        preview.get("token_action")
+        or edge_token.get("suggested_action")
+        or "stand_down"
+    )
+    position_intent = preview.get("position_intent") or "idle"
+    stage = beta.get("beta_stage") or "n/a"
+    strategy_family = preview.get("strategy_family") or "n/a"
+    recommended_actions = (
+        preview.get("recommended_actions")
+        or edge_token.get("recommended_actions")
+        or []
+    )
+    current_token = edge_token.get("current_token") or {}
+    closing_token = edge_token.get("closing_token") or {}
+    details = []
+    if current_token.get("event_type"):
+        details.append(
+            f"active token: {current_token.get('event_type')} / {current_token.get('side')}"
+        )
+    if current_token.get("status"):
+        details.append(f"status: {current_token.get('status')}")
+    if current_token.get("level_name"):
+        details.append(
+            f"level: {current_token.get('level_name')} {current_token.get('level_price')}"
+        )
+    if closing_token.get("clear_reason"):
+        details.append(
+            f"closing token: {closing_token.get('event_type', 'prior token')} ({closing_token.get('clear_reason')})"
+        )
+    body = (
+        _kv_rows(
+            [
+                ("beta stage", stage),
+                ("token action", action),
+                ("position intent", position_intent),
+                ("contracts held", edge_token.get("contracts_held")),
+                ("strategy family", strategy_family),
+                ("draft allowed", preview.get("draft_allowed")),
+            ]
+        )
+        + f'<div style="margin-top:8px;color:{FG};font-size:14px;font-weight:bold">{_esc(edge_token.get("action_reason") or "No edge-token reason provided.")}</div>'
+        + f'<div style="margin-top:8px;color:{MUTE};font-size:12px">Recommended actions</div>{_chip_block(recommended_actions, PURPLE, empty="none")}'
+        + (
+            f'<div style="margin-top:8px;color:{CYAN};font-size:12px">{" • ".join(_esc(item) for item in details)}</div>'
+            if details
+            else ""
+        )
+    )
+    return _card("execution state", body, _status_color(action or stage))
+
+
 def _watchlist_card(watchlist: dict[str, Any]) -> str:
     items = (watchlist.get("items") or [])[:4]
     omitted = (watchlist.get("omitted_candidates") or [])[:3]
@@ -356,6 +480,7 @@ def render() -> str:
     brief = _read_json("operator_brief.json")
     review = _read_json("operator_session_review.json")
     watchlist = _read_json("operator_watchlist.json")
+    beta = _read_json("robinhood_beta_execution.json")
     signal = _read_json("signal.json")
     journal_entries = _read_jsonl_tail("operator_journal_append.jsonl", limit=3)
     now = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S")
@@ -415,6 +540,8 @@ def render() -> str:
     </div>
     {_hero_card(workflow, approval, brief, watchlist)}
     {_live_signal_card(signal)}
+    {_execution_vector_interactions_card(signal)}
+    {_execution_state_card(signal, beta)}
     {_artifact_freshness_card()}
     {_recent_work_card()}
     {_connector_card()}

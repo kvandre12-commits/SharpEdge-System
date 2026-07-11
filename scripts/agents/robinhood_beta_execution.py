@@ -31,6 +31,7 @@ MONITOR_JSON = OUTDIR / "robinhood_fvg_monitor.json"
 CONTRACT_JSON = OUTDIR / "agent_v1_decision.json"
 BRIEF_JSON = OUTDIR / "operator_brief.json"
 DASHBOARD_JSON = OUTDIR / "morning_open_dashboard.json"
+SIGNAL_JSON = OUTDIR / "signal.json"
 BETA_JSON = OUTDIR / "robinhood_beta_execution.json"
 WORKFLOW_STATE_JSON = OUTDIR / "workflow_state.json"
 EXECUTION_PLAN_JSON = OUTDIR / "execution_plan.json"
@@ -74,15 +75,73 @@ def option_strategy_family(option_side_watch: str) -> str:
     return "no_order_template"
 
 
-def beta_stage(contract: dict[str, Any], bridge: dict[str, Any]) -> str:
+def edge_token_state(signal: dict[str, Any]) -> dict[str, Any]:
+    state = signal.get("edge_token_position")
+    return state if isinstance(state, dict) else {}
+
+
+def edge_token_mode(edge_token: dict[str, Any]) -> str:
+    action = str(edge_token.get("suggested_action", "stand_down")).lower()
+    if action in {"enter_call", "enter_put"}:
+        return "entry"
+    if action == "hold":
+        return "hold"
+    if action == "close_position":
+        return "close"
+    if action in {"flip_to_call", "flip_to_put"}:
+        return "rotate"
+    return "idle"
+
+
+def option_side_from_token(edge_token: dict[str, Any]) -> str:
+    token = edge_token.get("current_token") or {}
+    closing = edge_token.get("closing_token") or {}
+    side = str(token.get("side") or closing.get("side") or "").upper()
+    if side == "CALLS":
+        return "calls_or_call_spreads"
+    if side == "PUTS":
+        return "puts_or_put_spreads"
+    return ""
+
+
+def pressure_point_entry_token(edge_token: dict[str, Any]) -> dict[str, Any]:
+    """Return the active reclaim/reject token that deserves operator review.
+
+    This is deliberately narrower than "any setup": SharpEdge's bread-and-butter
+    pressure points are failed breakdown reclaims and failed breakout rejections.
+    The function only affects review labeling; it does not grant order authority.
+    """
+    if edge_token_mode(edge_token) != "entry":
+        return {}
+    token = edge_token.get("current_token") or {}
+    if not isinstance(token, dict):
+        return {}
+    event_type = str(token.get("event_type") or "").upper()
+    if event_type not in {"FAILED BREAKDOWN", "FAILED BREAKOUT"}:
+        return {}
+    return token
+
+
+def beta_stage(
+    contract: dict[str, Any], bridge: dict[str, Any], edge_token: dict[str, Any]
+) -> str:
     bridge_available = bool(bridge.get("available"))
     decision = str(contract.get("decision", "hold")).lower()
     trade_allowed = bool(contract.get("trade_allowed"))
+    token_mode = edge_token_mode(edge_token)
 
     if not bridge_available:
         return "artifact_only"
+    if token_mode == "hold":
+        return "position_hold"
+    if token_mode == "close":
+        return "close_review_ready"
+    if token_mode == "rotate":
+        return "rotation_queue_ready"
     if decision == "operator_confirm_required" and trade_allowed:
         return "approval_queue_ready"
+    if pressure_point_entry_token(edge_token):
+        return "pressure_point_review_ready"
     if decision == "monitor":
         return "quote_monitoring"
     return "blocked"
@@ -93,6 +152,7 @@ def order_preview(
     plan: dict[str, Any],
     approval: dict[str, Any],
     monitor: dict[str, Any],
+    edge_token: dict[str, Any],
     stage: str,
 ) -> dict[str, Any]:
     context = plan.get("reference_context", {})
@@ -101,20 +161,47 @@ def order_preview(
         as_float(approval.get("risk_limits", {}).get("max_capital_risk_pct")),
         BETA_MAX_RISK_CAP_PCT,
     )
-    option_side_watch = context.get("option_side_watch") or workflow.get("market_context", {}).get(
-        "option_side_watch"
+    token_mode = edge_token_mode(edge_token)
+    option_side_watch = (
+        context.get("option_side_watch")
+        or workflow.get("market_context", {}).get("option_side_watch")
+        or option_side_from_token(edge_token)
     )
     strategy_family = option_strategy_family(str(option_side_watch or "none"))
-    draft_allowed = stage == "approval_queue_ready" and strategy_family != "no_order_template"
+    if token_mode == "close":
+        strategy_family = "close_existing_position"
+    pressure_token = pressure_point_entry_token(edge_token)
+    draft_allowed = (
+        stage
+        in {
+            "approval_queue_ready",
+            "close_review_ready",
+            "rotation_queue_ready",
+        }
+        and strategy_family != "no_order_template"
+    )
+    draft_review_allowed = (
+        draft_allowed
+        or stage == "pressure_point_review_ready"
+        and strategy_family != "no_order_template"
+    )
 
     return {
         "draft_allowed": draft_allowed,
+        "draft_review_allowed": draft_review_allowed,
         "symbol": workflow.get("symbol", approval.get("symbol", "SPY")),
-        "setup_type": "gap_fill_options_context",
+        "setup_type": "pressure_point_edge_token"
+        if pressure_token
+        else "gap_fill_options_context",
         "headline": plan.get("objective", "No headline available."),
+        "token_action": edge_token.get("suggested_action", "stand_down"),
+        "position_intent": token_mode,
+        "recommended_actions": edge_token.get("recommended_actions", []),
         "option_side_watch": option_side_watch,
         "strategy_family": strategy_family,
-        "entry_style": "limit_debit" if BETA_REQUIRE_PRICE_LIMIT else "marketable_limit",
+        "entry_style": "limit_debit"
+        if BETA_REQUIRE_PRICE_LIMIT
+        else "marketable_limit",
         "defined_risk_required": BETA_REQUIRE_DEFINED_RISK,
         "price_limit_required": BETA_REQUIRE_PRICE_LIMIT,
         "dte_window": {
@@ -125,6 +212,12 @@ def order_preview(
             "spot": context.get("spot"),
             "atm_strike": context.get("atm_strike"),
             "gap_fill_level": context.get("gap_fill_level"),
+        },
+        "edge_token_context": {
+            "position_state": edge_token.get("position_state"),
+            "contracts_held": edge_token.get("contracts_held"),
+            "current_token": edge_token.get("current_token"),
+            "closing_token": edge_token.get("closing_token"),
         },
         "risk_limits": {
             "max_capital_risk_pct": round(max_risk_pct, 4),
@@ -148,12 +241,16 @@ def order_preview(
 
 def build_payload() -> dict[str, Any]:
     monitor = read_json(MONITOR_JSON)
+    signal = read_json(SIGNAL_JSON)
     workflow = resolve_workflow_state(WORKFLOW_STATE_JSON, BRIEF_JSON, CONTRACT_JSON)
     approval = resolve_approval_decision(APPROVAL_DECISION_JSON, CONTRACT_JSON)
-    plan = resolve_execution_plan(EXECUTION_PLAN_JSON, BRIEF_JSON, CONTRACT_JSON, BETA_JSON)
+    plan = resolve_execution_plan(
+        EXECUTION_PLAN_JSON, BRIEF_JSON, CONTRACT_JSON, BETA_JSON
+    )
     bridge = monitor_bridge_status(monitor)
-    stage = beta_stage(approval, bridge)
-    preview = order_preview(workflow, plan, approval, monitor, stage)
+    edge_token = edge_token_state(signal)
+    stage = beta_stage(approval, bridge, edge_token)
+    preview = order_preview(workflow, plan, approval, monitor, edge_token, stage)
 
     bridge_available = bool(bridge.get("available"))
     approval_required = True
@@ -173,7 +270,9 @@ def build_payload() -> dict[str, Any]:
         "beta_stage": stage,
         "symbol": workflow.get("symbol", approval.get("symbol", "SPY")),
         "headline": plan.get("objective", "No headline available."),
-        "operator_action": plan.get("intended_action", state.get("operator_action", "stand_down")),
+        "operator_action": plan.get(
+            "intended_action", state.get("operator_action", "stand_down")
+        ),
         "readiness": state.get("readiness", "blocked"),
         "broker_integration_status": state.get(
             "broker_integration_status",
@@ -185,6 +284,7 @@ def build_payload() -> dict[str, Any]:
         ),
         "trade_allowed": bool(approval.get("trade_allowed")),
         "approval_required": approval_required,
+        "edge_token_position": edge_token,
         "blocking_reasons": approval.get("blocking_reasons", []),
         "risk_flags": approval.get("risk_flags", []),
         "beta_capabilities": {
@@ -206,9 +306,12 @@ def build_payload() -> dict[str, Any]:
             "bridge_status": bridge,
             "intent": "approval_gated_shadow_order_management",
             "mode": "beta_shadow_execution",
+            "draft_intent": preview["position_intent"],
             "manual_review_required": True,
             "fallback_mode": (
-                "artifact_only_shadow_review" if not bridge_available else "approval_queue_shadow_draft"
+                "artifact_only_shadow_review"
+                if not bridge_available
+                else "approval_queue_shadow_draft"
             ),
             "permitted_actions": [
                 "read_account_status",
@@ -216,7 +319,9 @@ def build_payload() -> dict[str, Any]:
                 "read_option_chain",
                 "monitor_underlying_quote",
                 "monitor_option_quotes",
-                "create_order_draft" if create_order_draft_allowed else "artifact_only_order_preview",
+                "create_order_draft"
+                if create_order_draft_allowed
+                else "artifact_only_order_preview",
             ],
             "blocked_actions": [
                 "submit_order_without_operator_approval",
@@ -230,33 +335,38 @@ def build_payload() -> dict[str, Any]:
 def render_text(payload: dict[str, Any]) -> str:
     preview = payload["order_preview"]
     caps = payload["beta_capabilities"]
-    return "\n".join(
-        [
-            "ROBINHOOD BETA EXECUTION HANDOFF",
-            f"Created: {payload['created_ts']}",
-            f"Symbol: {payload['symbol']}",
-            f"Beta profile: {payload['beta_profile']}",
-            f"Beta stage: {payload['beta_stage']}",
-            f"Headline: {payload['headline']}",
-            f"Readiness: {payload['readiness']}",
-            f"Broker integration: {payload['broker_integration_status']}",
-            "",
-            f"Trade allowed by contract: {payload['trade_allowed']}",
-            f"Create order draft allowed: {caps['create_order_draft']}",
-            f"Submit order allowed: {caps['submit_order']}",
-            f"Approval required: {payload['approval_required']}",
-            "",
-            f"Strategy family: {preview['strategy_family']}",
-            f"Option side watch: {preview['option_side_watch']}",
-            f"Entry style: {preview['entry_style']}",
-            f"DTE window: {preview['dte_window']['min']} to {preview['dte_window']['max']}",
-            f"Max capital risk pct: {preview['risk_limits']['max_capital_risk_pct']}",
-            "",
-            f"Blocking reasons: {', '.join(payload['blocking_reasons']) or 'none'}",
-            f"Risk flags: {', '.join(payload['risk_flags']) or 'none'}",
-            "Orders remain approval-gated in beta. No autonomous live submission.",
-        ]
-    ) + "\n"
+    return (
+        "\n".join(
+            [
+                "ROBINHOOD BETA EXECUTION HANDOFF",
+                f"Created: {payload['created_ts']}",
+                f"Symbol: {payload['symbol']}",
+                f"Beta profile: {payload['beta_profile']}",
+                f"Beta stage: {payload['beta_stage']}",
+                f"Headline: {payload['headline']}",
+                f"Readiness: {payload['readiness']}",
+                f"Broker integration: {payload['broker_integration_status']}",
+                "",
+                f"Trade allowed by contract: {payload['trade_allowed']}",
+                f"Create order draft allowed: {caps['create_order_draft']}",
+                f"Submit order allowed: {caps['submit_order']}",
+                f"Approval required: {payload['approval_required']}",
+                "",
+                f"Token action: {preview['token_action']}",
+                f"Position intent: {preview['position_intent']}",
+                f"Strategy family: {preview['strategy_family']}",
+                f"Option side watch: {preview['option_side_watch']}",
+                f"Entry style: {preview['entry_style']}",
+                f"DTE window: {preview['dte_window']['min']} to {preview['dte_window']['max']}",
+                f"Max capital risk pct: {preview['risk_limits']['max_capital_risk_pct']}",
+                "",
+                f"Blocking reasons: {', '.join(payload['blocking_reasons']) or 'none'}",
+                f"Risk flags: {', '.join(payload['risk_flags']) or 'none'}",
+                "Orders remain approval-gated in beta. No autonomous live submission.",
+            ]
+        )
+        + "\n"
+    )
 
 
 def main() -> None:

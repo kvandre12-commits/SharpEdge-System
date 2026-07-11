@@ -28,6 +28,9 @@ class OperatorSessionReviewTests(unittest.TestCase):
                                 "blocking_reasons": ["sample_n_below_30"],
                                 "risk_flags": ["low_sample"],
                                 "broker_integration_status": "disabled",
+                                "connector_audit_available": False,
+                                "connector_status": None,
+                                "connector_fill_status": None,
                             }
                         ),
                         json.dumps(
@@ -40,6 +43,10 @@ class OperatorSessionReviewTests(unittest.TestCase):
                                 "blocking_reasons": ["stale_or_missing_inputs"],
                                 "risk_flags": ["freshness_gate_failed"],
                                 "broker_integration_status": "ready",
+                                "connector_audit_available": True,
+                                "connector_status": "submitted",
+                                "connector_fill_status": "submitted_unfilled",
+                                "connector_broker_order_id": "abc-123",
                             }
                         ),
                     ]
@@ -68,8 +75,13 @@ class OperatorSessionReviewTests(unittest.TestCase):
         self.assertEqual(payload["journal_entries_reviewed"], 2)
         self.assertEqual(payload["current_watchlist_active_count"], 1)
         self.assertEqual(payload["latest_entry"]["operator_action"], "monitor_only")
+        self.assertEqual(payload["latest_entry"]["connector_status"], "submitted")
+        self.assertEqual(
+            payload["distributions"]["connector_statuses"][0]["value"], "submitted"
+        )
         self.assertEqual(payload["top_blockers"][0]["value"], "sample_n_below_30")
         self.assertIn("SHARPEDGE OPERATOR SESSION REVIEW", text)
+        self.assertIn("Top connector statuses", text)
 
 
 if __name__ == "__main__":

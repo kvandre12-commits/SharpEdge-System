@@ -96,6 +96,22 @@ CREATE TABLE IF NOT EXISTS options_chain_snapshots (
 
   call_gamma    REAL,
   put_gamma     REAL,
+  call_iv       REAL,
+  put_iv        REAL,
+  call_theta    REAL,
+  put_theta     REAL,
+  call_vega     REAL,
+  put_vega      REAL,
+  call_rho      REAL,
+  put_rho       REAL,
+  call_theo     REAL,
+  put_theo      REAL,
+  call_last_trade_price REAL,
+  put_last_trade_price  REAL,
+  call_bid      REAL,
+  call_ask      REAL,
+  put_bid       REAL,
+  put_ask       REAL,
 
   source        TEXT DEFAULT 'unknown',
 

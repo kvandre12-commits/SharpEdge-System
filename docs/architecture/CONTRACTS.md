@@ -3,6 +3,12 @@
 Stable schemas are the glue between repos. Prefer one canonical field shape over
 near-duplicates.
 
+For the boundary between contracts and presentation, see:
+
+```text
+docs/architecture/VIEWING_LAYER.md
+```
+
 ## `sharpedge.signal.v1`
 
 Producer:
@@ -35,8 +41,15 @@ Important fields:
     "schema": "sharpedge.trade_permission.v1",
     "trade_gate": "CAUTION",
     "trade_permission_score": 58,
+    "execution_permission_score": 58,
     "bias": "NEUTRAL",
     "bias_strength": 0.211,
+    "setup_conviction": {
+      "schema": "sharpedge.setup_conviction.v1",
+      "setup_conviction_score": 84,
+      "setup_gate": "ACTIONABLE",
+      "bias": "CALLS"
+    },
     "supporting_reasons": [],
     "warning_reasons": [],
     "scores": {}
@@ -61,6 +74,11 @@ Canonical field names:
 - `supporting_reasons`
 - `warning_reasons`
 - `scores`
+
+Optional extensions now in use:
+
+- `execution_permission_score` — explicit alias of `trade_permission_score`
+- `setup_conviction` — separate setup-thesis object so setup quality and execution burden are not fused into one score
 
 Do not invent duplicate names like `signal_gate`, `permission_gate`, or
 `score_gate`. Use the canonical names above.

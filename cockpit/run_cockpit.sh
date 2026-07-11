@@ -3,15 +3,21 @@
 # Starts a local web server, opens the dashboard in Brave, and
 # regenerates the read every 45s.
 #
-#   bash run_cockpit.sh            # serve + auto-open Brave + live loop
-#   COCKPIT_NO_BROWSER=1 bash ...  # serve + loop only, skip Brave
-#   COCKPIT_PORT=9000 bash ...     # use a different port
+#   bash run_cockpit.sh                       # serve + auto-open Brave + live loop
+#   COCKPIT_BUILD_ONCE=1 bash run_cockpit.sh # build/open once, then exit for recording
+#   COCKPIT_NO_BROWSER=1 bash ...             # serve + build, skip browser open
+#   COCKPIT_REMIND=1 bash ...                 # also send a tap-to-open reminder notification
+#   COCKPIT_PORT=9000 bash ...                # use a different port
+#   COCKPIT_REFRESH_SECONDS=30 bash ...       # adjust live refresh loop interval
 
 set -e
 cd "$(dirname "$0")"
 PORT="${COCKPIT_PORT:-8777}"
 URL="http://127.0.0.1:${PORT}/cockpit.html"
 LOGDIR="${TMPDIR:-$HOME/.cache}"
+REFRESH_SECONDS="${COCKPIT_REFRESH_SECONDS:-45}"
+BUILD_ONCE="${COCKPIT_BUILD_ONCE:-}"
+REMIND="${COCKPIT_REMIND:-}"
 mkdir -p "$LOGDIR"
 
 # start static server if not already running
@@ -37,9 +43,25 @@ if [ -z "${COCKPIT_NO_BROWSER:-}" ]; then
   fi
 fi
 
-echo "regenerating cockpit every 45s -- Ctrl+C to stop"
+if [ -n "$REMIND" ] && [ -x "./remind_open_cockpit.sh" ]; then
+  COCKPIT_PORT="$PORT" bash ./remind_open_cockpit.sh >/dev/null 2>&1 \
+    && echo "sent cockpit reminder notification"
+fi
+
+if [ -n "$BUILD_ONCE" ]; then
+  cat <<EOF
+ready for recording
+- URL: $URL
+- HTML: $(pwd)/cockpit.html
+- signal: $(cd .. && pwd)/outputs/signal.json
+- mode: one-shot build/open
+EOF
+  exit 0
+fi
+
+echo "regenerating cockpit every ${REFRESH_SECONDS}s -- Ctrl+C to stop"
 while true; do
   python3 make_cockpit.py 2>/dev/null \
     | grep -E "spot|BULLS|BEARS|BALANCED" || echo "(refresh failed, retrying)"
-  sleep 45
+  sleep "$REFRESH_SECONDS"
 done

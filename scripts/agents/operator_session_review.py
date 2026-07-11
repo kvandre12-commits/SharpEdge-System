@@ -51,8 +51,7 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
 def top_counts(values: list[str], limit: int = 5) -> list[dict[str, Any]]:
     counter = Counter(v for v in values if v)
     return [
-        {"value": value, "count": count}
-        for value, count in counter.most_common(limit)
+        {"value": value, "count": count} for value, count in counter.most_common(limit)
     ]
 
 
@@ -68,10 +67,30 @@ def build_review() -> dict[str, Any]:
     recent = entries[-LOOKBACK_ENTRIES:]
     latest = recent[-1] if recent else {}
 
-    action_counts = top_counts([str(e.get("operator_action", "")) for e in recent], limit=3)
-    status_counts = top_counts([str(e.get("watchlist_status", "")) for e in recent], limit=3)
+    action_counts = top_counts(
+        [str(e.get("operator_action", "")) for e in recent], limit=3
+    )
+    status_counts = top_counts(
+        [str(e.get("watchlist_status", "")) for e in recent], limit=3
+    )
     broker_counts = top_counts(
         [str(e.get("broker_integration_status", "")) for e in recent], limit=3
+    )
+    connector_counts = top_counts(
+        [
+            str(value)
+            for value in (e.get("connector_status") for e in recent)
+            if value not in (None, "")
+        ],
+        limit=4,
+    )
+    fill_counts = top_counts(
+        [
+            str(value)
+            for value in (e.get("connector_fill_status") for e in recent)
+            if value not in (None, "")
+        ],
+        limit=4,
     )
 
     blockers: list[str] = []
@@ -95,11 +114,17 @@ def build_review() -> dict[str, Any]:
             "headline": latest.get("headline"),
             "blocking_reasons": latest.get("blocking_reasons", []),
             "risk_flags": latest.get("risk_flags", []),
+            "connector_audit_available": latest.get("connector_audit_available", False),
+            "connector_status": latest.get("connector_status"),
+            "connector_fill_status": latest.get("connector_fill_status"),
+            "connector_broker_order_id": latest.get("connector_broker_order_id"),
         },
         "distributions": {
             "operator_actions": action_counts,
             "watchlist_statuses": status_counts,
             "broker_integration_statuses": broker_counts,
+            "connector_statuses": connector_counts,
+            "connector_fill_statuses": fill_counts,
         },
         "top_blockers": top_counts(blockers),
         "top_risk_flags": top_counts(flags),
@@ -112,23 +137,34 @@ def render_text(review: dict[str, Any]) -> str:
     statuses = summarize_counts(review["distributions"]["watchlist_statuses"])
     blockers = summarize_counts(review["top_blockers"])
     flags = summarize_counts(review["top_risk_flags"])
-    return "\n".join(
-        [
-            "SHARPEDGE OPERATOR SESSION REVIEW",
-            f"Created: {review['created_ts']}",
-            f"Journal entries reviewed: {review['journal_entries_reviewed']} / {review['journal_entries_total']}",
-            f"Current active watchlist count: {review['current_watchlist_active_count']}",
-            "",
-            f"Latest action: {latest.get('operator_action', 'none')}",
-            f"Latest watchlist status: {latest.get('watchlist_status', 'none')}",
-            f"Latest headline: {latest.get('headline', 'none')}",
-            "",
-            f"Top actions: {actions}",
-            f"Top statuses: {statuses}",
-            f"Top blockers: {blockers}",
-            f"Top risk flags: {flags}",
-        ]
-    ) + "\n"
+    connector_statuses = summarize_counts(review["distributions"]["connector_statuses"])
+    connector_fills = summarize_counts(
+        review["distributions"]["connector_fill_statuses"]
+    )
+    return (
+        "\n".join(
+            [
+                "SHARPEDGE OPERATOR SESSION REVIEW",
+                f"Created: {review['created_ts']}",
+                f"Journal entries reviewed: {review['journal_entries_reviewed']} / {review['journal_entries_total']}",
+                f"Current active watchlist count: {review['current_watchlist_active_count']}",
+                "",
+                f"Latest action: {latest.get('operator_action', 'none')}",
+                f"Latest watchlist status: {latest.get('watchlist_status', 'none')}",
+                f"Latest headline: {latest.get('headline', 'none')}",
+                f"Latest connector status: {latest.get('connector_status', 'none')}",
+                f"Latest connector fill status: {latest.get('connector_fill_status', 'none')}",
+                "",
+                f"Top actions: {actions}",
+                f"Top statuses: {statuses}",
+                f"Top connector statuses: {connector_statuses}",
+                f"Top connector fill statuses: {connector_fills}",
+                f"Top blockers: {blockers}",
+                f"Top risk flags: {flags}",
+            ]
+        )
+        + "\n"
+    )
 
 
 def main() -> None:

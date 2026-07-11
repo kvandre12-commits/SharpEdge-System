@@ -10,23 +10,20 @@ Lightweight + DRY: stdlib + requests only, hand-rendered SVG (no matplotlib).
 from __future__ import annotations
 
 import datetime as dt
-from collections import defaultdict
 
-import requests
+from market_data_sources import fetch_yahoo_chart_result_with_source
 
 SYMBOL = "SPY"
-URL = (
-    f"https://query1.finance.yahoo.com/v8/finance/chart/{SYMBOL}"
-    "?interval=5m&range=14d"
-)
-OPEN_MIN = 570   # 09:30 ET
+INTERVAL = "5m"
+RANGE = "14d"
+OPEN_MIN = 570  # 09:30 ET
 CLOSE_MIN = 960  # 16:00 ET
 
 W, H = 1200, 760
 PAD_L, PAD_R, PAD_T = 78, 95, 50
 PAD_B = 60
-GAP = 24                       # gap between price and volume panels
-PRICE_H = 430                  # price panel height
+GAP = 24  # gap between price and volume panels
+PRICE_H = 430  # price panel height
 VOL_H = H - PAD_T - PRICE_H - GAP - PAD_B  # volume panel height
 PLOT_W = W - PAD_L - PAD_R
 PRICE_TOP = PAD_T
@@ -36,13 +33,16 @@ VOL_BOT = VOL_TOP + VOL_H
 
 
 def fetch():
-    r = requests.get(URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
-    r.raise_for_status()
-    res = r.json()["chart"]["result"][0]
+    res, source = fetch_yahoo_chart_result_with_source(
+        SYMBOL,
+        interval=INTERVAL,
+        range_=RANGE,
+        timeout=20,
+    )
     gmt = res["meta"]["gmtoffset"]
     ts = res["timestamp"]
     q = res["indicators"]["quote"][0]
-    return gmt, ts, q["close"], q["volume"]
+    return gmt, ts, q["close"], q["volume"], source
 
 
 def collect(gmt, ts, closes, vols):
@@ -104,8 +104,8 @@ def build_svg(rows):
         f'<text x="{PAD_L}" y="30" fill="#e6edf3" font-size="20" '
         f'font-weight="bold">SPY 5-min price &amp; volume - last {len(spans)} '
         f'trading days &#160;&#160;<tspan fill="#7d8590" font-size="14">'
-        f'(${first_close:.2f} -&gt; ${last_close:.2f}, {net:+.2f}%)</tspan>'
-        f'</text>',
+        f"(${first_close:.2f} -&gt; ${last_close:.2f}, {net:+.2f}%)</tspan>"
+        f"</text>",
     ]
 
     # ---- price panel gridlines + $ labels ----
@@ -160,14 +160,11 @@ def build_svg(rows):
     # ---- price line (drawn last, on top) ----
     pts = " ".join(f"{px(i):.1f},{py(prices[i]):.1f}" for i in range(n))
     parts.append(
-        f'<polyline points="{pts}" fill="none" stroke="#58a6ff" '
-        f'stroke-width="1.8"/>'
+        f'<polyline points="{pts}" fill="none" stroke="#58a6ff" stroke-width="1.8"/>'
     )
     # last price dot + label
     ly = py(last_close)
-    parts.append(
-        f'<circle cx="{px(n - 1):.1f}" cy="{ly:.1f}" r="3.5" fill="#ffd33d"/>'
-    )
+    parts.append(f'<circle cx="{px(n - 1):.1f}" cy="{ly:.1f}" r="3.5" fill="#ffd33d"/>')
     parts.append(
         f'<text x="{px(n - 1) + 8:.1f}" y="{ly + 4:.1f}" fill="#ffd33d" '
         f'font-size="12" font-weight="bold">${last_close:.2f}</text>'
@@ -178,7 +175,7 @@ def build_svg(rows):
 
 
 def main():
-    gmt, ts, closes, vols = fetch()
+    gmt, ts, closes, vols, source = fetch()
     rows = collect(gmt, ts, closes, vols)
     svg = build_svg(rows)
     out = "/data/data/com.termux/files/home/spy_overlay/spy_price_volume.svg"
@@ -186,8 +183,16 @@ def main():
         f.write(svg)
     spans = day_spans(rows)
     print(f"bars={len(rows)}  days={len(spans)}")
-    print(f"price range ${min(c for _,c,_ in rows):.2f} - "
-          f"${max(c for _,c,_ in rows):.2f}")
+    print(
+        "source: "
+        f"{source['provider']} {source['endpoint']} {source['symbol']} "
+        f"interval={source['interval']} range={source['range']} "
+        f"last_bar_utc={source['last_bar_utc']}"
+    )
+    print(
+        f"price range ${min(c for _, c, _ in rows):.2f} - "
+        f"${max(c for _, c, _ in rows):.2f}"
+    )
     print(f"wrote {out}")
 
 

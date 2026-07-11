@@ -140,6 +140,20 @@ def test_operator_surface_render_uses_local_operator_artifacts(tmp_path):
                 "gamma_regime": "negative",
                 "entry_setup_tag": "FAILED BREAKDOWN",
                 "entry_setup_bias": "CALLS (bullish)",
+                "edge_token_position": {
+                    "suggested_action": "hold",
+                    "position_state": "open",
+                    "contracts_held": 1,
+                    "action_reason": "edge token is still active; keep the single-contract position on.",
+                    "recommended_actions": ["hold"],
+                    "current_token": {
+                        "event_type": "FAILED BREAKDOWN",
+                        "side": "CALLS",
+                        "status": "confirmed",
+                        "level_name": "ORL",
+                        "level_price": 500.9,
+                    },
+                },
                 "trade_permission": {
                     "trade_gate": "PERMIT",
                     "execution_permission_score": 88,
@@ -147,6 +161,22 @@ def test_operator_surface_render_uses_local_operator_artifacts(tmp_path):
                         "setup_gate": "ACTIONABLE",
                         "setup_conviction_score": 91,
                     },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (outputs / "robinhood_beta_execution.json").write_text(
+        json.dumps(
+            {
+                "beta_stage": "position_hold",
+                "edge_token_position": {"contracts_held": 1},
+                "order_preview": {
+                    "token_action": "hold",
+                    "position_intent": "hold",
+                    "strategy_family": "call_debit_spread",
+                    "draft_allowed": False,
+                    "recommended_actions": ["hold"],
                 },
             }
         ),
@@ -185,6 +215,10 @@ def test_operator_surface_render_uses_local_operator_artifacts(tmp_path):
     assert "first-class surfaces: cockpit.html • operator_surface.html" in html
     assert "artifact freshness" in html
     assert "live cockpit snapshot" in html
+    assert "execution state" in html
+    assert "position_hold" in html
+    assert "token action" in html
+    assert "hold" in html
     assert "FAILED BREAKDOWN" in html
     assert "latest operator journal" in html
     assert "21 DTE ATM CALLS watch for failed breakdown" in html

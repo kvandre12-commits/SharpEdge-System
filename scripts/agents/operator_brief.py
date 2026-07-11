@@ -15,6 +15,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from scripts.agents.operator_watchlist_logic import build_watchlist_derivatives
+
 SYMBOL = os.getenv("SYMBOL", "SPY").upper()
 OUTDIR = Path("outputs")
 
@@ -27,6 +29,9 @@ OUT_TXT = OUTDIR / "operator_brief.txt"
 OUT_WATCHLIST_JSON = OUTDIR / "operator_watchlist.json"
 OUT_JOURNAL_JSONL = OUTDIR / "operator_journal_append.jsonl"
 TRADE_HINTS_JSON = OUTDIR / "trade_journal_hints.json"
+SIGNAL_JSON = OUTDIR / "signal.json"
+CONNECTOR_AUDIT_JSON = OUTDIR / "chatgpt_robinhood_connector_audit.json"
+CONNECTOR_AUDIT_LOG_JSONL = OUTDIR / "robinhood_connector_audit_log.jsonl"
 
 
 def utc_now() -> str:
@@ -52,13 +57,23 @@ def read_warnings() -> list[str]:
     ]
 
 
-def load_inputs() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[str], dict[str, Any]]:
+def load_inputs() -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+    list[str],
+    dict[str, Any],
+    dict[str, Any],
+    dict[str, Any],
+]:
     return (
         read_json(CONTROLLER_JSON),
         read_json(MONITOR_JSON),
         read_json(AGENT_V1_JSON),
         read_warnings(),
         read_json(TRADE_HINTS_JSON),
+        read_json(CONNECTOR_AUDIT_JSON),
+        read_json(SIGNAL_JSON),
     )
 
 
@@ -79,8 +94,71 @@ def summarize_historical_hints(hints: dict[str, Any]) -> dict[str, Any]:
         "top_pattern_summary": primary_hint.get("summary"),
         "top_pattern_condition": top_condition,
         "top_pattern_confidence": top_pattern.get("confidence_label"),
-        "metric_collection_priorities": hints.get("metric_collection_priorities", [])[:3],
+        "metric_collection_priorities": hints.get("metric_collection_priorities", [])[
+            :3
+        ],
         "usage_constraints": hints.get("usage_constraints", [])[:2],
+    }
+
+
+def summarize_latest_execution_audit(audit: dict[str, Any]) -> dict[str, Any]:
+    if not audit or audit.get("schema") != "sharpedge.robinhood_connector_audit.v1":
+        return {"available": False}
+
+    requested = audit.get("requested_action") or {}
+    observed = audit.get("connector_observation") or {}
+    follow_up = audit.get("operator_follow_up") or {}
+    return {
+        "available": True,
+        "created_at": audit.get("created_at"),
+        "task_type": requested.get("task_type"),
+        "symbol": requested.get("symbol"),
+        "connector_status": observed.get("connector_status"),
+        "fill_status": observed.get("fill_status"),
+        "broker_order_id": observed.get("broker_order_id"),
+        "summary": observed.get("summary"),
+        "blockers": (observed.get("blockers") or [])[:3],
+        "questions": (observed.get("questions") or [])[:3],
+        "follow_up_prompts": (follow_up.get("prompts") or [])[:3],
+        "source_handoff_path": audit.get("source_handoff_path"),
+        "source_response_path": audit.get("source_response_path"),
+    }
+
+
+def summarize_execution_logic(signal: dict[str, Any]) -> dict[str, Any]:
+    permission = signal.get("trade_permission") or {}
+    setup_conviction = permission.get("setup_conviction") or {}
+    if not permission:
+        return {"available": False}
+    return {
+        "available": True,
+        "trade_gate": permission.get("trade_gate"),
+        "trade_permission_score": permission.get("trade_permission_score"),
+        "execution_permission_score": permission.get("execution_permission_score"),
+        "bias": permission.get("bias"),
+        "setup_gate": setup_conviction.get("setup_gate"),
+        "setup_bias": setup_conviction.get("bias"),
+        "setup_tag": setup_conviction.get("setup_tag"),
+        "entry_workflow": ((setup_conviction.get("entry_gate") or {}).get("workflow")),
+    }
+
+
+def summarize_permission_score_trend(signal: dict[str, Any]) -> dict[str, Any]:
+    trend = signal.get("permission_score_trend") or {}
+    if not trend or trend.get("schema") != "sharpedge.permission_score_trend.v1":
+        return {"available": False}
+    return {
+        "available": True,
+        "current": trend.get("current"),
+        "previous": trend.get("previous"),
+        "delta": trend.get("delta"),
+        "direction": trend.get("direction"),
+        "largest_changes_since_last_update": (
+            trend.get("largest_changes_since_last_update") or []
+        )[:3],
+        "setup_transitions_since_last_update": (
+            trend.get("setup_transitions_since_last_update") or []
+        )[:3],
     }
 
 
@@ -125,6 +203,7 @@ def build_next_steps(
     contract: dict[str, Any],
     monitor: dict[str, Any],
     warnings: list[str],
+    execution_audit: dict[str, Any],
 ) -> list[str]:
     steps: list[str] = []
     hypothesis = monitor.get("directional_hypothesis", {})
@@ -136,22 +215,61 @@ def build_next_steps(
         steps.append(
             f"Review the {option_side} thesis against live price behavior near gap fill level {fill_level}."
         )
-        steps.append("Confirm sample quality, freshness, and risk budget before any manual action.")
+        steps.append(
+            "Confirm sample quality, freshness, and risk budget before any manual action."
+        )
     elif operator_action == "monitor_only":
         steps.append(
             f"Watch whether price moves toward gap fill level {fill_level} and whether the thesis stays intact."
         )
-        steps.append("Do not place orders; use this run as structured observation only.")
+        steps.append(
+            "Do not place orders; use this run as structured observation only."
+        )
     else:
         blockers = contract.get("blocking_reasons", [])
-        steps.append(f"Do nothing until blockers clear: {', '.join(blockers) or 'unknown blocker'}.")
+        steps.append(
+            f"Do nothing until blockers clear: {', '.join(blockers) or 'unknown blocker'}."
+        )
+
+    if execution_audit.get("available"):
+        connector_status = execution_audit.get("connector_status") or "unknown"
+        fill_status = execution_audit.get("fill_status") or "unknown"
+        if connector_status == "drafted":
+            steps.append(
+                "Latest connector result is a draft; confirm contracts, price, and sizing before any manual submit."
+            )
+        elif connector_status in {"submitted", "replaced"}:
+            steps.append(
+                f"Latest connector result says the order was {connector_status}; verify live broker status and remaining quantity ({fill_status})."
+            )
+        elif connector_status == "filled":
+            steps.append(
+                f"Latest connector result says the order filled; capture actual fill details and slippage ({fill_status})."
+            )
+        elif connector_status == "blocked":
+            blockers = execution_audit.get("blockers") or []
+            steps.append(
+                f"Latest connector attempt was blocked: {', '.join(blockers) or 'review the connector audit artifact for blockers'}."
+            )
+        elif execution_audit.get("summary"):
+            steps.append(f"Latest connector outcome: {execution_audit['summary']}")
+
+        prompts = execution_audit.get("follow_up_prompts") or []
+        if prompts:
+            steps.append(prompts[0])
 
     if bridge_status != "ready":
-        steps.append("Broker integration is not live; rely on artifact review and manual platform checks.")
+        steps.append(
+            "Broker integration is not live; rely on artifact review and manual platform checks."
+        )
     if warnings:
-        steps.append(f"Pipeline emitted {len(warnings)} warning(s); inspect outputs/health/warnings.log.")
-    steps.append("Orders remain blocked by design unless manually confirmed outside the automation loop.")
-    return steps[:5]
+        steps.append(
+            f"Pipeline emitted {len(warnings)} warning(s); inspect outputs/health/warnings.log."
+        )
+    steps.append(
+        "Orders remain blocked by design unless manually confirmed outside the automation loop."
+    )
+    return steps[:6]
 
 
 def build_brief_payload(
@@ -160,6 +278,8 @@ def build_brief_payload(
     contract: dict[str, Any],
     warnings: list[str],
     hints: dict[str, Any],
+    connector_audit: dict[str, Any],
+    signal: dict[str, Any],
 ) -> dict[str, Any]:
     operator_action = choose_operator_action(contract)
     gap = monitor.get("latest_gap_event", {})
@@ -167,6 +287,20 @@ def build_brief_payload(
     options = monitor.get("options_context", {})
     risk = monitor.get("risk_context", {})
     stale = contract.get("freshness", {}).get("stale_inputs", [])
+    latest_execution_audit = summarize_latest_execution_audit(connector_audit)
+    execution_logic = summarize_execution_logic(signal)
+    permission_score_trend = summarize_permission_score_trend(signal)
+    artifacts = {
+        "controller": str(CONTROLLER_JSON),
+        "monitor": str(MONITOR_JSON),
+        "contract": str(AGENT_V1_JSON),
+    }
+    if signal:
+        artifacts["signal"] = str(SIGNAL_JSON)
+    if latest_execution_audit.get("available"):
+        artifacts["connector_audit"] = str(CONNECTOR_AUDIT_JSON)
+        if CONNECTOR_AUDIT_LOG_JSONL.exists():
+            artifacts["connector_audit_log"] = str(CONNECTOR_AUDIT_LOG_JSONL)
 
     return {
         "schema_version": "operator_brief.v1",
@@ -209,22 +343,38 @@ def build_brief_payload(
             "sample_n": risk.get("sample_n"),
         },
         "historical_hints": summarize_historical_hints(hints),
-        "next_steps": build_next_steps(operator_action, contract, monitor, warnings),
-        "artifacts": {
-            "controller": str(CONTROLLER_JSON),
-            "monitor": str(MONITOR_JSON),
-            "contract": str(AGENT_V1_JSON),
-        },
+        "execution_logic": execution_logic,
+        "permission_score_trend": permission_score_trend,
+        "latest_execution_audit": latest_execution_audit,
+        "next_steps": build_next_steps(
+            operator_action,
+            contract,
+            monitor,
+            warnings,
+            latest_execution_audit,
+        ),
+        "artifacts": artifacts,
     }
 
 
 def build_brief() -> dict[str, Any]:
-    controller, monitor, contract, warnings, hints = load_inputs()
-    return build_brief_payload(controller, monitor, contract, warnings, hints)
+    controller, monitor, contract, warnings, hints, connector_audit, signal = (
+        load_inputs()
+    )
+    return build_brief_payload(
+        controller,
+        monitor,
+        contract,
+        warnings,
+        hints,
+        connector_audit,
+        signal,
+    )
 
 
 def build_watchlist_payload(brief: dict[str, Any]) -> dict[str, Any]:
     status = watchlist_status(brief["operator_action"])
+    priority = watchlist_priority(brief["operator_action"])
     item = {
         "item_id": (
             f"{brief['symbol']}-gap-fill-"
@@ -234,7 +384,7 @@ def build_watchlist_payload(brief: dict[str, Any]) -> dict[str, Any]:
         "symbol": brief["symbol"],
         "setup_type": "gap_fill_options_context",
         "status": status,
-        "priority": watchlist_priority(brief["operator_action"]),
+        "priority": priority,
         "operator_action": brief["operator_action"],
         "headline": brief["headline"],
         "gap_session_date": brief["focus"].get("gap_session_date"),
@@ -250,13 +400,33 @@ def build_watchlist_payload(brief: dict[str, Any]) -> dict[str, Any]:
         "blocking_reasons": brief["risk"].get("blocking_reasons", []),
         "risk_flags": brief["risk"].get("risk_flags", []),
         "stale_inputs_count": len(brief["risk"].get("stale_inputs", [])),
+        "trade_permission_score": (brief.get("execution_logic") or {}).get(
+            "trade_permission_score"
+        ),
+        "execution_permission_score": (brief.get("execution_logic") or {}).get(
+            "execution_permission_score"
+        ),
+        "permission_trend_direction": (brief.get("permission_score_trend") or {}).get(
+            "direction"
+        ),
+        "permission_trend_delta": (brief.get("permission_score_trend") or {}).get(
+            "delta"
+        ),
     }
+    derivatives, omitted = build_watchlist_derivatives(
+        brief,
+        base_status=status,
+        base_priority=priority,
+    )
+    items = [item, *derivatives]
+    active_count = sum(1 for candidate in items if candidate.get("status") != "blocked")
     return {
         "schema_version": "operator_watchlist.v1",
         "created_ts": utc_now(),
         "symbol": brief["symbol"],
-        "active_count": 0 if status == "blocked" else 1,
-        "items": [item],
+        "active_count": active_count,
+        "items": items,
+        "omitted_candidates": omitted,
     }
 
 
@@ -285,6 +455,7 @@ def build_journal_entry_payload(
     entry_id = hashlib.sha1(
         json.dumps(identity_payload, sort_keys=True).encode("utf-8")
     ).hexdigest()[:16]
+    execution_audit = brief.get("latest_execution_audit", {})
     return {
         "entry_id": entry_id,
         "created_ts": brief["created_ts"],
@@ -296,9 +467,7 @@ def build_journal_entry_payload(
         "monitor_decision": brief["summary"].get("monitor_decision"),
         "contract_decision": brief["summary"].get("contract_decision"),
         "risk_state": brief["summary"].get("risk_state"),
-        "broker_integration_status": brief["summary"].get(
-            "broker_integration_status"
-        ),
+        "broker_integration_status": brief["summary"].get("broker_integration_status"),
         "monitoring_mode": brief["summary"].get("monitoring_mode"),
         "gap_direction": brief["focus"].get("gap_direction"),
         "gap_fill_level": brief["focus"].get("gap_fill_level"),
@@ -309,13 +478,27 @@ def build_journal_entry_payload(
         "risk_flags": brief["risk"].get("risk_flags", []),
         "stale_inputs_count": len(brief["risk"].get("stale_inputs", [])),
         "warnings_count": len(warnings),
+        "connector_audit_available": execution_audit.get("available", False),
+        "connector_status": execution_audit.get("connector_status"),
+        "connector_fill_status": execution_audit.get("fill_status"),
+        "connector_broker_order_id": execution_audit.get("broker_order_id"),
         "artifacts": brief["artifacts"],
     }
 
 
 def build_journal_entry() -> dict[str, Any]:
-    controller, monitor, contract, warnings, hints = load_inputs()
-    brief = build_brief_payload(controller, monitor, contract, warnings, hints)
+    controller, monitor, contract, warnings, hints, connector_audit, signal = (
+        load_inputs()
+    )
+    brief = build_brief_payload(
+        controller,
+        monitor,
+        contract,
+        warnings,
+        hints,
+        connector_audit,
+        signal,
+    )
     return build_journal_entry_payload(brief, controller, monitor, contract, warnings)
 
 
@@ -344,6 +527,9 @@ def render_text(brief: dict[str, Any]) -> str:
     focus = brief["focus"]
     risk = brief["risk"]
     historical = brief.get("historical_hints", {})
+    execution_logic = brief.get("execution_logic", {})
+    permission_trend = brief.get("permission_score_trend", {})
+    execution_audit = brief.get("latest_execution_audit", {})
     lines = [
         "SHARPEDGE OPERATOR BRIEF",
         f"Created: {brief['created_ts']}",
@@ -366,6 +552,24 @@ def render_text(brief: dict[str, Any]) -> str:
         f"Blocking reasons: {', '.join(risk['blocking_reasons']) or 'none'}",
         f"Risk flags: {', '.join(risk['risk_flags']) or 'none'}",
     ]
+    if execution_logic.get("available"):
+        lines.extend(
+            [
+                "",
+                "Execution logic:",
+                f"- Trade gate / score: {execution_logic.get('trade_gate') or 'unknown'} / {execution_logic.get('execution_permission_score')}",
+                f"- Setup gate / tag: {execution_logic.get('setup_gate') or 'unknown'} / {execution_logic.get('setup_tag') or 'none'}",
+            ]
+        )
+    if permission_trend.get("available"):
+        lines.extend(
+            [
+                "",
+                "Permission score trend:",
+                f"- Direction / delta: {permission_trend.get('direction') or 'unknown'} / {permission_trend.get('delta')}",
+                f"- Current / previous: {permission_trend.get('current')} / {permission_trend.get('previous')}",
+            ]
+        )
     if historical.get("available"):
         lines.extend(
             [
@@ -375,14 +579,35 @@ def render_text(brief: dict[str, Any]) -> str:
                 f"- Low sample: {historical.get('low_sample')}",
             ]
         )
+    if execution_audit.get("available"):
+        lines.extend(
+            [
+                "",
+                "Latest execution audit:",
+                f"- Connector status: {execution_audit.get('connector_status') or 'unknown'}",
+                f"- Fill status: {execution_audit.get('fill_status') or 'unknown'}",
+                f"- Broker order id: {execution_audit.get('broker_order_id') or 'none'}",
+                f"- Summary: {execution_audit.get('summary') or 'none'}",
+            ]
+        )
     lines.extend(["", "Next steps:", *[f"- {step}" for step in brief["next_steps"]]])
     return "\n".join(lines) + "\n"
 
 
 def main() -> None:
     OUTDIR.mkdir(parents=True, exist_ok=True)
-    controller, monitor, contract, warnings, hints = load_inputs()
-    brief = build_brief_payload(controller, monitor, contract, warnings, hints)
+    controller, monitor, contract, warnings, hints, connector_audit, signal = (
+        load_inputs()
+    )
+    brief = build_brief_payload(
+        controller,
+        monitor,
+        contract,
+        warnings,
+        hints,
+        connector_audit,
+        signal,
+    )
     watchlist = build_watchlist_payload(brief)
     journal_entry = build_journal_entry_payload(
         brief, controller, monitor, contract, warnings

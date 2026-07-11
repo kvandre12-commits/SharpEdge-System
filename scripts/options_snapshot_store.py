@@ -23,7 +23,12 @@ except Exception:  # noqa: BLE001 - Termux/minimal envs may lack tzdata
 
 
 def iso_utc_now() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.now(timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def ny_session_date(dt_utc: datetime | None = None) -> str:
@@ -63,13 +68,44 @@ def ensure_table(con: sqlite3.Connection) -> None:
       put_gamma     REAL,
       call_iv       REAL,
       put_iv        REAL,
+      call_theta    REAL,
+      put_theta     REAL,
+      call_vega     REAL,
+      put_vega      REAL,
+      call_rho      REAL,
+      put_rho       REAL,
+      call_theo     REAL,
+      put_theo      REAL,
+      call_last_trade_price REAL,
+      put_last_trade_price  REAL,
+      call_bid      REAL,
+      call_ask      REAL,
+      put_bid       REAL,
+      put_ask       REAL,
       source        TEXT DEFAULT 'cboe',
       PRIMARY KEY (snapshot_ts, underlying, expiry_date, strike)
     );
     """)
     # Safe migrations for pre-existing tables (no-op if column present).
     existing = [r[1] for r in con.execute("PRAGMA table_info(options_chain_snapshots)")]
-    for col in ("call_iv", "put_iv"):
+    for col in (
+        "call_iv",
+        "put_iv",
+        "call_theta",
+        "put_theta",
+        "call_vega",
+        "put_vega",
+        "call_rho",
+        "put_rho",
+        "call_theo",
+        "put_theo",
+        "call_last_trade_price",
+        "put_last_trade_price",
+        "call_bid",
+        "call_ask",
+        "put_bid",
+        "put_ask",
+    ):
         if col not in existing:
             con.execute(f"ALTER TABLE options_chain_snapshots ADD COLUMN {col} REAL")
     con.commit()
@@ -80,7 +116,10 @@ def upsert_row(con: sqlite3.Connection, row: tuple, source: str = "cboe") -> Non
 
     ``row`` = (snapshot_ts, session_date, underlying, expiry_date, dte, strike,
                call_oi, put_oi, call_volume, put_volume, call_gamma, put_gamma,
-               call_iv, put_iv)
+               call_iv, put_iv, call_theta, put_theta, call_vega, put_vega,
+               call_rho, put_rho, call_theo, put_theo,
+               call_last_trade_price, put_last_trade_price,
+               call_bid, call_ask, put_bid, put_ask)
     COALESCE keeps an existing real value when a later writer supplies NULL,
     so a single-sided (call-only or put-only) update never wipes the other leg.
     """
@@ -89,9 +128,12 @@ def upsert_row(con: sqlite3.Connection, row: tuple, source: str = "cboe") -> Non
       INSERT INTO options_chain_snapshots (
         snapshot_ts, session_date, underlying, expiry_date, dte, strike,
         call_oi, put_oi, call_volume, put_volume, call_gamma, put_gamma,
-        call_iv, put_iv, source
+        call_iv, put_iv, call_theta, put_theta, call_vega, put_vega,
+        call_rho, put_rho, call_theo, put_theo,
+        call_last_trade_price, put_last_trade_price,
+        call_bid, call_ask, put_bid, put_ask, source
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(snapshot_ts, underlying, expiry_date, strike) DO UPDATE SET
         session_date = excluded.session_date,
         dte          = excluded.dte,
@@ -103,6 +145,20 @@ def upsert_row(con: sqlite3.Connection, row: tuple, source: str = "cboe") -> Non
         put_gamma    = COALESCE(excluded.put_gamma, options_chain_snapshots.put_gamma),
         call_iv      = COALESCE(excluded.call_iv, options_chain_snapshots.call_iv),
         put_iv       = COALESCE(excluded.put_iv, options_chain_snapshots.put_iv),
+        call_theta   = COALESCE(excluded.call_theta, options_chain_snapshots.call_theta),
+        put_theta    = COALESCE(excluded.put_theta, options_chain_snapshots.put_theta),
+        call_vega    = COALESCE(excluded.call_vega, options_chain_snapshots.call_vega),
+        put_vega     = COALESCE(excluded.put_vega, options_chain_snapshots.put_vega),
+        call_rho     = COALESCE(excluded.call_rho, options_chain_snapshots.call_rho),
+        put_rho      = COALESCE(excluded.put_rho, options_chain_snapshots.put_rho),
+        call_theo    = COALESCE(excluded.call_theo, options_chain_snapshots.call_theo),
+        put_theo     = COALESCE(excluded.put_theo, options_chain_snapshots.put_theo),
+        call_last_trade_price = COALESCE(excluded.call_last_trade_price, options_chain_snapshots.call_last_trade_price),
+        put_last_trade_price  = COALESCE(excluded.put_last_trade_price, options_chain_snapshots.put_last_trade_price),
+        call_bid     = COALESCE(excluded.call_bid, options_chain_snapshots.call_bid),
+        call_ask     = COALESCE(excluded.call_ask, options_chain_snapshots.call_ask),
+        put_bid      = COALESCE(excluded.put_bid, options_chain_snapshots.put_bid),
+        put_ask      = COALESCE(excluded.put_ask, options_chain_snapshots.put_ask),
         source       = excluded.source
     """,
         (*row, source),

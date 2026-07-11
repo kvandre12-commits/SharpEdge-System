@@ -17,26 +17,21 @@ import re
 import sys
 from collections import defaultdict
 
-import requests
+from market_data_sources import fetch_cboe_options_book
 
-URL = "https://cdn.cboe.com/api/global/delayed_quotes/options/SPY.json"
 SYM_RE = re.compile(r"^[A-Z]+(\d{6})([CP])(\d{8})$")
 
 W = 1100
-PANEL_W = W - 90 - 30          # plot width (left pad 90, right pad 30)
+PANEL_W = W - 90 - 30  # plot width (left pad 90, right pad 30)
 PAD_L, PAD_R = 90, 30
-ROW_H = 22                     # vertical pixels per strike row
+ROW_H = 22  # vertical pixels per strike row
 TOP = 70
-STRIKE_WINDOW = 30            # +/- strikes around spot to display
+STRIKE_WINDOW = 30  # +/- strikes around spot to display
 
 
 def fetch():
-    r = requests.get(URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=30)
-    r.raise_for_status()
-    d = r.json()
-    data = d["data"]
-    spot = data.get("current_price") or data.get("close") or 0.0
-    return data["options"], float(spot)
+    spot, book, source = fetch_cboe_options_book("SPY")
+    return spot, book, source
 
 
 def parse(options):
@@ -72,8 +67,7 @@ def svg_escape(s):
 def build_svg(book, exp, spot):
     strikes_all = sorted(book[exp].keys())
     # keep strikes nearest spot
-    nearest_idx = min(range(len(strikes_all)),
-                      key=lambda i: abs(strikes_all[i] - spot))
+    nearest_idx = min(range(len(strikes_all)), key=lambda i: abs(strikes_all[i] - spot))
     lo = max(0, nearest_idx - STRIKE_WINDOW)
     hi = min(len(strikes_all), nearest_idx + STRIKE_WINDOW + 1)
     strikes = strikes_all[lo:hi]
@@ -96,7 +90,7 @@ def build_svg(book, exp, spot):
     oi_h = n * ROW_H
     H = TOP + oi_h + 90 + 320  # oi panel + gap + iv panel
     mid_x = PAD_L + PANEL_W / 2
-    half = PANEL_W / 2 - 60     # space for center strike labels
+    half = PANEL_W / 2 - 60  # space for center strike labels
 
     total_coi = sum(r[1] for r in rows)
     total_poi = sum(r[2] for r in rows)
@@ -109,9 +103,9 @@ def build_svg(book, exp, spot):
         f'<text x="{PAD_L}" y="30" fill="#e6edf3" font-size="19" '
         f'font-weight="bold">SPY options - exp {exp.isoformat()} '
         f'&#160;<tspan fill="#7d8590" font-size="13">spot ${spot:.2f} | '
-        f'P/C OI ratio {pcr:.2f}</tspan></text>',
+        f"P/C OI ratio {pcr:.2f}</tspan></text>",
         f'<text x="{PAD_L}" y="52" fill="#26a641" font-size="13">'
-        f'PUTS (open interest)</text>',
+        f"PUTS (open interest)</text>",
         f'<text x="{PAD_L + PANEL_W}" y="52" fill="#f85149" font-size="13" '
         f'text-anchor="end">CALLS (open interest)</text>',
     ]
@@ -145,7 +139,7 @@ def build_svg(book, exp, spot):
     parts.append(
         f'<text x="{mid_x:.1f}" y="{TOP + oi_h + 22:.1f}" fill="#ffd33d" '
         f'font-size="11" text-anchor="middle">^ yellow = at-the-money strike, '
-        f'bar length = open interest (max {max_oi:,.0f})</text>'
+        f"bar length = open interest (max {max_oi:,.0f})</text>"
     )
 
     # ---- IV skew panel ----
@@ -179,7 +173,7 @@ def build_svg(book, exp, spot):
             f'font-size="10" text-anchor="end">{val * 100:.0f}%</text>'
         )
     # strike x labels (a few)
-    for k in strikes[::max(1, n // 8)]:
+    for k in strikes[:: max(1, n // 8)]:
         parts.append(
             f'<text x="{ix(k):.1f}" y="{iv_bot + 16:.1f}" fill="#7d8590" '
             f'font-size="10" text-anchor="middle">{k:g}</text>'
@@ -191,10 +185,12 @@ def build_svg(book, exp, spot):
         f'stroke-dasharray="4 4"/>'
     )
     # call iv line (red), put iv line (green)
-    cline = " ".join(f"{ix(k):.1f},{iy(civ):.1f}"
-                     for k, _, _, civ, _ in rows if civ > 0)
-    pline = " ".join(f"{ix(k):.1f},{iy(piv):.1f}"
-                     for k, _, _, _, piv in rows if piv > 0)
+    cline = " ".join(
+        f"{ix(k):.1f},{iy(civ):.1f}" for k, _, _, civ, _ in rows if civ > 0
+    )
+    pline = " ".join(
+        f"{ix(k):.1f},{iy(piv):.1f}" for k, _, _, _, piv in rows if piv > 0
+    )
     if cline:
         parts.append(
             f'<polyline points="{cline}" fill="none" stroke="#f85149" '
@@ -220,12 +216,16 @@ def build_svg(book, exp, spot):
 
 def main():
     want = sys.argv[1] if len(sys.argv) > 1 else None
-    options, spot = fetch()
-    book = parse(options)
+    spot, book, source = fetch()
     exp = pick_expiration(book, want)
     print(f"spot=${spot:.2f}  expirations available: {len(book)}")
-    print("nearest few:", ", ".join(
-        e.isoformat() for e in sorted(book)[:8]))
+    print(
+        "source: "
+        f"{source['provider']} {source['endpoint']} {source['symbol']} "
+        f"latest_option_trade_time_raw={source['latest_option_trade_time_raw']} "
+        f"iv30={source['iv30']}"
+    )
+    print("nearest few:", ", ".join(e.isoformat() for e in sorted(book)[:8]))
     print(f"rendering expiration: {exp.isoformat()}")
     svg = build_svg(book, exp, spot)
     out = "/data/data/com.termux/files/home/spy_overlay/spy_options.svg"

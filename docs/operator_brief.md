@@ -48,6 +48,9 @@ This is a compression layer, not a permission layer.
 - priority
 - key levels and thesis
 - blocker and risk-flag context
+- a 21 DTE ATM thesis item for the current call/put side when the setup is live
+- a 1 DTE ATM tactical item when execution logic is actionable
+- `omitted_candidates` when permission-score trend or setup invalidation removes a tactical idea from the active watchlist
 
 ### Journal append
 

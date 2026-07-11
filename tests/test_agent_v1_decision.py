@@ -21,17 +21,23 @@ class AgentV1DecisionTests(unittest.TestCase):
             "options": {"session_date": None},
         }
 
-        with patch.object(agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)):
+        with patch.object(
+            agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)
+        ):
             stale = agent.stale_inputs(monitor, context)
 
         stale_by_input = {item["input"]: item for item in stale}
         self.assertEqual(stale_by_input["monitor_gap"]["age_days"], 9)
         self.assertEqual(stale_by_input["signal"]["reason"], "missing_or_invalid_date")
-        self.assertEqual(stale_by_input["options_positioning"]["reason"], "missing_or_invalid_date")
+        self.assertEqual(
+            stale_by_input["options_positioning"]["reason"], "missing_or_invalid_date"
+        )
         self.assertNotIn("risk_layer", stale_by_input)
         self.assertNotIn("regime", stale_by_input)
 
-    def test_build_contract_blocks_broker_orders_even_when_trade_edge_exists(self) -> None:
+    def test_build_contract_blocks_broker_orders_even_when_trade_edge_exists(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             outputs = root / "outputs"
@@ -55,7 +61,9 @@ class AgentV1DecisionTests(unittest.TestCase):
             )
 
             with self._patched_paths(outputs, db_path):
-                with patch.object(agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)):
+                with patch.object(
+                    agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)
+                ):
                     contract = agent.build_contract()
 
         self.assertTrue(contract["trade_allowed"])
@@ -93,7 +101,9 @@ class AgentV1DecisionTests(unittest.TestCase):
             )
 
             with self._patched_paths(outputs, db_path):
-                with patch.object(agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)):
+                with patch.object(
+                    agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)
+                ):
                     contract = agent.build_contract()
 
         self.assertTrue(contract["trade_allowed"])
@@ -127,7 +137,9 @@ class AgentV1DecisionTests(unittest.TestCase):
             )
 
             with self._patched_paths(outputs, db_path):
-                with patch.object(agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)):
+                with patch.object(
+                    agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)
+                ):
                     contract = agent.build_contract()
 
         self.assertFalse(contract["trade_allowed"])
@@ -135,6 +147,47 @@ class AgentV1DecisionTests(unittest.TestCase):
         self.assertIn("sample_n_below_30", contract["blocking_reasons"])
         self.assertIn("stale_or_missing_inputs", contract["blocking_reasons"])
         self.assertIn("freshness_gate_failed", contract["risk_flags"])
+
+    def test_build_contract_allows_read_only_monitoring_when_trade_is_blocked(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            outputs = root / "outputs"
+            outputs.mkdir(parents=True)
+            db_path = root / "spy_truth.db"
+            self._seed_db(db_path, risk_date="2026-06-01", sample_n=3)
+
+            (outputs / "agent_controller_decision.json").write_text(
+                json.dumps({"decision": "hold", "confidence": 0.7}),
+                encoding="utf-8",
+            )
+            (outputs / "robinhood_fvg_monitor.json").write_text(
+                json.dumps(
+                    {
+                        "decision": "no_trade",
+                        "latest_gap_event": {"session_date": "2026-06-01"},
+                        "robinhood_mcp_handoff": {
+                            "bridge_status": {"available": True, "status": "ready"},
+                            "fallback_mode": "mcp_quote_monitoring",
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self._patched_paths(outputs, db_path):
+                with patch.object(
+                    agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)
+                ):
+                    contract = agent.build_contract()
+
+        self.assertEqual(contract["decision"], "monitor")
+        self.assertFalse(contract["trade_allowed"])
+        self.assertFalse(contract["broker_order_allowed"])
+        self.assertTrue(contract["permissions"]["monitor_quotes"])
+        self.assertIn("monitor_no_trade", contract["blocking_reasons"])
+        self.assertIn("stale_or_missing_inputs", contract["blocking_reasons"])
 
     def _patched_paths(self, outputs: Path, db_path: Path):
         return patch.multiple(
@@ -178,7 +231,15 @@ class AgentV1DecisionTests(unittest.TestCase):
             )
             con.execute(
                 "INSERT INTO risk_decision_layer VALUES (?, ?, ?, ?, ?, ?, ?)",
-                ("SPY", risk_date, f"{risk_date}T20:00:00", "STANDARD", sample_n, 0.72, 0.25),
+                (
+                    "SPY",
+                    risk_date,
+                    f"{risk_date}T20:00:00",
+                    "STANDARD",
+                    sample_n,
+                    0.72,
+                    0.25,
+                ),
             )
             con.execute("INSERT INTO signals_daily VALUES (?, ?)", ("SPY", risk_date))
             con.execute("INSERT INTO regime_daily VALUES (?, ?)", ("SPY", risk_date))

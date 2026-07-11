@@ -66,7 +66,9 @@ def monitor_bridge_status(monitor: dict[str, Any]) -> dict[str, Any]:
         "available": bool(bridge.get("available")),
         "status": str(bridge.get("status", "unknown")),
         "fallback_mode": str(
-            handoff.get("fallback_mode") or bridge.get("fallback_mode") or "artifact_only_manual_review"
+            handoff.get("fallback_mode")
+            or bridge.get("fallback_mode")
+            or "artifact_only_manual_review"
         ),
     }
 
@@ -180,21 +182,35 @@ def db_context() -> dict[str, Any]:
         con.close()
 
 
-def stale_inputs(monitor: dict[str, Any], context: dict[str, Any]) -> list[dict[str, Any]]:
+def stale_inputs(
+    monitor: dict[str, Any], context: dict[str, Any]
+) -> list[dict[str, Any]]:
     inputs = [
-        ("monitor_gap", monitor.get("latest_gap_event", {}).get("session_date"), MAX_CURRENT_AGE_DAYS),
+        (
+            "monitor_gap",
+            monitor.get("latest_gap_event", {}).get("session_date"),
+            MAX_CURRENT_AGE_DAYS,
+        ),
         ("risk_layer", context.get("risk", {}).get("date"), MAX_CURRENT_AGE_DAYS),
         ("signal", context.get("signal", {}).get("date"), MAX_CURRENT_AGE_DAYS),
         ("regime", context.get("regime", {}).get("date"), MAX_CURRENT_AGE_DAYS),
-        ("options_positioning", context.get("options", {}).get("session_date"), MAX_OPTIONS_AGE_DAYS),
+        (
+            "options_positioning",
+            context.get("options", {}).get("session_date"),
+            MAX_OPTIONS_AGE_DAYS,
+        ),
     ]
     stale: list[dict[str, Any]] = []
     for name, value, max_age in inputs:
         age = age_days(value)
         if age is None:
-            stale.append({"input": name, "date": value, "reason": "missing_or_invalid_date"})
+            stale.append(
+                {"input": name, "date": value, "reason": "missing_or_invalid_date"}
+            )
         elif age > max_age:
-            stale.append({"input": name, "date": value, "age_days": age, "max_age_days": max_age})
+            stale.append(
+                {"input": name, "date": value, "age_days": age, "max_age_days": max_age}
+            )
     return stale
 
 
@@ -251,6 +267,12 @@ def build_contract() -> dict[str, Any]:
     broker_allowed = False
     trade_allowed = not blocking_reasons and trade_edge_confidence >= 0.55
     max_risk = as_float(risk.get("capital_risk_pct")) if trade_allowed else 0.0
+    broker_read_allowed = bridge["available"]
+    monitoring_only_allowed = (
+        broker_read_allowed
+        and monitor_decision in {"watch", "no_trade"}
+        and not warnings
+    )
 
     decision = "hold"
     required_human_action = "none"
@@ -258,10 +280,8 @@ def build_contract() -> dict[str, Any]:
         decision = "operator_confirm_required"
         required_human_action = "confirm_order"
         broker_allowed = False
-    elif monitor_decision == "watch" and not warnings:
+    elif monitoring_only_allowed:
         decision = "monitor"
-
-    broker_read_allowed = bridge["available"]
 
     return {
         "schema_version": "agentic_ai_v1.0",
@@ -306,30 +326,35 @@ def build_contract() -> dict[str, Any]:
 
 def render_text(contract: dict[str, Any]) -> str:
     stale = contract["freshness"]["stale_inputs"]
-    return "\n".join(
-        [
-            "SHARPEDGE AGENTIC AI V1 DECISION",
-            f"Created: {contract['created_ts']}",
-            f"Symbol: {contract['symbol']}",
-            f"Decision: {contract['decision']}",
-            f"Trade allowed: {contract['trade_allowed']}",
-            f"Broker order allowed: {contract['broker_order_allowed']}",
-            f"Risk state: {contract['risk_state']}",
-            f"Max capital risk pct: {contract['max_capital_risk_pct']}",
-            f"Evidence quality: {contract['confidence_evidence_quality']}",
-            f"Trade edge confidence: {contract['confidence_trade_edge']}",
-            f"Blocking reasons: {', '.join(contract['blocking_reasons']) or 'none'}",
-            f"Risk flags: {', '.join(contract['risk_flags']) or 'none'}",
-            f"Stale inputs: {len(stale)}",
-            "Orders remain blocked unless an operator manually confirms outside this contract.",
-        ]
-    ) + "\n"
+    return (
+        "\n".join(
+            [
+                "SHARPEDGE AGENTIC AI V1 DECISION",
+                f"Created: {contract['created_ts']}",
+                f"Symbol: {contract['symbol']}",
+                f"Decision: {contract['decision']}",
+                f"Trade allowed: {contract['trade_allowed']}",
+                f"Broker order allowed: {contract['broker_order_allowed']}",
+                f"Risk state: {contract['risk_state']}",
+                f"Max capital risk pct: {contract['max_capital_risk_pct']}",
+                f"Evidence quality: {contract['confidence_evidence_quality']}",
+                f"Trade edge confidence: {contract['confidence_trade_edge']}",
+                f"Blocking reasons: {', '.join(contract['blocking_reasons']) or 'none'}",
+                f"Risk flags: {', '.join(contract['risk_flags']) or 'none'}",
+                f"Stale inputs: {len(stale)}",
+                "Orders remain blocked unless an operator manually confirms outside this contract.",
+            ]
+        )
+        + "\n"
+    )
 
 
 def main() -> None:
     OUTDIR.mkdir(parents=True, exist_ok=True)
     contract = build_contract()
-    OUT_JSON.write_text(json.dumps(contract, indent=2, sort_keys=True), encoding="utf-8")
+    OUT_JSON.write_text(
+        json.dumps(contract, indent=2, sort_keys=True), encoding="utf-8"
+    )
     OUT_TXT.write_text(render_text(contract), encoding="utf-8")
     print(json.dumps(contract, indent=2, sort_keys=True))
     print(f"agent_v1_decision={contract['decision']}")

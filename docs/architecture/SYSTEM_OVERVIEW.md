@@ -42,6 +42,21 @@ SharpEdge-System outputs/signal.json
   → native Compose Trade Gate card
 ```
 
+The formal viewing-layer contract lives in:
+
+```text
+docs/architecture/VIEWING_LAYER.md
+```
+
+Short version:
+
+```text
+Interpretation and authority finish upstream.
+Viewing explains and proves what was shown.
+Viewing may derive presentation.
+Viewing may not derive meaning.
+```
+
 ## What not to do
 
 - Do not put Android UI logic in SharpEdge-System.
@@ -59,5 +74,7 @@ Read these first:
 3. `docs/architecture/CURRENT_STATE.md`
 4. `docs/architecture/REPO_INVENTORY.md`
 5. `docs/architecture/CONTRACTS.md`
+6. `docs/architecture/VIEWING_LAYER.md`
+7. `docs/architecture/AGILE_DASHBOARD_STACK.md`
 
 Then work only inside the repo/layer that owns the requested change.

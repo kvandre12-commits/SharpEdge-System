@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""Incrementally ingest daily SPY bars from yfinance."""
+"""Incrementally ingest daily SPY bars from Yahoo chart data."""
 
 from __future__ import annotations
 
+import csv
 import os
 import sqlite3
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
-import yfinance as yf
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from cockpit.market_data_sources import fetch_yahoo_daily_bars  # noqa: E402
 
 try:
     from scripts.utils.pipeline_state import is_fresh, write_state
@@ -19,11 +24,30 @@ except ModuleNotFoundError:  # pragma: no cover - path execution fallback
 
 SYMBOL = os.getenv("SYMBOL", "SPY")
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
-SOURCE = "yfinance"
+SOURCE = "yahoo_chart"
 FULL_PERIOD = os.getenv("DAILY_FULL_PERIOD", "2y")
 INCREMENTAL_PERIOD = os.getenv("DAILY_INCREMENTAL_PERIOD", "10d")
 CACHE_TTL_HOURS = float(os.getenv("DAILY_CACHE_TTL_HOURS", "12"))
-FORCE_REFRESH = os.getenv("DAILY_FORCE_REFRESH", "0").strip().lower() in {"1", "true", "yes", "y"}
+FORCE_REFRESH = os.getenv("DAILY_FORCE_REFRESH", "0").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "y",
+}
+TIMEOUT = int(os.getenv("YAHOO_DAILY_TIMEOUT", "20"))
+CSV_COLUMNS = [
+    "date",
+    "symbol",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "source",
+    "ingest_ts",
+]
+
+BarRow = dict[str, Any]
 
 
 def connect(db_path: str) -> sqlite3.Connection:
@@ -86,45 +110,37 @@ def fetch_period_for_state(state: dict[str, Any]) -> str:
     return INCREMENTAL_PERIOD
 
 
-def fetch_daily(period: str) -> pd.DataFrame:
-    frame = yf.download(
+def fetch_daily(period: str) -> tuple[list[BarRow], dict[str, Any]]:
+    raw_rows, source = fetch_yahoo_daily_bars(
         SYMBOL,
-        period=period,
         interval="1d",
-        auto_adjust=False,
-        progress=False,
+        range_=period,
+        timeout=TIMEOUT,
     )
-
-    if isinstance(frame.columns, pd.MultiIndex):
-        frame.columns = [column[0] for column in frame.columns]
-
-    frame = frame.reset_index()
-    frame.columns = [str(column).lower().replace(" ", "_") for column in frame.columns]
-
-    if "datetime" in frame.columns:
-        frame = frame.rename(columns={"datetime": "date"})
-    if "index" in frame.columns:
-        frame = frame.rename(columns={"index": "date"})
-    if "date" not in frame.columns:
-        raise RuntimeError(f"Could not find date column after yfinance download. Columns={list(frame.columns)}")
-
-    frame["date"] = pd.to_datetime(frame["date"]).dt.date.astype(str)
-    out = frame[["date", "open", "high", "low", "close", "volume"]].copy()
-    out["symbol"] = SYMBOL
-    out["source"] = SOURCE
-    out["ingest_ts"] = datetime.now(timezone.utc).isoformat()
-    out = out.dropna(subset=["open", "high", "low", "close"]).reset_index(drop=True)
-
-    if out.empty:
+    ingest_ts = datetime.now(timezone.utc).isoformat()
+    rows = []
+    for row in raw_rows:
+        rows.append(
+            {
+                "date": row["date"],
+                "symbol": SYMBOL,
+                "open": row["open"],
+                "high": row["high"],
+                "low": row["low"],
+                "close": row["close"],
+                "volume": row["volume"],
+                "source": SOURCE,
+                "ingest_ts": ingest_ts,
+            }
+        )
+    if not rows:
         raise RuntimeError(f"No rows returned for symbol={SYMBOL}, period={period}")
+    return rows, source
 
-    return out
 
-
-def upsert_truth(con: sqlite3.Connection, truth: pd.DataFrame) -> int:
+def upsert_truth(con: sqlite3.Connection, truth: list[BarRow]) -> int:
     ensure_truth_table(con)
-    cols = ["date", "symbol", "open", "high", "low", "close", "volume", "source", "ingest_ts"]
-    rows = truth[cols].to_records(index=False).tolist()
+    rows = [tuple(row[column] for column in CSV_COLUMNS) for row in truth]
     con.executemany(
         """
         INSERT INTO bars_daily (date, symbol, open, high, low, close, volume, source, ingest_ts)
@@ -146,23 +162,26 @@ def upsert_truth(con: sqlite3.Connection, truth: pd.DataFrame) -> int:
 
 def write_truth_csv(con: sqlite3.Connection) -> int:
     os.makedirs("outputs", exist_ok=True)
-    frame = pd.read_sql_query(
+    rows = con.execute(
         """
         SELECT date, symbol, open, high, low, close, volume, source, ingest_ts
         FROM bars_daily
         WHERE symbol = ?
         ORDER BY date ASC
         """,
-        con,
-        params=(SYMBOL,),
-    )
+        (SYMBOL,),
+    ).fetchall()
     path = Path(f"outputs/{SYMBOL.lower()}_truth_daily.csv")
-    frame.to_csv(path, index=False)
-    return len(frame)
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(CSV_COLUMNS)
+        writer.writerows(rows)
+    return len(rows)
 
 
 def main() -> None:
     con = connect(DB_PATH)
+    source_details: dict[str, Any] = {}
     try:
         before = latest_state(con)
         network_refresh = not should_skip_network(before)
@@ -170,7 +189,7 @@ def main() -> None:
         upserted = 0
 
         if network_refresh:
-            truth = fetch_daily(period=period)
+            truth, source_details = fetch_daily(period=period)
             upserted = upsert_truth(con, truth)
 
         csv_rows = write_truth_csv(con)
@@ -180,19 +199,22 @@ def main() -> None:
 
     state = {
         "symbol": SYMBOL,
+        "source": SOURCE,
         "cache_ttl_hours": CACHE_TTL_HOURS,
         "force_refresh": FORCE_REFRESH,
         "network_refresh": network_refresh,
         "period": period,
+        "timeout": TIMEOUT,
         "upserted_rows": upserted,
         "csv_rows": csv_rows,
+        "source_details": source_details,
         "before": before,
         "after": after,
     }
     write_state("daily_bars", state)
     mode = "network_refresh" if network_refresh else "cache_export_only"
     print(
-        f"OK: {SYMBOL} daily bars | mode={mode} | period={period} | "
+        f"OK: {SYMBOL} daily bars | mode={mode} | source={SOURCE} | period={period} | "
         f"upserted={upserted} | csv_rows={csv_rows} | latest={after.get('latest_date')}"
     )
 
