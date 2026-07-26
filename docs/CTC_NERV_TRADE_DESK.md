@@ -13,6 +13,15 @@ The CTC/NERV Trade Desk is a research-only workflow that connects:
 This is a trade **desk**, not an auto-trader. Cute distinction. Very expensive if
 ignored.
 
+The CTC workbook is the first cartridge. The same taxonomy can be reused for
+other company/institution workbooks with:
+
+```bash
+python3 scripts/regime_nerv_trade_desk.py --workbook path/to/company_pack.xlsx
+```
+
+See `docs/REGIME_CARTRIDGE_TAXONOMY.md` for the generic workbook contract.
+
 ## Build the board
 
 Run NERV first if the liquidity board is stale or missing:

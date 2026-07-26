@@ -8,11 +8,13 @@ from zipfile import ZIP_DEFLATED, ZipFile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
+from ctc_nerv_trade_desk import build_parser  # noqa: E402
 from nerv.ctc_trade_desk import (  # noqa: E402
     build_trade_desk_payload,
     load_xlsx_tables,
     write_trade_desk_artifacts,
 )
+from regime_nerv_trade_desk import main as regime_main  # noqa: E402
 
 
 def test_load_xlsx_tables_reads_disposition_sheet(tmp_path: Path) -> None:
@@ -70,6 +72,13 @@ def test_build_trade_desk_payload_joins_ctc_and_nerv(tmp_path: Path) -> None:
     assert (
         "non_spy_requires_expanded_operator_risk_policy" in row["execute_block_reason"]
     )
+
+
+def test_cli_accepts_generic_workbook_alias() -> None:
+    args = build_parser().parse_args(["--workbook", "company_pack.xlsx"])
+
+    assert args.ctc_workbook == "company_pack.xlsx"
+    assert callable(regime_main)
 
 
 def test_write_trade_desk_artifacts(tmp_path: Path) -> None:

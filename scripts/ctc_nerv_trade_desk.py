@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Build the CTC/NERV research trade-desk board.
+"""Build a regime-workbook/NERV research trade-desk board.
 
-Example:
+Examples:
   python3 scripts/ctc_nerv_trade_desk.py \
     --ctc-workbook '/sdcard/Download/CTC_C001_Full_34_Name_Disposition_v0_5 (1).xlsx'
+
+  python3 scripts/ctc_nerv_trade_desk.py --workbook some_other_company_pack.xlsx
 """
 
 from __future__ import annotations
@@ -27,12 +29,14 @@ from nerv.runtime_retention import DEFAULT_RETENTION_HOURS, prune_stale_files  #
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Join CTC workbook disposition rows with NERV liquidity board rows.",
+        description="Join regime workbook disposition rows with NERV liquidity board rows.",
     )
     parser.add_argument(
         "--ctc-workbook",
+        "--workbook",
+        dest="ctc_workbook",
         default=str(DEFAULT_CTC_WORKBOOK),
-        help="Path to CTC workbook .xlsx.",
+        help="Path to CTC/regime cartridge workbook .xlsx.",
     )
     parser.add_argument(
         "--nerv-board",
