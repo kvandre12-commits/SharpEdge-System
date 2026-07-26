@@ -87,11 +87,12 @@ def write_surfaces(
     *,
     refresh_seconds: int = DEFAULT_REFRESH_SECONDS,
     cockpit_dir: Path = COCKPIT_DIR,
+    sources: list[BoardSource] | None = None,
 ) -> dict[str, str]:
     panel = cockpit_dir / "regime_nerv_panel.html"
     split = cockpit_dir / "regime_nerv_split.html"
     panel.write_text(
-        render_panel_html(refresh_seconds=refresh_seconds), encoding="utf-8"
+        render_panel_html(sources, refresh_seconds=refresh_seconds), encoding="utf-8"
     )
     split.write_text(
         render_split_html(refresh_seconds=refresh_seconds), encoding="utf-8"

@@ -46,7 +46,7 @@ def test_render_panel_includes_structure_taxonomy(tmp_path: Path) -> None:
 
 
 def test_write_surfaces_creates_panel_and_split(tmp_path: Path) -> None:
-    paths = write_surfaces(cockpit_dir=tmp_path, refresh_seconds=10)
+    paths = write_surfaces(cockpit_dir=tmp_path, refresh_seconds=10, sources=[])
 
     panel = Path(paths["panel"])
     split = Path(paths["split"])

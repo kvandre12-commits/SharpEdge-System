@@ -21,6 +21,10 @@ outputs/nerv/
 outputs/nerv_*/
 outputs/nerv_trade_desk/
 outputs/regime_cartridges/
+outputs/runtime_tmp/
+outputs/cockpit_regime_split_loop.*
+outputs/*.log
+outputs/*.pid
 phone_companion/launchers/*.json
 phone_companion/observations/*.json
 phone_companion/requests/*_trace.json

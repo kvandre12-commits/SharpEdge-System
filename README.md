@@ -21,7 +21,7 @@ operator-facing decision-support objects.
 - `trade_permission` / Trade Gate analytics.
 - Operator artifacts and approval-state objects.
 - Phone Companion contract packaging.
-- Generated runtime proof artifacts.
+- Generated runtime proof artifacts, treated as disposable unless promoted.
 
 ## What does it not own?
 
@@ -42,11 +42,14 @@ python phone_companion/export_signal_to_android_viewer.py
 Architecture entrypoints for agents:
 
 ```text
+docs/SHARPEDGE_BORING_RUTHLESS_CONTRACT.md
 docs/architecture/OWNERSHIP_MAP.md
 docs/architecture/SYSTEM_OVERVIEW.md
 docs/architecture/CURRENT_STATE.md
 docs/architecture/REPO_INVENTORY.md
 docs/architecture/CONTRACTS.md
+docs/architecture/VIEWING_LAYER.md
+docs/architecture/AGILE_DASHBOARD_STACK.md
 docs/architecture/CHANGE_ZONES.md
 docs/architecture/WORKSTREAM_SPLIT.md
 ```
