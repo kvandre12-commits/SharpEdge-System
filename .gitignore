@@ -17,6 +17,8 @@ venv/
 
 # Generated runtime/proof artifacts
 outputs/signal.json
+outputs/nerv/
+outputs/nerv_trade_desk/
 phone_companion/launchers/*.json
 phone_companion/observations/*.json
 phone_companion/requests/*_trace.json

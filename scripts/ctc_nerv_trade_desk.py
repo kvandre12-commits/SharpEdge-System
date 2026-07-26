@@ -22,6 +22,7 @@ from nerv.ctc_trade_desk import (  # noqa: E402
     build_trade_desk_payload,
     write_trade_desk_artifacts,
 )
+from nerv.runtime_retention import DEFAULT_RETENTION_HOURS, prune_stale_files  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -43,11 +44,20 @@ def build_parser() -> argparse.ArgumentParser:
         default=str(DEFAULT_OUTPUT_DIR),
         help="Output directory for JSON/CSV/Markdown board artifacts.",
     )
+    parser.add_argument(
+        "--retention-hours",
+        type=float,
+        default=DEFAULT_RETENTION_HOURS,
+        help="Opportunistically delete stale files in the output dir before writing. Use 0 to disable.",
+    )
     return parser
 
 
 def main() -> int:
     args = build_parser().parse_args()
+    deleted = prune_stale_files(args.output_dir, max_age_hours=args.retention_hours)
+    if deleted:
+        print(f"[ctc/nerv] pruned stale artifacts: {len(deleted)}")
     payload = build_trade_desk_payload(
         ctc_workbook=args.ctc_workbook,
         nerv_board_path=args.nerv_board,

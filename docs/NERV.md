@@ -370,6 +370,8 @@ The bridge joins CTC disposition rows, CTC provisional structures, CTC execution
 
 Desk output is research-only. It may promote a name to manual validation, but every row remains blocked until broker fresh quote, final debit/credit, buying-power impact, assignment/dividend checks, explicit operator approval, and any required non-SPY risk-policy expansion are complete.
 
+Generated `outputs/nerv/` and `outputs/nerv_trade_desk/` files are git-ignored disposable runtime artifacts. NERV and the CTC/NERV desk CLI opportunistically prune stale output files older than 24 hours before writing; use `--retention-hours 0` to disable pruning for a forensic/debug run.
+
 See `docs/CTC_NERV_TRADE_DESK.md`.
 
 ## NERV Build Plan

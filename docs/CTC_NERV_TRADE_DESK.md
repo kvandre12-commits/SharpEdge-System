@@ -41,6 +41,8 @@ Outputs:
 - `outputs/nerv_trade_desk/ctc_nerv_trade_desk.csv`
 - `outputs/nerv_trade_desk/ctc_nerv_trade_desk.md`
 
+Generated `outputs/nerv/` and `outputs/nerv_trade_desk/` files are disposable runtime artifacts and are git-ignored. Both CLIs opportunistically prune stale files older than 24 hours before writing; pass `--retention-hours 0` to disable that broom for a forensic/debug run.
+
 ## Desk states
 
 | State | Meaning |
