@@ -28,8 +28,9 @@ pandas to compile on Android).
 cd cockpit
 python3 make_cockpit.py              # one-shot generate for the live cockpit
 python3 make_operator_surface.py     # one-shot generate for the operator surface
-./run_local_dashboard.sh             # local server + live loop for both first-class surfaces
+./run_local_dashboard.sh             # local server + live loop for first-class surfaces
 # COCKPIT_OPEN_BROWSER=1 COCKPIT_OPEN_OPERATOR_SURFACE=1 ./run_local_dashboard.sh
+# COCKPIT_INTERVAL=10 ./run_local_dashboard.sh  # 10s loop
 ./run_local_ace_dashboard.sh         # same shell, but Ace-style authority for execution logic
 ./run_cockpit.sh                     # live loop + optional Android browser handoff
 ./open_cockpit.sh                    # re-open cockpit fast if you closed the tab like a maniac
@@ -38,7 +39,8 @@ python3 make_operator_surface.py     # one-shot generate for the operator surfac
 ```
 
 `run_local_dashboard.sh` is the Android-native safe default. It regenerates every
-45s, serves only on `127.0.0.1`, refreshes the operator artifact chain before
+`COCKPIT_INTERVAL` seconds (`5` by default; use `10` for the slower shared loop),
+serves only on `127.0.0.1`, refreshes the operator artifact chain before
 rendering the operator surface, writes `outputs/ace_snapshot.json` on the same
 heartbeat for SharpEdge Ace, and never calls ADB, wireless debugging, CDP,
 `am start`, or browser automation. The only first-class local pages are:
@@ -47,7 +49,14 @@ heartbeat for SharpEdge Ace, and never calls ADB, wireless debugging, CDP,
 http://127.0.0.1:8777/cockpit.html
 http://127.0.0.1:8777/operator_surface.html
 http://127.0.0.1:8777/runner_handoff_live.html
+http://127.0.0.1:8777/regime_nerv_split.html
 ```
+
+`regime_nerv_split.html` places the normal live cockpit next to a Regime/NERV
+sidecar panel. The sidecar reads current disposable desk artifacts when present:
+`outputs/nerv_trade_desk/ctc_nerv_trade_desk.json` and
+`outputs/regime_cartridges/*/desk/ctc_nerv_trade_desk.json`. If runtime cleanup
+has removed those boards, it shows an honest empty-state instead of pretending.
 
 Those are the live surfaces. Treat preview/mock artifacts like `handoff_preview.html`
 as demos only, not the always-live operator view. `runner_handoff_live.html`

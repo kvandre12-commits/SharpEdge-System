@@ -7,30 +7,41 @@
 #
 # Usage:
 #   bash cockpit/run_local_dashboard.sh
-#   COCKPIT_PORT=8777 COCKPIT_INTERVAL=45 bash cockpit/run_local_dashboard.sh
+#   COCKPIT_PORT=8777 COCKPIT_INTERVAL=5 bash cockpit/run_local_dashboard.sh
+#   COCKPIT_ARTIFACT_CACHE_EVERY=60 COCKPIT_ARTIFACT_CACHE_MAX=8 bash cockpit/run_local_dashboard.sh
 #   COCKPIT_OPEN_BROWSER=1 bash cockpit/run_local_dashboard.sh
 #   COCKPIT_OPEN_BROWSER=1 COCKPIT_OPEN_OPERATOR_SURFACE=1 bash cockpit/run_local_dashboard.sh
+#   SHARPEDGE_SPINE_REALTIME_ADJUST=1 bash cockpit/run_local_dashboard.sh
+#
+# Separate adaptive audit loop:
+#   bash cockpit/run_spine_realtime_auditor.sh
 #
 # Then open these URLs manually in any browser on the phone, or let the script
 # open them via Android intents when COCKPIT_OPEN_BROWSER=1:
 #   http://127.0.0.1:8777/cockpit.html
 #   http://127.0.0.1:8777/operator_surface.html
 #   http://127.0.0.1:8777/runner_handoff_live.html
+#   http://127.0.0.1:8777/regime_nerv_split.html
 
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 COCKPIT_DIR="$ROOT_DIR/cockpit"
 PORT="${COCKPIT_PORT:-8777}"
-INTERVAL="${COCKPIT_INTERVAL:-45}"
+INTERVAL="${COCKPIT_INTERVAL:-5}"
 URL="http://127.0.0.1:${PORT}/cockpit.html"
 OPERATOR_SURFACE_URL="http://127.0.0.1:${PORT}/operator_surface.html"
 RUNNER_HANDOFF_URL="http://127.0.0.1:${PORT}/runner_handoff_live.html"
+REGIME_NERV_SPLIT_URL="http://127.0.0.1:${PORT}/regime_nerv_split.html"
 LOGDIR="${TMPDIR:-$HOME/.cache}"
 SERVER_LOG="$LOGDIR/sharpedge_cockpit_server_${PORT}.log"
 AUTHORITY_ENGINE="${SHARPEDGE_AUTHORITY_ENGINE:-legacy}"
 OPEN_BROWSER="${COCKPIT_OPEN_BROWSER:-}"
 OPEN_OPERATOR_SURFACE="${COCKPIT_OPEN_OPERATOR_SURFACE:-1}"
+ARTIFACT_CACHE_EVERY="${COCKPIT_ARTIFACT_CACHE_EVERY:-60}"
+OPERATOR_SURFACE_EVERY="${COCKPIT_OPERATOR_SURFACE_EVERY:-60}"
+LAST_ARTIFACT_CACHE_DUMP=0
+LAST_OPERATOR_SURFACE_REFRESH=0
 
 mkdir -p "$LOGDIR"
 cd "$COCKPIT_DIR"
@@ -57,11 +68,37 @@ start_server() {
   echo "server started on :$PORT (pid $!, log $SERVER_LOG)"
 }
 
-build_once() {
+build_cockpit_once() {
+  python3 make_cockpit.py
+}
+
+build_regime_nerv_panel_once() {
+  python3 regime_nerv_panel.py "$INTERVAL"
+}
+
+build_operator_surface_once() {
   local failed=0
-  python3 make_cockpit.py || failed=1
   bash ./refresh_operator_surface_inputs.sh || failed=1
   python3 make_operator_surface.py || failed=1
+  return "$failed"
+}
+
+maybe_build_operator_surface() {
+  local force="${1:-0}"
+  local now
+  now="$(date +%s)"
+  if [ "$force" != "1" ] && [ $((now - LAST_OPERATOR_SURFACE_REFRESH)) -lt "$OPERATOR_SURFACE_EVERY" ]; then
+    return 0
+  fi
+  LAST_OPERATOR_SURFACE_REFRESH="$now"
+  build_operator_surface_once
+}
+
+build_once() {
+  local failed=0
+  build_cockpit_once || failed=1
+  build_regime_nerv_panel_once || failed=1
+  maybe_build_operator_surface || failed=1
   return "$failed"
 }
 
@@ -84,15 +121,31 @@ maybe_open_surfaces() {
     return
   fi
   open_url "$URL" "cockpit"
+  open_url "$REGIME_NERV_SPLIT_URL" "cockpit + regime/NERV split"
   if [ -n "$OPEN_OPERATOR_SURFACE" ]; then
     open_url "$OPERATOR_SURFACE_URL" "operator surface"
   fi
 }
 
+maybe_dump_artifact_cache() {
+  if [ "${COCKPIT_ARTIFACT_CACHE:-1}" = "0" ]; then
+    return
+  fi
+  local now
+  now="$(date +%s)"
+  if [ $((now - LAST_ARTIFACT_CACHE_DUMP)) -lt "$ARTIFACT_CACHE_EVERY" ]; then
+    return
+  fi
+  LAST_ARTIFACT_CACHE_DUMP="$now"
+  bash ./cache_cockpit_artifacts.sh || echo "artifact cache dump failed; continuing live loop"
+}
+
 start_server
 
 echo "building cockpit once..."
-if ! build_once; then
+if build_cockpit_once && build_regime_nerv_panel_once && maybe_build_operator_surface 1; then
+  maybe_dump_artifact_cache
+else
   echo "first build failed; keeping server up and retrying in loop"
 fi
 
@@ -107,11 +160,16 @@ First-class live surfaces:
   cockpit:             $URL
   operator surface:    $OPERATOR_SURFACE_URL
   runner handoff live: $RUNNER_HANDOFF_URL
+  cockpit + regime:   $REGIME_NERV_SPLIT_URL
 
-Regenerating every ${INTERVAL}s. Press Ctrl+C to stop the refresh loop.
+Regenerating cockpit/regime panel every ${INTERVAL}s. Operator surface every ${OPERATOR_SURFACE_EVERY}s; artifact cache dump every ${ARTIFACT_CACHE_EVERY}s. Press Ctrl+C to stop the refresh loop.
 EOF
 
 while true; do
   sleep "$INTERVAL"
-  build_once || echo "refresh failed; retrying next loop"
+  if build_once; then
+    maybe_dump_artifact_cache
+  else
+    echo "refresh failed; retrying next loop"
+  fi
 done
