@@ -103,6 +103,23 @@ Recognized fields:
 | `Ticker` | Underlying symbol. |
 | `Fresh_Quote` | `YES` only when manually refreshed at broker/Cboe. Anything else blocks. |
 
+## Structure taxonomy
+
+Every desk row gets explicit structure metadata:
+
+| Field | Meaning |
+|---|---|
+| `structure_family` | Normalized family such as `call_debit_spread`, `put_debit_spread`, `diagonal`, `calendar`, `ratio_diagonal`, `back_ratio`, `branch_defined_debit_spread`, or `equity_or_shares`. |
+| `structure_complexity` | `vanilla_defined_risk`, `complex_manual_review`, `branch_pending`, `equity_research`, or `unspecified`. |
+| `manual_complex_review_required` | `true` for ratio diagonals, back ratios, ratios, diagonals, calendars, covered-call/income overlays, and long-dated option structures. |
+| `structure_taxonomy_reason` | Short explanation of why the structure landed in that bucket. |
+
+Default desk posture:
+
+- **Vanilla debit spreads** can advance to normal manual validation after NERV and fresh-quote gates pass.
+- **Branch-defined debit spreads** must first choose call spread, put spread, or no-trade.
+- **Ratio diagonals / back ratios / calendars / diagonals** require complex payoff, margin, assignment/dividend, and broker quote review. They do not silently ride the vanilla debit-spread lane. Sneaky little cobra trades.
+
 ## Output states
 
 | State | Meaning |
@@ -110,7 +127,8 @@ Recognized fields:
 | `needs_nerv_snapshot` | Workbook has ticker, but current NERV board has no row. |
 | `reject_options_for_now` | NERV found fatal quote/liquidity issues. |
 | `refresh_quote_required` | NERV found a candidate, but fresh quote is missing/stale. |
-| `manual_validate_candidate` | Workbook + NERV are clean enough for human review. |
+| `manual_validate_candidate` | Workbook + NERV are clean enough for vanilla human review. |
+| `manual_complex_structure_review` | Fresh quote/NERV passed, but the structure is complex and needs payoff/margin/assignment review. |
 | `equity_or_research_only` | No options-led vehicle/structure is present. |
 
 ## Execution boundary

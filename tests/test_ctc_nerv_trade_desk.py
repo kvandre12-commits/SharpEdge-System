@@ -14,6 +14,7 @@ from nerv.ctc_trade_desk import (  # noqa: E402
     load_xlsx_tables,
     write_trade_desk_artifacts,
 )
+from nerv.structure_taxonomy import classify_strategy  # noqa: E402
 from regime_nerv_trade_desk import main as regime_main  # noqa: E402
 
 
@@ -68,10 +69,65 @@ def test_build_trade_desk_payload_joins_ctc_and_nerv(tmp_path: Path) -> None:
     assert row["ctc_structure"] == "Aug 55/60 Call Debit Spread"
     assert row["nerv_best_contract"] == "BKR260821C00055000"
     assert row["desk_state"] == "refresh_quote_required"
+    assert row["structure_family"] == "call_debit_spread"
+    assert row["structure_complexity"] == "vanilla_defined_risk"
     assert "fresh_broker_quote_required" in row["execute_block_reason"]
     assert (
         "non_spy_requires_expanded_operator_risk_policy" in row["execute_block_reason"]
     )
+
+
+def test_complex_structure_taxonomy_is_explicit() -> None:
+    ratio_diagonal = classify_strategy(structure="1x2 Ratio Diagonal")
+    back_ratio = classify_strategy(structure="Call Back Ratio")
+    branch_debit = classify_strategy(structure="Branch-defined debit spread")
+
+    assert ratio_diagonal.family == "ratio_diagonal"
+    assert ratio_diagonal.manual_complex_review_required is True
+    assert back_ratio.family == "back_ratio"
+    assert back_ratio.manual_complex_review_required is True
+    assert branch_debit.family == "branch_defined_debit_spread"
+    assert branch_debit.complexity == "branch_pending"
+
+
+def test_complex_structure_gets_manual_review_after_fresh_quote(tmp_path: Path) -> None:
+    workbook = tmp_path / "ctc.xlsx"
+    nerv_board = tmp_path / "nerv_board.json"
+    _write_minimal_ctc_workbook(
+        workbook, structure="1x2 Ratio Diagonal", fresh_quote="YES"
+    )
+    nerv_board.write_text(
+        json.dumps(
+            {
+                "schema": "sharpedge.nerv_liquidity_board.v1",
+                "contracts": [
+                    {
+                        "underlying": "BKR",
+                        "contract_symbol": "BKR260821C00055000",
+                        "expiration": "2026-08-21",
+                        "option_type": "call",
+                        "strike": 55,
+                        "nerv_score": 82.5,
+                        "manual_validation_priority": "high",
+                        "rejection_flags": "",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    payload = build_trade_desk_payload(
+        ctc_workbook=workbook,
+        nerv_board_path=nerv_board,
+        generated_at="2026-07-26T00:00:00+00:00",
+    )
+
+    row = payload["rows"][0]
+    assert row["desk_state"] == "manual_complex_structure_review"
+    assert row["structure_family"] == "ratio_diagonal"
+    assert row["manual_complex_review_required"] is True
+    assert "complex_structure_manual_review_required" in row["execute_block_reason"]
 
 
 def test_cli_accepts_generic_workbook_alias() -> None:
@@ -109,7 +165,12 @@ def test_write_trade_desk_artifacts(tmp_path: Path) -> None:
     )
 
 
-def _write_minimal_ctc_workbook(path: Path) -> None:
+def _write_minimal_ctc_workbook(
+    path: Path,
+    *,
+    structure: str = "Aug 55/60 Call Debit Spread",
+    fresh_quote: str = "NO",
+) -> None:
     sheets = {
         "Full_Disposition_34": [
             ["CTC-C001 | Full 34-Name Disposition Ledger v0.5"],
@@ -151,11 +212,11 @@ def _write_minimal_ctc_workbook(path: Path) -> None:
                 "DTE",
                 "Proxy_Debit_USD",
             ],
-            ["1", "BKR", "Aug 55/60 Call Debit Spread", "2026-08-21", "28", "1.994"],
+            ["1", "BKR", structure, "2026-08-21", "28", "1.994"],
         ],
         "I4_Execution_Check": [
             ["Play_ID", "Ticker", "Fresh_Quote"],
-            ["I4-BKR-01", "BKR", "NO"],
+            ["I4-BKR-01", "BKR", fresh_quote],
         ],
     }
     with ZipFile(path, "w", ZIP_DEFLATED) as archive:

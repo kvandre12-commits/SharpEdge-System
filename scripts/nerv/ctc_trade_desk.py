@@ -23,6 +23,7 @@ from typing import Any
 from zipfile import ZipFile
 
 from .models import RESEARCH_ONLY_WARNING, utc_now_iso
+from .structure_taxonomy import StrategyClassification, classify_strategy
 
 XLSX_NS = {"a": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 RELS_NS = {"rel": "http://schemas.openxmlformats.org/package/2006/relationships"}
@@ -49,6 +50,10 @@ DESK_CSV_FIELDS = [
     "ctc_expiry",
     "ctc_dte",
     "ctc_net_debit_proxy",
+    "structure_family",
+    "structure_complexity",
+    "structure_taxonomy_reason",
+    "manual_complex_review_required",
     "nerv_best_contract",
     "nerv_best_expiration",
     "nerv_best_option_type",
@@ -381,8 +386,13 @@ def _build_desk_row(
     priority = str((nerv or {}).get("manual_validation_priority") or "missing_nerv")
     flags = str((nerv or {}).get("rejection_flags") or "")
     fresh_quote = _text(execution_check, "fresh_quote").upper()
-    state, next_action = _desk_state(ctc, priority, flags, fresh_quote)
-    block_reason = _block_reason(ctc, priority, flags, fresh_quote)
+    strategy = classify_strategy(
+        structure=trade.structure,
+        preferred_structure=ctc.preferred_structure,
+        preferred_vehicle=ctc.preferred_vehicle,
+    )
+    state, next_action = _desk_state(ctc, priority, flags, fresh_quote, strategy)
+    block_reason = _block_reason(ctc, priority, flags, fresh_quote, strategy)
     return {
         "rank": ctc.rank,
         "ticker": ctc.ticker,
@@ -398,6 +408,10 @@ def _build_desk_row(
         "ctc_expiry": trade.expiry,
         "ctc_dte": trade.dte,
         "ctc_net_debit_proxy": trade.net_debit_proxy,
+        "structure_family": strategy.family,
+        "structure_complexity": strategy.complexity,
+        "structure_taxonomy_reason": strategy.reason,
+        "manual_complex_review_required": strategy.manual_complex_review_required,
         "nerv_best_contract": (nerv or {}).get("contract_symbol"),
         "nerv_best_expiration": (nerv or {}).get("expiration"),
         "nerv_best_option_type": (nerv or {}).get("option_type"),
@@ -416,6 +430,7 @@ def _desk_state(
     priority: str,
     flags: str,
     fresh_quote: str,
+    strategy: StrategyClassification,
 ) -> tuple[str, str]:
     if "OPTION" not in ctc.preferred_vehicle.upper() and not ctc.preferred_structure:
         return (
@@ -437,6 +452,11 @@ def _desk_state(
             "refresh_quote_required",
             "Refresh at broker/Cboe; final debit and size remain blocked.",
         )
+    if strategy.manual_complex_review_required:
+        return (
+            "manual_complex_structure_review",
+            "Model complex payoff, margin, assignment/dividend risk, and broker quote.",
+        )
     return (
         "manual_validate_candidate",
         "Manually validate spread geometry, catalyst gate, and broker quote.",
@@ -444,7 +464,11 @@ def _desk_state(
 
 
 def _block_reason(
-    ctc: CTCUniverseRow, priority: str, flags: str, fresh_quote: str
+    ctc: CTCUniverseRow,
+    priority: str,
+    flags: str,
+    fresh_quote: str,
+    strategy: StrategyClassification,
 ) -> str:
     reasons = ["fresh_broker_quote_required"]
     if ctc.ticker != "SPY":
@@ -453,6 +477,10 @@ def _block_reason(
         reasons.append(f"nerv_priority_{priority}")
     if flags:
         reasons.append(f"nerv_flags_{flags}")
+    if strategy.manual_complex_review_required:
+        reasons.append("complex_structure_manual_review_required")
+    if strategy.complexity == "branch_pending":
+        reasons.append("structure_branch_not_finalized")
     if fresh_quote != "YES":
         reasons.append("ctc_execution_check_fresh_quote_not_yes")
     return ";".join(reasons)

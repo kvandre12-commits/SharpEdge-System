@@ -59,8 +59,14 @@ Generated `outputs/nerv/` and `outputs/nerv_trade_desk/` files are disposable ru
 | `needs_nerv_snapshot` | CTC has the ticker, but no NERV liquidity row exists yet. |
 | `reject_options_for_now` | NERV found fatal quote/liquidity issues. |
 | `refresh_quote_required` | Candidate exists, but fresh quote is missing or stale. |
-| `manual_validate_candidate` | CTC + NERV are both clean enough for human structure review. |
+| `manual_validate_candidate` | CTC + NERV are both clean enough for vanilla human structure review. |
+| `manual_complex_structure_review` | Fresh quote/NERV passed, but ratio/diagonal/calendar/long-dated structure needs payoff, margin, assignment/dividend, and broker review. |
 | `equity_or_research_only` | CTC row is not currently options-led. |
+
+Desk rows also expose `structure_family`, `structure_complexity`,
+`manual_complex_review_required`, and `structure_taxonomy_reason`. Ratio
+diagonals, back ratios, ratios, diagonals, calendars, covered-call/income
+overlays, and LEAPS do **not** share the vanilla debit-spread lane.
 
 ## Non-negotiable execution rule
 
