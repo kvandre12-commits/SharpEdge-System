@@ -19,6 +19,25 @@ Company / institution / catalyst
 → broker fresh-quote gate
 ```
 
+## Upstream IRRP source-pack path
+
+For institution/company research, start with the N-S Institutional Regime
+Observatory source pack:
+
+1. Download the IRRP zip and extract the whole folder.
+2. Keep the source-pack files together; do not rename the reference files.
+3. Start a fresh AI research session and upload the full extracted pack.
+4. Open `NS_Institutional_Regime_Research_Protocol_IRRP_v1_0_MARKDOWN.txt`.
+5. In **Institution Profile Override**, replace only the assigned institution and
+   requested institution facts.
+6. Leave the governing protocol unchanged and ask for the full report, not a
+   summary.
+7. Use the completed N-S report to populate a regime cartridge workbook that
+   follows this taxonomy.
+
+The IRRP report is the upstream evidence narrative. The cartridge workbook is the
+structured bridge into NERV validation.
+
 ## Generic command
 
 ```bash

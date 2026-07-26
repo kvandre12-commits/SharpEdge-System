@@ -20,7 +20,7 @@ other company/institution workbooks with:
 python3 scripts/regime_nerv_trade_desk.py --workbook path/to/company_pack.xlsx
 ```
 
-See `docs/REGIME_CARTRIDGE_TAXONOMY.md` for the generic workbook contract.
+See `docs/REGIME_CARTRIDGE_TAXONOMY.md` for the generic workbook contract and IRRP source-pack quick start.
 
 ## Build the board
 
