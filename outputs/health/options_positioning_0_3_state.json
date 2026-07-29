@@ -1,19 +1,19 @@
 {
   "after": {
+    "metrics_max_snapshot_ts": "2026-07-29T23:34:59Z",
+    "metrics_min_snapshot_ts": "2026-05-27T19:29:56Z",
+    "metrics_rows": 34,
+    "source_max_snapshot_ts": "2026-07-29T23:34:59Z",
+    "source_min_snapshot_ts": "2026-05-27T19:29:56Z",
+    "source_snapshot_count": 34
+  },
+  "before": {
     "metrics_max_snapshot_ts": "2026-07-28T23:32:55Z",
     "metrics_min_snapshot_ts": "2026-05-27T19:29:56Z",
     "metrics_rows": 33,
-    "source_max_snapshot_ts": "2026-07-28T23:32:55Z",
+    "source_max_snapshot_ts": "2026-07-29T23:34:59Z",
     "source_min_snapshot_ts": "2026-05-27T19:29:56Z",
-    "source_snapshot_count": 33
-  },
-  "before": {
-    "metrics_max_snapshot_ts": "2026-07-24T23:36:16Z",
-    "metrics_min_snapshot_ts": "2026-05-27T19:29:56Z",
-    "metrics_rows": 32,
-    "source_max_snapshot_ts": "2026-07-28T23:32:55Z",
-    "source_min_snapshot_ts": "2026-05-27T19:29:56Z",
-    "source_snapshot_count": 33
+    "source_snapshot_count": 34
   },
   "dte_max": 3,
   "dte_min": 0,
