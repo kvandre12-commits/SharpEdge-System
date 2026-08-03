@@ -1,20 +1,20 @@
 {
   "after": {
     "earliest_ts": "2026-05-27T13:30:00Z",
+    "latest_ts": "2026-08-03T19:45:00Z",
+    "rows": 1226,
+    "session_count": 47
+  },
+  "before": {
+    "earliest_ts": "2026-05-27T13:30:00Z",
     "latest_ts": "2026-07-31T19:45:00Z",
     "rows": 1200,
     "session_count": 46
   },
-  "before": {
-    "earliest_ts": "2026-05-27T13:30:00Z",
-    "latest_ts": "2026-07-30T19:45:00Z",
-    "rows": 1174,
-    "session_count": 45
-  },
   "end": null,
   "fetched_rows": 26,
   "mode": "incremental",
-  "start": "2026-07-30T19:45:01Z",
+  "start": "2026-07-31T19:45:01Z",
   "symbol": "WMT",
   "table": "wmt_bars_15m",
   "timeframe": "15Min",
