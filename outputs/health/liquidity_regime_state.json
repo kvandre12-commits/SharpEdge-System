@@ -1,18 +1,18 @@
 {
   "after": {
     "earliest_session_date": "2024-05-29",
-    "latest_session_date": "2026-08-05",
-    "latest_snapshot_ts": "2026-08-05T23:31:25+00:00",
-    "rows": 548
+    "latest_session_date": "2026-08-06",
+    "latest_snapshot_ts": "2026-08-07T01:36:58+00:00",
+    "rows": 549
   },
   "bars_table": "bars_daily",
   "before": {
     "earliest_session_date": "2024-05-29",
-    "latest_session_date": "2026-08-04",
-    "latest_snapshot_ts": "2026-08-04T23:35:29+00:00",
-    "rows": 547
+    "latest_session_date": "2026-08-05",
+    "latest_snapshot_ts": "2026-08-05T23:31:25+00:00",
+    "rows": 548
   },
-  "input_rows": 549,
+  "input_rows": 550,
   "symbol": "WMT",
-  "upserted_rows": 548
+  "upserted_rows": 549
 }
