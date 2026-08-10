@@ -8,9 +8,9 @@
     "source_snapshot_count": 40
   },
   "before": {
-    "metrics_max_snapshot_ts": "2026-08-07T01:36:55Z",
+    "metrics_max_snapshot_ts": "2026-08-07T23:08:11Z",
     "metrics_min_snapshot_ts": "2026-05-27T19:29:56Z",
-    "metrics_rows": 39,
+    "metrics_rows": 40,
     "source_max_snapshot_ts": "2026-08-07T23:08:11Z",
     "source_min_snapshot_ts": "2026-05-27T19:29:56Z",
     "source_snapshot_count": 40
@@ -19,7 +19,7 @@
   "dte_min": 0,
   "force_rebuild": false,
   "only_snapshot_ts": null,
-  "requested_snapshot_count": 1,
+  "requested_snapshot_count": 0,
   "underlying": "WMT",
-  "upserted_rows": 1
+  "upserted_rows": 0
 }

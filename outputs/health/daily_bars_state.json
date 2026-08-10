@@ -1,18 +1,18 @@
 {
   "after": {
     "earliest_date": "2024-05-28",
+    "latest_date": "2026-08-10",
+    "latest_ingest_ts": "2026-08-10T23:08:29.099040+00:00",
+    "rows": 552
+  },
+  "before": {
+    "earliest_date": "2024-05-28",
     "latest_date": "2026-08-07",
     "latest_ingest_ts": "2026-08-07T23:08:13.122156+00:00",
     "rows": 551
   },
-  "before": {
-    "earliest_date": "2024-05-28",
-    "latest_date": "2026-08-06",
-    "latest_ingest_ts": "2026-08-07T01:36:56.660837+00:00",
-    "rows": 550
-  },
   "cache_ttl_hours": 12.0,
-  "csv_rows": 551,
+  "csv_rows": 552,
   "force_refresh": false,
   "network_refresh": true,
   "period": "10d",
