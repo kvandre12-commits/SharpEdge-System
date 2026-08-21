@@ -46,3 +46,6 @@ phone_companion/views/trading/*.json
 .DS_Store
 *.swp
 *.swo
+
+# Operator private brain (local, not committed)
+.operator/
