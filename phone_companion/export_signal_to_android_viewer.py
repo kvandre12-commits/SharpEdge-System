@@ -9,6 +9,7 @@ without rebuild.
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 import sys
@@ -51,6 +52,7 @@ REQUIRED_TRADE_PERMISSION_FIELDS = [
     "warning_reasons",
     "scores",
 ]
+WEB_VIEWER_REFRESH_SCHEMA = "sharpedge.web_viewer_refresh.v1"
 
 
 def _load_json(path: Path) -> dict:
@@ -86,6 +88,91 @@ def _looks_like_svg(text: str) -> bool:
     return "<svg" in text.lower()
 
 
+def _sanitize_html_for_android_viewer(html: str) -> str:
+    return re.sub(
+        r"<meta\s+http-equiv=(['\"])refresh\1\s+content=(['\"]).*?\2\s*/?>",
+        "",
+        html,
+        flags=re.IGNORECASE,
+    )
+
+
+def _iso_mtime(path: Path) -> str:
+    return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat()
+
+
+def _meta_refresh_seconds(html: str) -> int | None:
+    for match in re.finditer(r"<meta\s+[^>]*>", html, flags=re.IGNORECASE):
+        tag = match.group(0)
+        if not re.search(r"http-equiv\s*=\s*(['\"])refresh\1", tag, re.IGNORECASE):
+            continue
+        content = re.search(r"content\s*=\s*(['\"])([^'\"]+)\1", tag, re.IGNORECASE)
+        if not content:
+            return None
+        first_part = content.group(2).split(";", maxsplit=1)[0].strip()
+        return int(first_part) if first_part.isdigit() else None
+    return None
+
+
+def validate_web_viewer_refresh(signal_path: Path) -> dict:
+    """Prove the source web cockpit refreshes before Android copies anything.
+
+    Android imports intentionally strip meta-refresh from bundled HTML. The source
+    localhost web viewer must still carry the refresh contract so the live browser
+    keeps pulling regenerated cockpit data.
+    """
+
+    signal = _load_json(signal_path)
+    cockpit_paths = _cockpit_artifact_paths(signal_path, REQUIRED_COCKPIT_ARTIFACTS)
+    cockpit_html_path = cockpit_paths["cockpit_html"]
+    cockpit_chart_path = cockpit_paths["cockpit_chart_svg"]
+    if not cockpit_html_path.is_file():
+        raise FileNotFoundError(f"missing source web cockpit: {cockpit_html_path}")
+    if not cockpit_chart_path.is_file():
+        raise FileNotFoundError(f"missing source cockpit chart: {cockpit_chart_path}")
+
+    cockpit_html = _load_text(cockpit_html_path)
+    if not _looks_like_html(cockpit_html):
+        raise ValueError(f"{cockpit_html_path} does not look like HTML")
+    cockpit_refresh_seconds = _meta_refresh_seconds(cockpit_html)
+    if not cockpit_refresh_seconds:
+        raise ValueError(
+            f"{cockpit_html_path} must include a meta refresh for live web viewing"
+        )
+
+    operator_surface_path = (
+        _repo_root_for_signal(signal_path) / "cockpit/operator_surface.html"
+    )
+    operator_refresh_seconds = None
+    if operator_surface_path.is_file():
+        operator_refresh_seconds = _meta_refresh_seconds(
+            _load_text(operator_surface_path)
+        )
+        if not operator_refresh_seconds:
+            raise ValueError(
+                f"{operator_surface_path} must include a meta refresh when present"
+            )
+
+    signal_mtime = signal_path.stat().st_mtime
+    cockpit_mtime = cockpit_html_path.stat().st_mtime
+    return {
+        "schema": WEB_VIEWER_REFRESH_SCHEMA,
+        "status": "refresh_ready",
+        "source_signal_path": str(signal_path),
+        "signal_ts": signal.get("ts"),
+        "signal_mtime_utc": _iso_mtime(signal_path),
+        "cockpit_html_path": str(cockpit_html_path),
+        "cockpit_html_mtime_utc": _iso_mtime(cockpit_html_path),
+        "cockpit_refresh_seconds": cockpit_refresh_seconds,
+        "cockpit_chart_path": str(cockpit_chart_path),
+        "cockpit_chart_mtime_utc": _iso_mtime(cockpit_chart_path),
+        "operator_surface_path": str(operator_surface_path),
+        "operator_surface_present": operator_surface_path.is_file(),
+        "operator_refresh_seconds": operator_refresh_seconds,
+        "html_is_newer_than_signal": cockpit_mtime >= signal_mtime,
+    }
+
+
 def build_android_viewer_bundle(signal_path: Path) -> dict:
     required_paths = _cockpit_artifact_paths(signal_path, REQUIRED_COCKPIT_ARTIFACTS)
     if not all(path.is_file() for path in required_paths.values()):
@@ -103,6 +190,7 @@ def build_android_viewer_bundle(signal_path: Path) -> dict:
     }
     for key, path in included_paths.items():
         bundle[key] = _load_text(path)
+    bundle["cockpit_html"] = _sanitize_html_for_android_viewer(bundle["cockpit_html"])
 
     if not _looks_like_html(bundle["cockpit_html"]):
         raise ValueError(f"{required_paths['cockpit_html']} does not look like HTML")

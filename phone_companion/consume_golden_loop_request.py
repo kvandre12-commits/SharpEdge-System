@@ -6,6 +6,10 @@ Purpose:
 - extract ``request_id``
 - write a trace artifact proving the contract was consumed
 
+This is optional audit proof.
+The normal trading-dashboard happy path can skip it because
+``build_golden_loop_view_model.py`` already validates the request.
+
 Non-goals:
 - no Brave launch
 - no view-model creation

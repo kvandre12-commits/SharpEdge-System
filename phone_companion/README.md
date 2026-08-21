@@ -17,6 +17,8 @@ Intent → Contract → Code Puppy → DroidPuppy → Phone Action → Observati
 
 Current notable workflows:
 
+- `docs/phone_companion_edge_token_deep_dive.md` captures the edge-token / permission-trend / vertical-spread product doctrine for the trading companion.
+- `launchers/run_phone_companion_golden_loop.sh` is the trimmed one-shot trading dashboard lane: view-model -> prelaunch -> launch -> observation.
 - `export_signal_to_android_viewer.py` refreshes SharpEdge-Android sample assets.
 - `export_operator_packet_to_android.py` packages signal + operator artifacts into one mobile import contract.
 - `launchers/run_phone_companion_android_signal_import.sh` can still push a signal-only contract.

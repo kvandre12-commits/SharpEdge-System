@@ -20,6 +20,7 @@ from export_signal_to_android_viewer import (
     _validate_signal,
     build_android_viewer_bundle,
     export_signal,
+    validate_web_viewer_refresh,
 )
 
 DEFAULT_PROOF_PATH = Path(
@@ -29,6 +30,16 @@ DEFAULT_LIVE_IMPORT_PATH = Path(
     "phone_companion/views/trading/sharpedge_android_operator_import.json"
 )
 OUTPUT_DIR = Path("outputs")
+OPERATOR_PACKET_SCHEMA = "sharpedge.operator_packet.v1"
+OPERATOR_PACKET_PRODUCT = "SharpEdge Robinhood"
+APP_SECTIONS = [
+    "cockpit",
+    "approvals",
+    "agent_status",
+    "watchlists",
+    "trade_journal",
+    "robinhood_actions",
+]
 ARTIFACT_PATHS = {
     "operator_brief": OUTPUT_DIR / "operator_brief.json",
     "workflow_state": OUTPUT_DIR / "workflow_state.json",
@@ -65,6 +76,35 @@ def _load_required_artifacts() -> dict[str, dict]:
     return artifacts
 
 
+def _status_summary(
+    signal: dict,
+    approval: dict,
+    workflow: dict,
+    beta: dict,
+    watchlist: dict,
+    journal: dict,
+    execution_audit: dict,
+) -> dict:
+    trade_permission = signal.get("trade_permission") or {}
+    return {
+        "trade_gate": trade_permission.get("trade_gate"),
+        "trade_permission_score": trade_permission.get("trade_permission_score"),
+        "workflow_readiness": (workflow.get("state") or {}).get("readiness"),
+        "approval_decision": approval.get("decision"),
+        "trade_allowed": approval.get("trade_allowed"),
+        "watchlist_active_count": watchlist.get("active_count"),
+        "journal_closed_trades": (journal.get("sample_state") or {}).get(
+            "closed_trades"
+        ),
+        "bridge_status": (beta.get("robinhood_beta_handoff") or {})
+        .get("bridge_status", {})
+        .get("status"),
+        "connector_audit_available": execution_audit.get("available", False),
+        "connector_status": execution_audit.get("connector_status"),
+        "connector_fill_status": execution_audit.get("fill_status"),
+    }
+
+
 def build_operator_packet(signal_path: Path = DEFAULT_SIGNAL_PATH) -> dict:
     signal = _load_json(signal_path)
     _validate_signal(signal)
@@ -76,50 +116,22 @@ def build_operator_packet(signal_path: Path = DEFAULT_SIGNAL_PATH) -> dict:
     journal = artifacts["trade_journal_hints"]
     brief = artifacts["operator_brief"]
     execution_audit = brief.get("latest_execution_audit") or {"available": False}
-    brief_artifacts = brief.get("artifacts") or {}
     packet_artifacts = {
         "signal": str(signal_path),
         **{key: str(path) for key, path in ARTIFACT_PATHS.items()},
     }
-    for key in ("connector_audit", "connector_audit_log"):
-        if brief_artifacts.get(key):
-            packet_artifacts[key] = brief_artifacts[key]
     viewer_bundle = build_android_viewer_bundle(signal_path)
 
     packet = {
-        "schema": "sharpedge.operator_packet.v1",
+        "schema": OPERATOR_PACKET_SCHEMA,
         "created_at": _timestamp(),
-        "product": "SharpEdge Robinhood",
+        "product": OPERATOR_PACKET_PRODUCT,
         "symbol": signal.get("symbol"),
-        "app_sections": [
-            "cockpit",
-            "approvals",
-            "agent_status",
-            "watchlists",
-            "trade_journal",
-            "robinhood_actions",
-            *(["execution_audit"] if execution_audit.get("available") else []),
-        ],
+        "app_sections": list(APP_SECTIONS),
         "artifacts": packet_artifacts,
-        "status_summary": {
-            "trade_gate": (signal.get("trade_permission") or {}).get("trade_gate"),
-            "trade_permission_score": (signal.get("trade_permission") or {}).get(
-                "trade_permission_score"
-            ),
-            "workflow_readiness": (workflow.get("state") or {}).get("readiness"),
-            "approval_decision": approval.get("decision"),
-            "trade_allowed": approval.get("trade_allowed"),
-            "watchlist_active_count": watchlist.get("active_count"),
-            "journal_closed_trades": (journal.get("sample_state") or {}).get(
-                "closed_trades"
-            ),
-            "bridge_status": (beta.get("robinhood_beta_handoff") or {})
-            .get("bridge_status", {})
-            .get("status"),
-            "connector_audit_available": execution_audit.get("available", False),
-            "connector_status": execution_audit.get("connector_status"),
-            "connector_fill_status": execution_audit.get("fill_status"),
-        },
+        "status_summary": _status_summary(
+            signal, approval, workflow, beta, watchlist, journal, execution_audit
+        ),
         "signal": signal,
         "operator_brief": brief,
         "workflow_state": workflow,
@@ -140,6 +152,7 @@ def export_operator_packet(
     proof_path: Path = DEFAULT_PROOF_PATH,
     live_import_path: Path = DEFAULT_LIVE_IMPORT_PATH,
 ) -> dict:
+    web_viewer_refresh = validate_web_viewer_refresh(signal_path)
     signal_export = export_signal(signal_path, android_root)
     packet = build_operator_packet(signal_path)
     missing = [key for key in REQUIRED_PACKET_KEYS if key not in packet]
@@ -167,6 +180,7 @@ def export_operator_packet(
         "live_import_path": str(live_import_path),
         "schema": packet["schema"],
         "product": packet["product"],
+        "web_viewer_refresh": web_viewer_refresh,
         "symbol": packet.get("symbol"),
         "status_summary": packet["status_summary"],
         "approval": {
@@ -189,6 +203,11 @@ def export_operator_packet(
         },
         "robinhood": {
             "beta_stage": beta.get("beta_stage"),
+            "token_action": (beta.get("order_preview") or {}).get("token_action"),
+            "position_intent": (beta.get("order_preview") or {}).get("position_intent"),
+            "contracts_held": (beta.get("edge_token_position") or {}).get(
+                "contracts_held"
+            ),
             "bridge_status": (beta.get("robinhood_beta_handoff") or {})
             .get("bridge_status", {})
             .get("status"),
