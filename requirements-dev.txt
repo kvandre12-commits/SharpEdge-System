@@ -1,0 +1,3 @@
+# Developer tooling for local validation.
+# Install after requirements.txt when you want lint/format/test helpers.
+ruff>=0.5.0
