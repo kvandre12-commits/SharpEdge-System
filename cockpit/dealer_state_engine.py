@@ -92,7 +92,11 @@ def _gamma_state(gp: dict[str, Any] | None) -> dict[str, Any]:
     quality = str(data.get("gamma_data_quality") or "missing").lower()
     dte = data.get("dte")
     expired = isinstance(dte, (int, float)) and dte < 0
-    if expired or quality != "ok" or regime not in {"positive", "negative"}:
+    # Trust an explicit positive/negative regime even when the quality field is
+    # absent ("missing"); only reject when the contract is expired, the regime
+    # is unknown, or the feed flagged the gamma read as explicitly unusable.
+    unusable_quality = quality in {"expired", "weak", "bad", "stale"}
+    if expired or unusable_quality or regime not in {"positive", "negative"}:
         reason = (
             "gamma contract is expired"
             if expired

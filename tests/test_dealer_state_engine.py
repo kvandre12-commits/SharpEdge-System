@@ -85,14 +85,17 @@ def test_execution_vector_engine_dealer_score_uses_dealer_state_engine():
     assert "dealer unknown" in unknown.reason
 
 
-def test_dealer_state_does_not_assume_missing_gamma_quality_is_ok():
+def test_dealer_state_trusts_explicit_regime_when_quality_missing():
+    # Policy: an explicit positive/negative regime is trusted even when the
+    # gamma feed omits a quality field. Only expired contracts, an unknown
+    # regime, or an explicitly unusable quality read fall back to unknown.
     packet = build_dealer_state(
         {"spot": 100.0},
         {"call_wall": 100.1, "put_wall": 95.0},
         {"regime": "positive", "dte": 0},
     )
 
-    assert packet["state"] == "dealer_unknown"
+    assert packet["state"] == "positive_gamma_gravity"
     assert packet["gamma_state"]["quality"] == "missing"
 
 
