@@ -32,8 +32,8 @@ ACTIONABLE_OI_WALL_MAX_DIST_PCT = float(
 
 # --------------------------- canonical shared math ---------------------------
 def compute_flip(
-    strikes: list[float], net: list[float], spot: Optional[float]
-) -> Optional[float]:
+    strikes: list[float], net: list[float], spot: float | None
+) -> float | None:
     """Interpolate the price where net dealer gamma crosses zero (the flip).
 
     Spot-anchored: among ALL sign changes, return the interpolated crossing
@@ -64,14 +64,14 @@ def compute_flip(
 
 
 def compute_dealer_state(
-    spot: Optional[float],
-    gamma_flip: Optional[float],
-    max_total_oi_strike: Optional[float],
-    pcr_oi: Optional[float],
-    pcr_vol: Optional[float],
+    spot: float | None,
+    gamma_flip: float | None,
+    max_total_oi_strike: float | None,
+    pcr_oi: float | None,
+    pcr_vol: float | None,
     *,
     pin_thresh_pct: float = PIN_THRESH_PCT,
-) -> tuple[Optional[float], Optional[str]]:
+) -> tuple[float | None, str | None]:
     """Canonical dealer-state machine (verbatim rules from the batch builder)."""
     if spot is None:
         return None, None
@@ -103,7 +103,7 @@ def compute_dealer_state(
     return gamma_proxy, dealer_hint
 
 
-def _argmax_positive(d: dict[float, float]) -> Optional[float]:
+def _argmax_positive(d: dict[float, float]) -> float | None:
     if not d:
         return None
     k = max(d.keys(), key=lambda x: d[x])
@@ -112,10 +112,10 @@ def _argmax_positive(d: dict[float, float]) -> Optional[float]:
 
 def _argmax_positive_near_spot(
     d: dict[float, float],
-    spot: Optional[float],
+    spot: float | None,
     *,
     max_dist_pct: float = ACTIONABLE_OI_WALL_MAX_DIST_PCT,
-) -> Optional[float]:
+) -> float | None:
     if spot is None or spot <= 0:
         return _argmax_positive(d)
     near = {
@@ -126,7 +126,7 @@ def _argmax_positive_near_spot(
     return _argmax_positive(near)
 
 
-def _distance_pct(strike: Optional[float], spot: Optional[float]) -> Optional[float]:
+def _distance_pct(strike: float | None, spot: float | None) -> float | None:
     if strike is None or spot is None or spot <= 0:
         return None
     return (float(strike) - float(spot)) / float(spot)
@@ -155,12 +155,12 @@ _DEALER_STORY = {
 
 def build_dealer_positioning_live(
     book: dict[Any, dict[float, dict[str, dict[str, Any]]]],
-    spot: Optional[float],
+    spot: float | None,
     *,
     dte_min: int = DEALER_DTE_MIN,
     dte_max: int = DEALER_DTE_MAX,
     symbol: str = "SPY",
-    today: Optional[dt.date] = None,
+    today: dt.date | None = None,
 ) -> dict[str, Any]:
     """Aggregate dealer positioning across a CONFIGURABLE DTE window from the live CBOE book.
 
@@ -286,10 +286,10 @@ def build_dealer_positioning_live(
 
 
 __all__ = [
-    "compute_flip",
-    "compute_dealer_state",
-    "build_dealer_positioning_live",
-    "DEALER_DTE_MIN",
     "DEALER_DTE_MAX",
+    "DEALER_DTE_MIN",
     "PIN_THRESH_PCT",
+    "build_dealer_positioning_live",
+    "compute_dealer_state",
+    "compute_flip",
 ]

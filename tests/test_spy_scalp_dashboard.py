@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from spy_scalp_chart import render_spy_scalp_chart_svg  # noqa: E402
-from spy_scalp_dashboard import (  # noqa: E402
+from spy_scalp_chart import render_spy_scalp_chart_svg
+from spy_scalp_dashboard import (
     build_spy_scalp_packet,
     render_spy_scalp_dashboard_html,
 )

@@ -34,7 +34,7 @@ def _existing_cols(con: sqlite3.Connection, table: str) -> set[str]:
 
 
 def _gap_from_open(
-    prior_close: Optional[float], today_open: Optional[float]
+    prior_close: float | None, today_open: float | None
 ) -> dict[str, Any]:
     if not prior_close or today_open is None:
         return {"gap_direction": None, "gap_pct": None}
@@ -65,14 +65,14 @@ def gap_from_daily_bars(daily_bars: list[dict[str, Any]]) -> dict[str, Any]:
     return info
 
 
-def _median_safe(values: list[float]) -> Optional[float]:
+def _median_safe(values: list[float]) -> float | None:
     vals = [v for v in values if v is not None]
     if not vals:
         return None
     return float(statistics.median(vals))
 
 
-def _mean_safe(values: list[float]) -> Optional[float]:
+def _mean_safe(values: list[float]) -> float | None:
     vals = [v for v in values if v is not None]
     if not vals:
         return None
@@ -85,7 +85,7 @@ def _clamp(value: float, lo: float = 0.0, hi: float = 1.0) -> float:
     return max(lo, min(hi, float(value)))
 
 
-def _sortino_safe(values: list[float]) -> Optional[float]:
+def _sortino_safe(values: list[float]) -> float | None:
     vals = [float(v) for v in values if v is not None]
     if len(vals) < 2:
         return None
@@ -103,10 +103,10 @@ def _sortino_safe(values: list[float]) -> Optional[float]:
 
 def _timing_quality_components(
     *,
-    median_ttf: Optional[float],
-    median_mae: Optional[float],
-    median_mfe: Optional[float],
-    sortino_ratio: Optional[float],
+    median_ttf: float | None,
+    median_mae: float | None,
+    median_mfe: float | None,
+    sortino_ratio: float | None,
 ) -> dict[str, float]:
     ttf = float(median_ttf) if median_ttf is not None else 120.0
     if ttf <= 0:
@@ -142,7 +142,7 @@ def _timing_quality_components(
     }
 
 
-def _timing_quality_label(score: Optional[float]) -> str:
+def _timing_quality_label(score: float | None) -> str:
     if score is None:
         return "unknown"
     if score >= 0.70:
@@ -153,16 +153,16 @@ def _timing_quality_label(score: Optional[float]) -> str:
 
 
 def build_gap_fill_edge_live(
-    db_path: Optional[str] = None,
+    db_path: str | None = None,
     *,
     symbol: str = "SPY",
-    gap_direction: Optional[str] = None,
-    gap_pct: Optional[float] = None,
-    vol_state: Optional[str] = None,
-    macro_state: Optional[str] = None,
-    dp_state: Optional[str] = None,
-    open_regime_label: Optional[str] = None,
-    session_date: Optional[str] = None,
+    gap_direction: str | None = None,
+    gap_pct: float | None = None,
+    vol_state: str | None = None,
+    macro_state: str | None = None,
+    dp_state: str | None = None,
+    open_regime_label: str | None = None,
+    session_date: str | None = None,
     min_n: int = 8,
 ) -> dict[str, Any]:
     """Aggregate historical gap-fill outcomes matching today's causal context."""

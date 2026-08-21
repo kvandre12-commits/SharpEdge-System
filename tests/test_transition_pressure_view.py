@@ -6,9 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from live_read_view import render_live_read_html  # noqa: E402
-from transition_pressure_view import render_transition_pressure_block  # noqa: E402
-
+from live_read_view import render_live_read_html
+from transition_pressure_view import render_transition_pressure_block
 
 PACKET = {
     "transition_pressure_score": 78,

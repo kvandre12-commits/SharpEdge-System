@@ -6,13 +6,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from execution_vector_interactions import (  # noqa: E402
+from execution_vector_interactions import (
     STRONGLY_BAD,
     STRONGLY_GOOD,
     WEAKLY_BAD,
     build_execution_vector_interactions,
 )
-from trade_permission import score_trade_permission  # noqa: E402
+from trade_permission import score_trade_permission
 
 
 def _bull_bars():

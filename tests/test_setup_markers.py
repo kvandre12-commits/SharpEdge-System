@@ -6,9 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from live_chart_svg import chart_svg  # noqa: E402
-from make_cockpit import _markers_for_price_source  # noqa: E402
-from setup_markers import update_setup_markers  # noqa: E402
+from live_chart_svg import chart_svg
+from make_cockpit import _markers_for_price_source
+from setup_markers import update_setup_markers
 
 
 def _trap_confirmation(score: int = 78, bias: str = "CALLS") -> dict:

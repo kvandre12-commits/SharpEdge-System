@@ -34,7 +34,7 @@ def build_interactions(
     )
 
     compression = int(
-        ((potential_energy.get("compression_score") or {}).get("score") or 0)
+        (potential_energy.get("compression_score") or {}).get("score") or 0
     )
     location = potential_energy.get("location_pressure") or {}
     gamma = potential_energy.get("gamma_constraint") or {}

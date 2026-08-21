@@ -6,9 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from live_read_view import render_permission_section  # noqa: E402
-from spine_phase_model import annotate_spine_score_phases  # noqa: E402
-from trade_permission import score_trade_permission  # noqa: E402
+from live_read_view import render_permission_section
+from spine_phase_model import annotate_spine_score_phases
+from trade_permission import score_trade_permission
 
 
 def _bull_bars():

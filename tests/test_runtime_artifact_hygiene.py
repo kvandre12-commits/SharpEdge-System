@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from runtime_artifact_hygiene import (  # noqa: E402
+from runtime_artifact_hygiene import (
     _candidate_files,
     _delete_candidates,
 )

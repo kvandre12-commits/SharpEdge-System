@@ -56,14 +56,14 @@ REGIME_STORY = {
 
 
 # --------------------------- canonical math ---------------------------
-def compute_true_range(prev_close: Optional[float], high: float, low: float) -> float:
+def compute_true_range(prev_close: float | None, high: float, low: float) -> float:
     if prev_close is None:
         return float(high - low)
     return float(max(high - low, abs(high - prev_close), abs(low - prev_close)))
 
 
-def rolling_sma(values: list[float], window: int) -> list[Optional[float]]:
-    out: list[Optional[float]] = [None] * len(values)
+def rolling_sma(values: list[float], window: int) -> list[float | None]:
+    out: list[float | None] = [None] * len(values)
     s = 0.0
     for i, v in enumerate(values):
         s += v
@@ -82,7 +82,7 @@ def classify_regime(
     l: float,
     c: float,
     tr: float,
-    atr: Optional[float],
+    atr: float | None,
 ) -> tuple[str, dict[str, int], float, str]:
     """VERBATIM canonical classifier. Keep in sync with build_liquidity_regime_daily."""
     flags = {
@@ -168,7 +168,7 @@ def classify_regime_series(daily_bars: list[dict[str, Any]]) -> list[dict[str, A
         return []
 
     trs: list[float] = []
-    prev_close: Optional[float] = None
+    prev_close: float | None = None
     for d in days:
         tr = compute_true_range(prev_close, float(d["high"]), float(d["low"]))
         trs.append(tr)
@@ -213,7 +213,7 @@ def classify_regime_series(daily_bars: list[dict[str, Any]]) -> list[dict[str, A
 def build_inherited_auction_context(
     daily_bars: list[dict[str, Any]],
     *,
-    today: Optional[str] = None,
+    today: str | None = None,
     symbol: str = "SPY",
 ) -> dict[str, Any]:
     """Compute today's INHERITED auction bucket from the most recent COMPLETED session.
@@ -282,10 +282,10 @@ def build_inherited_auction_context(
 
 
 __all__ = [
+    "REGIME_STORY",
+    "build_inherited_auction_context",
     "classify_regime",
     "classify_regime_series",
-    "build_inherited_auction_context",
     "compute_true_range",
     "rolling_sma",
-    "REGIME_STORY",
 ]

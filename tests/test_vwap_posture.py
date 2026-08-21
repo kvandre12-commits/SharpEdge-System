@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from vwap_posture import build_vwap_posture  # noqa: E402
+from vwap_posture import build_vwap_posture
 
 
 def test_vwap_posture_distinguishes_hugging_near_and_directional_control():

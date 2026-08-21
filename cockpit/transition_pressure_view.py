@@ -74,10 +74,10 @@ def render_transition_pressure_block(packet: dict[str, Any] | None) -> str:
     )
     energy = packet.get("potential_energy") or {}
     energy_bits = [
-        f"compression {int(((energy.get('compression_score') or {}).get('score') or 0))}",
-        f"failed auction {int(((energy.get('failed_auction_score') or {}).get('score') or 0))}",
-        f"location {int(((energy.get('location_pressure') or {}).get('score') or 0))}",
-        f"gamma {int(((energy.get('gamma_constraint') or {}).get('score') or 0))}",
+        f"compression {int((energy.get('compression_score') or {}).get('score') or 0)}",
+        f"failed auction {int((energy.get('failed_auction_score') or {}).get('score') or 0)}",
+        f"location {int((energy.get('location_pressure') or {}).get('score') or 0)}",
+        f"gamma {int((energy.get('gamma_constraint') or {}).get('score') or 0)}",
     ]
     return (
         f'<div style="border-left:4px solid {accent};background:{SURFACE};padding:12px;margin:10px 0;border-radius:8px">'

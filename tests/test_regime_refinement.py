@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from regime_refinement import annotate_market_behavior  # noqa: E402
+from regime_refinement import annotate_market_behavior
 
 
 def _permission(**score_overrides):

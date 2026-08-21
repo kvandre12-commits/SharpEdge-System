@@ -7,9 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from event_calendar import build_event_radar_live  # noqa: E402
-from live_read_view import render_event_radar_block  # noqa: E402
-from truth_social_scanner import build_truth_social_event_scan  # noqa: E402
+from event_calendar import build_event_radar_live
+from live_read_view import render_event_radar_block
+from truth_social_scanner import build_truth_social_event_scan
 
 
 def test_truth_social_scanner_classifies_manual_market_event(tmp_path):

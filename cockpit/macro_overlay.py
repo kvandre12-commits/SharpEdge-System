@@ -38,7 +38,7 @@ def z_to_strength(value: Any) -> float:
 
 def current_z(
     values: list[float], win: int = ZSCORE_WINDOW, min_periods: int = ZSCORE_MIN_PERIODS
-) -> Optional[float]:
+) -> float | None:
     """Trailing z-score of the most recent value over up-to-`win` samples."""
     if not values:
         return None
@@ -61,7 +61,7 @@ def _closes_by_date(daily_bars: list[dict[str, Any]]) -> dict[str, float]:
     }
 
 
-def _term_regime(term_ratio: Optional[float]) -> tuple[str, str]:
+def _term_regime(term_ratio: float | None) -> tuple[str, str]:
     if term_ratio is None:
         return "UNKNOWN", "VIX term structure unavailable."
     if term_ratio >= 1.0:
@@ -165,10 +165,10 @@ def build_macro_overlay_live(
 
 
 __all__ = [
-    "z_to_strength",
-    "current_z",
-    "build_macro_overlay_live",
-    "VIX_SYMBOL",
-    "VIX3M_SYMBOL",
     "TNX_SYMBOL",
+    "VIX3M_SYMBOL",
+    "VIX_SYMBOL",
+    "build_macro_overlay_live",
+    "current_z",
+    "z_to_strength",
 ]

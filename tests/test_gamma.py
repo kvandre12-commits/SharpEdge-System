@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from gamma import gamma_card, gamma_profile  # noqa: E402
+from gamma import gamma_card, gamma_profile
 
 
 def test_gamma_profile_marks_missing_gamma_as_unknown_instead_of_fake_pin():

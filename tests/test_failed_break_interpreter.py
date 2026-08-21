@@ -6,13 +6,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from failed_break_interpreter import (  # noqa: E402
+from failed_break_interpreter import (
     best_failed_break_event,
     collect_failed_break_events,
     failed_break_break_state,
     failed_break_setup_card,
 )
-from level_state_engine import build_level_state_map  # noqa: E402
+from level_state_engine import build_level_state_map
 
 
 def _failed_breakdown_bars() -> list[tuple]:

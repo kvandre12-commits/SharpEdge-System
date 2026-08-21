@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from transition_pressure import build_transition_pressure_packet  # noqa: E402
+from transition_pressure import build_transition_pressure_packet
 
 
 def _receipt(

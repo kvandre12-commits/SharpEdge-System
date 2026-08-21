@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import html
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 def _esc(value: Any) -> str:

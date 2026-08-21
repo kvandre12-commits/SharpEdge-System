@@ -6,13 +6,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from balance import (  # noqa: E402
+from balance import (
     balance_label,
     build_balance_stack,
     position_in_balance,
     recent_balance_context_from_rows,
 )
-from make_cockpit import read_price_action  # noqa: E402
+from make_cockpit import read_price_action
 
 
 def test_position_in_balance_normalizes_and_clamps():

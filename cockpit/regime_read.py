@@ -29,7 +29,7 @@ def _default_db_path() -> str:
     return os.path.expanduser("~/SharpEdge-System/data/spy_truth.db")
 
 
-def _humanize_label(regime_label: Optional[str]) -> str:
+def _humanize_label(regime_label: str | None) -> str:
     """Turn 'mid_vol|rising_voltrend|low_dp|low_macro|0_comp' into prose."""
     if not regime_label:
         return ""
@@ -46,10 +46,10 @@ def _humanize_label(regime_label: Optional[str]) -> str:
 
 
 def build_regime_read_live(
-    db_path: Optional[str] = None,
+    db_path: str | None = None,
     *,
     symbol: str = "SPY",
-    today: Optional[dt.date] = None,
+    today: dt.date | None = None,
 ) -> dict[str, Any]:
     """Read the latest `regime_daily` row and package it for the cockpit."""
     db_path = db_path or _default_db_path()
@@ -114,7 +114,7 @@ def build_regime_read_live(
         }
 
     regime_date = row["date"]
-    stale_days: Optional[int] = None
+    stale_days: int | None = None
     try:
         stale_days = (today - dt.date.fromisoformat(regime_date)).days
     except Exception:

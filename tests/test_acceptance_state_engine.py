@@ -6,9 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from acceptance_state_engine import build_acceptance_state  # noqa: E402
-import execution_vector_context as ctx  # noqa: E402
-from trade_permission import ExecutionVectorEngine  # noqa: E402
+import execution_vector_context as ctx
+from acceptance_state_engine import build_acceptance_state
+from trade_permission import ExecutionVectorEngine
 
 
 def _accepted_above_bars() -> list[tuple]:

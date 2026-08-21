@@ -8,7 +8,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from scripts.build_risk_decision_layer import select_daily_records  # noqa: E402
+from scripts.build_risk_decision_layer import select_daily_records
 
 
 def test_select_daily_records_keeps_one_best_row_per_symbol_date():

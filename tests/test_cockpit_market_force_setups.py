@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from setups import (  # noqa: E402
+from setups import (
     detect_negative_gamma_continuation,
     detect_sticky_noise,
 )

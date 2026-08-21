@@ -8,14 +8,14 @@ from zipfile import ZIP_DEFLATED, ZipFile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from ctc_nerv_trade_desk import build_parser  # noqa: E402
-from nerv.ctc_trade_desk import (  # noqa: E402
+from ctc_nerv_trade_desk import build_parser
+from nerv.ctc_trade_desk import (
     build_trade_desk_payload,
     load_xlsx_tables,
     write_trade_desk_artifacts,
 )
-from nerv.structure_taxonomy import classify_strategy  # noqa: E402
-from regime_nerv_trade_desk import main as regime_main  # noqa: E402
+from nerv.structure_taxonomy import classify_strategy
+from regime_nerv_trade_desk import main as regime_main
 
 
 def test_load_xlsx_tables_reads_disposition_sheet(tmp_path: Path) -> None:

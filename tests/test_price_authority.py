@@ -6,9 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from live_chart_svg import chart_svg  # noqa: E402
-from live_read_view import render_price_feed_lag_line  # noqa: E402
-from price_authority import apply_yahoo_display_price  # noqa: E402
+from live_chart_svg import chart_svg
+from live_read_view import render_price_feed_lag_line
+from price_authority import apply_yahoo_display_price
 
 
 def test_apply_yahoo_display_price_preserves_completed_bar_spot():

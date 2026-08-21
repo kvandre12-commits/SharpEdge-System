@@ -6,8 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from nerv.greeks import estimate_option_greeks, time_to_expiration_years  # noqa: E402
-
+from nerv.greeks import estimate_option_greeks, time_to_expiration_years
 
 
 def test_time_to_expiration_stays_positive_on_expiry_day() -> None:

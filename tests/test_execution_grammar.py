@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from execution_grammar import build_break_state, build_dealer_gamma_state  # noqa: E402
-from trade_permission import score_trade_permission  # noqa: E402
+from execution_grammar import build_break_state, build_dealer_gamma_state
+from trade_permission import score_trade_permission
 
 
 def _breakout_bars() -> list[tuple]:

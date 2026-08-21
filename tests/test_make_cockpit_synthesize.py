@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from make_cockpit import synthesize  # noqa: E402
+from make_cockpit import synthesize
 
 
 def _pa(rng_pos: float, vs_vwap: float = 0.2) -> dict:

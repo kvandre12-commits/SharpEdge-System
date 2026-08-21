@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from execution_expansion_potential import (  # noqa: E402
+from execution_expansion_potential import (
     build_execution_expansion_potential,
     build_expansion_fuel_surface,
     has_expansion_fuel_without_participation,

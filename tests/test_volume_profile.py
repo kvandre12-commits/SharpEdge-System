@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from trade_permission import score_trade_permission  # noqa: E402
-from volume_profile import build_volume_profile  # noqa: E402
+from trade_permission import score_trade_permission
+from volume_profile import build_volume_profile
 
 
 def _grind_bars(aligned_volume: bool = True) -> list[tuple]:

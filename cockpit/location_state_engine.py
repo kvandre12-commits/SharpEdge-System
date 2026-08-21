@@ -15,7 +15,7 @@ NEAR_REFERENCE_PCT = 0.20
 
 
 def build_location_state(
-    current_price: float | int | None,
+    current_price: float | None,
     references: dict[str, Any] | None,
 ) -> dict[str, Any]:
     clean_references = numeric_reference_map(references)

@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from level_state_engine import build_level_state_map  # noqa: E402
-from level_state_view import render_level_state_block  # noqa: E402
+from level_state_engine import build_level_state_map
+from level_state_view import render_level_state_block
 
 
 def test_support_level_can_be_classified_as_failed_break_reclaimed():

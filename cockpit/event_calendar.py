@@ -185,7 +185,7 @@ def earnings_headliner_status() -> dict[str, list[str]]:
 
 
 def build_event_radar_live(
-    today: Optional[dt.date] = None,
+    today: dt.date | None = None,
     *,
     lookahead_days: int = 45,
     include_social: bool = False,
@@ -290,15 +290,15 @@ def build_event_radar_live(
 
 
 __all__ = [
-    "FOMC_DATES",
-    "TREASURY_QRA_DATES",
-    "TREASURY_AUCTION_DATES",
-    "MEGA_CAP_EARNINGS_HEADLINERS",
     "EARNINGS_DATES",
     "EVENT_LABELS",
+    "FOMC_DATES",
+    "MEGA_CAP_EARNINGS_HEADLINERS",
+    "TREASURY_AUCTION_DATES",
+    "TREASURY_QRA_DATES",
+    "all_events_in_range",
+    "build_event_radar_live",
+    "earnings_headliner_status",
     "event_label",
     "nfp_dates_in_range",
-    "all_events_in_range",
-    "earnings_headliner_status",
-    "build_event_radar_live",
 ]

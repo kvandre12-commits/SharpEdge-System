@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "phone_companion/launchers"))
 
-import share_signal_to_android_viewer as launcher  # noqa: E402
+import share_signal_to_android_viewer as launcher
 
 
 def _write_json(path: Path, payload: dict) -> None:

@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from line_authority_engine import build_line_authority  # noqa: E402
-from trade_permission import score_trade_permission  # noqa: E402
+from line_authority_engine import build_line_authority
+from trade_permission import score_trade_permission
 
 
 def _pa(spot: float = 100.24, **overrides):

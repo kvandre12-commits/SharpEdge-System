@@ -7,9 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from candle_coach import build_candle_coach  # noqa: E402
-from candle_coach_view import render_candle_coach_block  # noqa: E402
-from candle_expectancy_adapter import lookup_candle_expectancy  # noqa: E402
+from candle_coach import build_candle_coach
+from candle_coach_view import render_candle_coach_block
+from candle_expectancy_adapter import lookup_candle_expectancy
 
 
 def test_candle_expectancy_adapter_matches_tiered_matrix(tmp_path):

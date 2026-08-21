@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from copy import deepcopy
 import sys
+from copy import deepcopy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from execution_flow_view import (  # noqa: E402
+from execution_flow_view import (
     bucket_display_label,
     render_bucket_conditioned_spine_block,
     render_market_day_block,

@@ -172,9 +172,9 @@ def build_structure_state(
 
 
 __all__ = [
-    "STRUCTURE_SWING_WINDOW",
+    "MAX_PIVOT_AGE_BARS",
     "MIN_PIVOT_SPACING_BARS",
     "MIN_SWING_AMPLITUDE_PCT",
-    "MAX_PIVOT_AGE_BARS",
+    "STRUCTURE_SWING_WINDOW",
     "build_structure_state",
 ]

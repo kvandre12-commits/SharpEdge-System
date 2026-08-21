@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from execution_state_scores import (  # noqa: E402
+from execution_state_scores import (
     score_acceptance_state,
     score_dealer_state,
     score_location_state,
@@ -14,7 +14,7 @@ from execution_state_scores import (  # noqa: E402
     score_time_state,
     score_trend_state,
 )
-from trade_permission_context import BEARISH, BULLISH, NEUTRAL  # noqa: E402
+from trade_permission_context import BEARISH, BULLISH, NEUTRAL
 
 
 def test_score_structure_state_maps_confirmed_and_weak_sequences():

@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from decision_receipts import build_decision_receipt  # noqa: E402
-from edge_token_manager import build_edge_token_position  # noqa: E402
+from decision_receipts import build_decision_receipt
+from edge_token_manager import build_edge_token_position
 
 
 def _permission(bias: str) -> dict:

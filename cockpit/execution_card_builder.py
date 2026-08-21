@@ -8,15 +8,15 @@ from __future__ import annotations
 
 from typing import Any
 
-from authority_self_audit import build_authority_self_audit
-from setup_conviction import build_setup_conviction, sync_setup_evidence_fields
 import execution_vector_primitives as prim
+from authority_self_audit import build_authority_self_audit
 from execution_expansion_potential import build_execution_expansion_potential
 from execution_hierarchy import (
     CORE_EXECUTION_SPINE_PART_NAMES,
     build_execution_hierarchy,
 )
 from execution_vector_interactions import build_execution_vector_interactions
+from setup_conviction import build_setup_conviction, sync_setup_evidence_fields
 from spine_phase_model import annotate_spine_score_phases
 
 

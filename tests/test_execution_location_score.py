@@ -6,9 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from execution_state_scores import score_location_state  # noqa: E402
-from location_state_engine import build_location_state  # noqa: E402
-from trade_permission_context import BULLISH, NEUTRAL  # noqa: E402
+from execution_state_scores import score_location_state
+from location_state_engine import build_location_state
+from trade_permission_context import BULLISH, NEUTRAL
 
 
 def test_location_state_detects_at_reference():

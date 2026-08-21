@@ -39,8 +39,8 @@ RTH_BAR2_END_MIN = 10 * 60  # 10:00
 # --------------------------- canonical classifier ---------------------------
 def classify(
     session_date: str,
-    pm: dict[str, Optional[float]],
-    keys: dict[str, Optional[float]],
+    pm: dict[str, float | None],
+    keys: dict[str, float | None],
     rths: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """VERBATIM canonical open-resolution classifier.
@@ -180,7 +180,7 @@ def classify(
 
 
 # --------------------------- live data prep ---------------------------
-def _agg_bar(bars: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
+def _agg_bar(bars: list[dict[str, Any]]) -> dict[str, Any] | None:
     if not bars:
         return None
     return {
@@ -191,7 +191,7 @@ def _agg_bar(bars: list[dict[str, Any]]) -> Optional[dict[str, Any]]:
     }
 
 
-def premarket_stats_from_minute_bars(day_bars: list[dict[str, Any]]) -> dict[str, Optional[float]]:
+def premarket_stats_from_minute_bars(day_bars: list[dict[str, Any]]) -> dict[str, float | None]:
     """Build premarket stats from 1m bars tagged with exchange-local minute_of_day."""
     pm = [
         b
@@ -249,8 +249,8 @@ _PHASE_STORY = {
 def build_open_resolution_live(
     day_bars: list[dict[str, Any]],
     *,
-    prior_key_low: Optional[float],
-    prior_key_high: Optional[float],
+    prior_key_low: float | None,
+    prior_key_high: float | None,
     session_date: str = "",
     symbol: str = "SPY",
 ) -> dict[str, Any]:
@@ -307,11 +307,11 @@ def build_open_resolution_live(
 
 
 __all__ = [
-    "classify",
-    "premarket_stats_from_minute_bars",
-    "first_two_open_bars_from_minute_bars",
-    "build_open_resolution_live",
+    "PM_RANGE_RATIO_THRESH",
     "PM_RETURN_THRESH",
     "PM_UP_RETURN_THRESH",
-    "PM_RANGE_RATIO_THRESH",
+    "build_open_resolution_live",
+    "classify",
+    "first_two_open_bars_from_minute_bars",
+    "premarket_stats_from_minute_bars",
 ]

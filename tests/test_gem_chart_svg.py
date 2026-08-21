@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from gem_chart_svg import render_gem_chart_svg  # noqa: E402
+from gem_chart_svg import render_gem_chart_svg
 
 
 def test_gem_chart_renders_channels_entry_zone_exit_and_fvg_zones():

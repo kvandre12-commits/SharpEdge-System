@@ -6,8 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from setups import detect_exhaustion  # noqa: E402
-
+from setups import detect_exhaustion
 
 FLAT_BARS = [
     (0, 100.0, 100.05, 99.95, 100.0, 1000),

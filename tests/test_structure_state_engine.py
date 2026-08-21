@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from structure_state_engine import build_structure_state  # noqa: E402
-from trade_permission import ExecutionVectorEngine  # noqa: E402
+from structure_state_engine import build_structure_state
+from trade_permission import ExecutionVectorEngine
 
 
 def _bullish_sequence_bars() -> list[tuple]:

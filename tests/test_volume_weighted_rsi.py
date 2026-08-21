@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from volume_weighted_rsi import build_volume_weighted_rsi  # noqa: E402
+from volume_weighted_rsi import build_volume_weighted_rsi
 
 
 def _bar(idx: int, close: float, volume: int = 1000) -> tuple:

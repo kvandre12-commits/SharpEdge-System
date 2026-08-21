@@ -20,7 +20,7 @@ def numeric_reference_map(references: dict[str, Any] | None) -> dict[str, float]
 
 
 def distance_pct(
-    spot: float | int | None, reference_price: float | int | None
+    spot: float | None, reference_price: float | None
 ) -> float | None:
     if not isinstance(spot, (int, float)) or not isinstance(
         reference_price, (int, float)
@@ -32,8 +32,8 @@ def distance_pct(
 
 
 def relation_to_reference(
-    value: float | int | None,
-    reference_price: float | int,
+    value: float | None,
+    reference_price: float,
     *,
     at_label: str = "at_reference",
     buffer: float | None = None,

@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import html
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from statistics import median
-from typing import Iterable
 
 from spy_scalp_chart import render_spy_scalp_chart_svg
 

@@ -6,11 +6,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from accepted_break_interpreter import (  # noqa: E402
+from accepted_break_interpreter import (
     accepted_break_break_state,
     best_accepted_break_event,
 )
-from level_state_engine import build_level_state_map  # noqa: E402
+from level_state_engine import build_level_state_map
 
 
 def _breakout_bars() -> list[tuple]:

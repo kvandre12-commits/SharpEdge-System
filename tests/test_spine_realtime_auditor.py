@@ -7,15 +7,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from bucket_conditioned_spine import build_bucket_conditioned_spine  # noqa: E402
-from execution_hierarchy import CORE_EXECUTION_SPINE_PART_NAMES  # noqa: E402
-from spine_realtime_auditor import (  # noqa: E402
+from bucket_conditioned_spine import build_bucket_conditioned_spine
+from execution_hierarchy import CORE_EXECUTION_SPINE_PART_NAMES
+from spine_realtime_auditor import (
     evaluate_snapshots,
     run_once,
     snapshot_from_signal,
     summarize_feature_edges,
 )
-from trade_permission_context import BULLISH, NEUTRAL, ScorePart  # noqa: E402
+from trade_permission_context import BULLISH, NEUTRAL, ScorePart
 
 
 def _signal(ts: str, spot: float, bias: str = "CALLS") -> dict:

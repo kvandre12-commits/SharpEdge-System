@@ -8,8 +8,8 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-import dashboard_runtime as runtime  # noqa: E402
-import make_operator_surface as operator_surface  # noqa: E402
+import dashboard_runtime as runtime
+import make_operator_surface as operator_surface
 
 
 def test_resolve_execution_context_falls_back_when_bridge_missing():

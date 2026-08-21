@@ -22,12 +22,12 @@ def _auction_directional_bias(
     posture = build_range_posture(pa)
     mom15 = float(pa.get("mom15") or 0.0)
     compression = int(
-        ((potential_energy.get("compression_score") or {}).get("score") or 0)
+        (potential_energy.get("compression_score") or {}).get("score") or 0
     )
     location = potential_energy.get("location_pressure") or {}
     gamma = potential_energy.get("gamma_constraint") or {}
     failed_auction = int(
-        ((potential_energy.get("failed_auction_score") or {}).get("score") or 0)
+        (potential_energy.get("failed_auction_score") or {}).get("score") or 0
     )
     level_state = potential_energy.get("level_state_pressure") or {}
     location_bias = str(location.get("bias") or "unclear")
@@ -266,23 +266,23 @@ def build_transition_pressure_state(
         ("acceptance", max(acceptance_velocity, 0) * 4, "acceptance building"),
         (
             "balance",
-            int(((potential_energy.get("location_pressure") or {}).get("score") or 0)),
+            int((potential_energy.get("location_pressure") or {}).get("score") or 0),
             "balance narrowing into a decision area",
         ),
         (
             "gamma",
-            int(((potential_energy.get("gamma_constraint") or {}).get("score") or 0)),
+            int((potential_energy.get("gamma_constraint") or {}).get("score") or 0),
             "gamma constraint active",
         ),
         (
             "compression",
-            int(((potential_energy.get("compression_score") or {}).get("score") or 0)),
+            int((potential_energy.get("compression_score") or {}).get("score") or 0),
             "compression storing energy",
         ),
         (
             "level_state",
             int(
-                ((potential_energy.get("level_state_pressure") or {}).get("score") or 0)
+                (potential_energy.get("level_state_pressure") or {}).get("score") or 0
             ),
             "level posture is leaning one way",
         ),

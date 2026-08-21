@@ -7,9 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from live_read_view import render_live_read_html  # noqa: E402
-from post_apple_rotation import build_post_apple_rotation_live  # noqa: E402
-from post_apple_rotation_view import render_post_apple_rotation_block  # noqa: E402
+from live_read_view import render_live_read_html
+from post_apple_rotation import build_post_apple_rotation_live
+from post_apple_rotation_view import render_post_apple_rotation_block
 
 
 def _write_study(path: Path) -> None:

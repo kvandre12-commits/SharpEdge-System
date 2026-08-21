@@ -7,14 +7,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from make_cockpit import chart_svg, read_options, write_signal  # noqa: E402
-from monthly_context_chart import (  # noqa: E402
+from make_cockpit import chart_svg, read_options, write_signal
+from monthly_context_chart import (
     build_monthly_context_svg,
     derive_monthly_levels,
     summarize_monthly_context,
 )
-from setups import detect_volatility_coil, read_volatility_structure  # noqa: E402
-from weekly_context_chart import (  # noqa: E402
+from setups import detect_volatility_coil, read_volatility_structure
+from weekly_context_chart import (
     build_weekly_context_svg,
     derive_today_carry_levels,
     summarize_weekly_context,

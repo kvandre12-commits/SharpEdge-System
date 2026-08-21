@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 BULLISH = "CALLS"
 BEARISH = "PUTS"
 NEUTRAL = "NEUTRAL"

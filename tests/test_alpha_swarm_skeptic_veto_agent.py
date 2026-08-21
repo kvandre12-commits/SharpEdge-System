@@ -16,6 +16,8 @@ from scripts.alpha_swarm.hypothesis_researcher import (
 from scripts.alpha_swarm.lock_manifest import build_manifest
 from scripts.alpha_swarm.options_expression_agent import (
     OPTION_SNAPSHOT_SCHEMA,
+)
+from scripts.alpha_swarm.options_expression_agent import (
     build_publication as build_expression,
 )
 from scripts.alpha_swarm.skeptic_veto_agent import build_review

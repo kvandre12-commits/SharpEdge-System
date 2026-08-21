@@ -1,8 +1,14 @@
 from __future__ import annotations
+
 from datetime import datetime
 
+import execution_vector_context as ctx
+import execution_vector_primitives as prim
+from acceptance_state_engine import build_acceptance_state
 from bucket_conditioned_spine import build_bucket_conditioned_spine
 from day_bucket import classify_day_bucket
+from dealer_state_engine import build_dealer_state
+from execution_card_builder import build_trade_permission_card
 from execution_expansion_potential import build_expansion_fuel_surface
 from execution_state_scores import (
     score_acceptance_state,
@@ -12,23 +18,15 @@ from execution_state_scores import (
     score_time_state,
     score_trend_state,
 )
-import execution_vector_context as ctx
-import execution_vector_primitives as prim
-from execution_card_builder import build_trade_permission_card
+from execution_vector_weights import DEFAULT_BASE_BIAS_WEIGHTS, DEFAULT_BASE_WEIGHTS
 from failed_break_facts import failed_break_facts_for_levels
 from graph_state import build_graph_state
-from acceptance_state_engine import build_acceptance_state
-from dealer_state_engine import build_dealer_state
 from line_authority_engine import build_line_authority
 from location_state_engine import build_location_state
-from time_state_engine import build_time_state
-from trend_state_engine import build_trend_state
-from volume_profile import build_volume_profile
-from vwap_posture import build_vwap_posture
-from execution_vector_weights import DEFAULT_BASE_BIAS_WEIGHTS, DEFAULT_BASE_WEIGHTS
-from structure_state_engine import build_structure_state
-from session_doctrine import minutes_since_open, opening_auction_decay_profile
 from range_posture import build_range_posture
+from session_doctrine import minutes_since_open, opening_auction_decay_profile
+from structure_state_engine import build_structure_state
+from time_state_engine import build_time_state
 from trade_permission_context import (
     BEARISH,
     BULLISH,
@@ -39,6 +37,9 @@ from trade_permission_context import (
     score_compression,
     score_opening_auction,
 )
+from trend_state_engine import build_trend_state
+from volume_profile import build_volume_profile
+from vwap_posture import build_vwap_posture
 
 
 class ExecutionVectorEngine:

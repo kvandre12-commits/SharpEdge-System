@@ -9,8 +9,8 @@ import requests
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-import http_utils  # noqa: E402
-import market_data_sources as mds  # noqa: E402
+import http_utils
+import market_data_sources as mds
 
 
 class DummyResponse:

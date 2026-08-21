@@ -6,9 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from trade_permission import ExecutionVectorEngine  # noqa: E402
-from trend_state_engine import build_trend_state  # noqa: E402
-from trade_permission_context import BULLISH, NEUTRAL  # noqa: E402
+from trade_permission import ExecutionVectorEngine
+from trade_permission_context import BULLISH, NEUTRAL
+from trend_state_engine import build_trend_state
 
 
 def _bars(step: float = 0.08, count: int = 8) -> list[tuple]:

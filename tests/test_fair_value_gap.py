@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from fair_value_gap import build_fair_value_gap_map  # noqa: E402
+from fair_value_gap import build_fair_value_gap_map
 
 
 def test_bullish_fvg_stays_open_until_price_trades_back_through_it():

@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from execution_hierarchy import CORE_EXECUTION_SPINE_PART_NAMES  # noqa: E402
-from trade_permission import (  # noqa: E402
+from execution_hierarchy import CORE_EXECUTION_SPINE_PART_NAMES
+from trade_permission import (
     AUTHORITY_ENGINE_ENV_VAR,
     resolve_authority_engine,
     score_trade_permission,

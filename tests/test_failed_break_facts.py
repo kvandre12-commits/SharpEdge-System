@@ -6,9 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from execution_grammar import build_break_state  # noqa: E402
-from failed_break_facts import failed_break_facts  # noqa: E402
-from setups import detect_failed_breaks  # noqa: E402
+from execution_grammar import build_break_state
+from failed_break_facts import failed_break_facts
+from setups import detect_failed_breaks
 
 
 def _failed_breakdown_bars() -> list[tuple]:

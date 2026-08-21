@@ -39,4 +39,4 @@ def build_time_state(bars: list[tuple] | None) -> dict[str, Any]:
     }
 
 
-__all__ = ["build_time_state", "REGULAR_SESSION_MINUTES"]
+__all__ = ["REGULAR_SESSION_MINUTES", "build_time_state"]

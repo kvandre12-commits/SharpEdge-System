@@ -7,8 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "phone_companion"))
 
-from export_operator_packet_to_android import export_operator_packet  # noqa: E402
-from export_signal_to_android_viewer import ANDROID_VIEWER_BUNDLE_KEY  # noqa: E402
+from export_operator_packet_to_android import export_operator_packet
+from export_signal_to_android_viewer import ANDROID_VIEWER_BUNDLE_KEY
 
 
 def _write_json(path: Path, payload: dict) -> None:

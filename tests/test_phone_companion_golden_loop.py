@@ -7,9 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "phone_companion"))
 
-from build_golden_loop_view_model import build_view_model  # noqa: E402
-from consume_golden_loop_request import consume_request  # noqa: E402
-from emit_golden_loop_prelaunch_trace import emit_prelaunch_trace  # noqa: E402
+from build_golden_loop_view_model import build_view_model
+from consume_golden_loop_request import consume_request
+from emit_golden_loop_prelaunch_trace import emit_prelaunch_trace
 
 
 def _write_json(path: Path, payload: dict) -> None:

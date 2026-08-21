@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from decision_receipts import (  # noqa: E402
+from decision_receipts import (
     append_decision_receipt,
     build_decision_receipt,
     build_permission_score_trend,

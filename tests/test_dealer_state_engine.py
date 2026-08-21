@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from dealer_state_engine import build_dealer_state  # noqa: E402
-from trade_permission import ExecutionVectorEngine  # noqa: E402
+from dealer_state_engine import build_dealer_state
+from trade_permission import ExecutionVectorEngine
 
 
 def test_dealer_state_detects_positive_gamma_gravity_without_pin():

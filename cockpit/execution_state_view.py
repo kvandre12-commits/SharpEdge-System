@@ -298,8 +298,8 @@ def render_execution_state_packets_details(
 
 __all__ = [
     "render_acceptance_state_block",
-    "render_dealer_state_block",
     "render_core_spine_state_hint",
+    "render_dealer_state_block",
     "render_execution_state_packets_block",
     "render_execution_state_packets_details",
     "render_location_state_block",

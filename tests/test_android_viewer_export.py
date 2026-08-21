@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "phone_companion"))
 
-from export_signal_to_android_viewer import (  # noqa: E402
+from export_signal_to_android_viewer import (
     ANDROID_VIEWER_BUNDLE_KEY,
     export_signal,
 )

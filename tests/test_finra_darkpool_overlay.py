@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime as dt
 import unittest
-
 from unittest.mock import patch
 
 import scripts.ingest_finra_darkpool_overlay as finra

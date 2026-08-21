@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from gem_dashboard_view import render_gem_dashboard_html  # noqa: E402
+from gem_dashboard_view import render_gem_dashboard_html
 
 
 def test_gem_dashboard_renders_master_state_execution_focus_and_screamer_filter():

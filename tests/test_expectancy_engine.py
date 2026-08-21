@@ -9,7 +9,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts" / "analysis"))
 
-from expectancy_engine import (  # noqa: E402
+from expectancy_engine import (
     NO_DTE_BUCKET,
     build_joined_df,
     compute_grid,

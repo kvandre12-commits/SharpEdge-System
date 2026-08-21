@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-import context_attachment as ctx  # noqa: E402
+import context_attachment as ctx
 
 
 def _session_rows() -> list[tuple[int, float, float, float, float, int]]:

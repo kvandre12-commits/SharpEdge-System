@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from nerv.runtime_retention import prune_stale_files  # noqa: E402
+from nerv.runtime_retention import prune_stale_files
 
 
 def test_prune_stale_files_deletes_old_files_only(tmp_path: Path) -> None:

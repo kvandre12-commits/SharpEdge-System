@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from live_trigger_check import (  # noqa: E402
+from live_trigger_check import (
     TRIGGER_RESULT_FIELDS,
     live_trigger_check,
     nearest_edge_level,

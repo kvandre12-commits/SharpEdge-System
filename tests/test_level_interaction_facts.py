@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from level_interaction_facts import (  # noqa: E402
+from level_interaction_facts import (
     level_interaction_facts,
     level_interaction_facts_for_levels,
 )

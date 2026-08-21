@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from timeframe_agreement import (  # noqa: E402
+from timeframe_agreement import (
     build_daily_timeframe,
     build_intraday_timeframe,
     build_timeframe_agreement,

@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from reference_geometry import (  # noqa: E402
+from reference_geometry import (
     distance_pct,
     numeric_reference_map,
     reference_row,

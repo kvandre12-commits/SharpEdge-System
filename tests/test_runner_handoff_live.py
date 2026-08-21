@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from runner_handoff_live import render_runner_handoff_live_html  # noqa: E402
+from runner_handoff_live import render_runner_handoff_live_html
 
 
 def _permission(setup_tag: str, reason: str, gate: str = "ACTIONABLE") -> dict:

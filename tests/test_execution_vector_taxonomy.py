@@ -6,14 +6,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from execution_hierarchy import (  # noqa: E402
+from execution_hierarchy import (
     ADVISORY_SURFACE_PART_NAMES,
     CONTEXT_GOVERNOR_PART_NAMES,
     CORE_EXECUTION_SPINE_PART_NAMES,
     SECONDARY_CONFIRMATION_PART_NAMES,
     SUSPECT_DRIFT_VOICE_PART_NAMES,
 )
-from execution_vector_taxonomy import (  # noqa: E402
+from execution_vector_taxonomy import (
     ADVISORY_SURFACE,
     CONTEXT_GOVERNOR,
     CORE_STRUCTURAL,
@@ -21,7 +21,7 @@ from execution_vector_taxonomy import (  # noqa: E402
     TACTICAL_CONFIRMATION,
     VECTOR_PART_TAXONOMY,
 )
-from execution_vector_weights import (  # noqa: E402
+from execution_vector_weights import (
     DEFAULT_BASE_BIAS_WEIGHTS,
     DEFAULT_BASE_WEIGHTS,
 )
