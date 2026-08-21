@@ -12,9 +12,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from accepted_break_interpreter import (
+    accepted_break_break_state,
+    best_accepted_break_event,
+)
 from dealer_state_engine import build_dealer_state
 from execution_state_scores import score_dealer_state
 from failed_break_facts import RESISTANCE_LEVEL_NAMES, SUPPORT_LEVEL_NAMES
+from failed_break_interpreter import best_failed_break_event, failed_break_break_state
 from level_state_engine import build_level_state_map
 from live_trigger_check import live_trigger_check
 from trade_permission_context import BEARISH, BULLISH
@@ -25,16 +30,6 @@ RECENT_BARS = 6
 ACCEPTANCE_CLOSES = 3
 WALL_PROXIMITY_PCT = 0.20
 PIN_PROXIMITY_PCT = 0.25
-
-
-def _buffer(price: float) -> float:
-    return max(0.10, price * 0.0003) if price else 0.10
-
-
-def _pct_distance(a: float | None, b: float | None) -> float | None:
-    if not a or not b:
-        return None
-    return abs(a - b) / a * 100
 
 
 def _bias_label(bias: int) -> str:
@@ -55,83 +50,22 @@ def _active_levels(levels: dict[str, Any]) -> dict[str, float]:
 
 
 def _accepted_break(level_states: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    candidates: list[dict[str, Any]] = []
-    for name, state in (level_states or {}).items():
-        level = state.get("level_price")
-        acceptance = (state.get("acceptance") or {}).get("state")
-        event_state = str(state.get("event_state") or "")
-        if (
-            name in ACTIVE_RESISTANCE_LEVELS
-            and event_state == "accepted_above_resistance"
-        ):
-            candidates.append(
-                {
-                    "state": "accepted_breakout",
-                    "bias": BULLISH,
-                    "level_name": name,
-                    "level_price": level,
-                    "score": 72,
-                    "reason": f"{ACCEPTANCE_CLOSES} closes accepted above {name} {level:.2f}",
-                }
-            )
-        if (
-            name in ACTIVE_SUPPORT_LEVELS
-            and acceptance == "accepted_below"
-            and state.get("close_relation") == "below"
-        ):
-            candidates.append(
-                {
-                    "state": "accepted_breakdown",
-                    "bias": BEARISH,
-                    "level_name": name,
-                    "level_price": level,
-                    "score": 72,
-                    "reason": f"{ACCEPTANCE_CLOSES} closes accepted below {name} {level:.2f}",
-                }
-            )
-    if not candidates:
-        return {}
-    return max(candidates, key=lambda item: item["score"])
+    event = best_accepted_break_event(
+        level_states,
+        level_order=tuple((level_states or {}).keys()),
+        acceptance_closes=ACCEPTANCE_CLOSES,
+    )
+    return accepted_break_break_state(event) if event else {}
 
 
 def _failed_break(level_states: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """Infer failed-break state from the shared level-state engine."""
-    candidates: list[dict[str, Any]] = []
-    for name, state in (level_states or {}).items():
-        facts = state.get("facts") or {}
-        level = state.get("level_price")
-        event_state = str(state.get("event_state") or "")
-        if name in ACTIVE_RESISTANCE_LEVELS and event_state == "failed_break_rejected":
-            highest = facts.get("breach_above_highest_high")
-            if isinstance(highest, (int, float)):
-                candidates.append(
-                    {
-                        "state": "failed_breakout",
-                        "bias": BEARISH,
-                        "level_name": name,
-                        "level_price": level,
-                        "trigger_price": highest,
-                        "score": 88,
-                        "reason": f"buyers trapped above {name} {level:.2f}; rejected from {highest:.2f}",
-                    }
-                )
-        if name in ACTIVE_SUPPORT_LEVELS and event_state == "failed_break_reclaimed":
-            lowest = facts.get("breach_below_deepest_low")
-            if isinstance(lowest, (int, float)):
-                candidates.append(
-                    {
-                        "state": "failed_breakdown",
-                        "bias": BULLISH,
-                        "level_name": name,
-                        "level_price": level,
-                        "trigger_price": lowest,
-                        "score": 88,
-                        "reason": f"sellers trapped below {name} {level:.2f}; reclaimed from {lowest:.2f}",
-                    }
-                )
-    if not candidates:
-        return {}
-    return max(candidates, key=lambda item: item["score"])
+    event = best_failed_break_event(
+        level_states,
+        level_order=tuple((level_states or {}).keys()),
+        recent_bars=RECENT_BARS,
+    )
+    return failed_break_break_state(event) if event else {}
 
 
 def _setup_break_state(setups: list[dict[str, Any]] | None) -> dict[str, Any]:
@@ -189,7 +123,10 @@ def build_break_state(
     accepted = _accepted_break(level_states)
     chosen = failed or accepted
     if chosen:
-        return {**chosen, "bias": _bias_label(chosen["bias"])}
+        bias = chosen.get("bias", "NEUTRAL")
+        if isinstance(bias, int):
+            bias = _bias_label(bias)
+        return {**chosen, "bias": bias}
     spot = float(bars[-1][4])
     name, level = min(clean_levels.items(), key=lambda item: abs(spot - item[1]))
     return {

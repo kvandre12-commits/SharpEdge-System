@@ -126,7 +126,7 @@ def test_bucket_conditioned_spine_replaces_live_trigger_wait_lane():
     }
     assert spine["gate"] == card["trade_gate"]
     assert spine["score"] == card["trade_permission_score"]
-    assert spine["recommended_action"] == "watch_edges"
+    assert spine["diagnostic_posture"] == "watch_edges_context_only"
 
 
 def test_positive_gamma_breakout_no_longer_gets_capped_to_68():
@@ -171,7 +171,7 @@ def test_negative_gamma_trend_day_promotes_candidate_calls_directly_from_spine()
     assert card["trade_permission_score"] == 84
     assert card["trade_gate"] == "PERMIT"
     assert card["bias"] == "CALLS"
-    assert spine["recommended_action"] == "candidate_calls"
+    assert spine["diagnostic_posture"] == "calls_context_only"
 
 
 def test_failed_breakout_setup_card_drives_puts_bias_through_bucket_spine():
@@ -203,7 +203,7 @@ def test_failed_breakout_setup_card_drives_puts_bias_through_bucket_spine():
     assert card["trade_permission_score"] == 82
     assert card["trade_gate"] == "PERMIT"
     assert card["bias"] == "PUTS"
-    assert spine["recommended_action"] == "candidate_puts"
+    assert spine["diagnostic_posture"] == "puts_context_only"
 
 
 def test_failed_breakout_bars_still_degrade_to_watch_edges_when_bucket_stays_rangey():
@@ -223,4 +223,58 @@ def test_failed_breakout_bars_still_degrade_to_watch_edges_when_bucket_stays_ran
     assert card["market_day"]["bucket"] == "range_balance_day"
     assert card["trade_permission_score"] == 56
     assert card["trade_gate"] == "BLOCK"
-    assert card["bucket_conditioned_spine"]["recommended_action"] == "stand_down"
+    assert (
+        card["bucket_conditioned_spine"]["diagnostic_posture"]
+        == "stand_down_context_only"
+    )
+
+
+def test_build_break_state_reads_level_state_engine_for_accepted_breakdown():
+    bars = [
+        (0, 100.12, 100.18, 100.02, 100.10, 1000),
+        (1, 100.10, 100.12, 99.92, 99.98, 1100),
+        (2, 99.98, 100.00, 99.80, 99.86, 1200),
+        (3, 99.86, 99.92, 99.74, 99.82, 1300),
+    ]
+    state = build_break_state(
+        bars,
+        {"ORL": 100.0, "PDL": 99.5, "ORH": 100.8, "PDH": 101.0},
+    )
+
+    assert state == {
+        "state": "accepted_breakdown",
+        "bias": "PUTS",
+        "level_name": "ORL",
+        "level_price": 100.0,
+        "score": 72,
+        "reason": "3 closes accepted below ORL 100.00",
+    }
+
+
+def test_build_break_state_prefers_setup_card_over_raw_level_state_read():
+    bars = _failed_breakout_bars()
+    state = build_break_state(
+        bars,
+        {"PDH": 100.0, "ORH": 100.0, "ORL": 98.8, "PDL": 98.5},
+        setups=[
+            {
+                "tag": "FAILED BREAKDOWN",
+                "bias": "CALLS (bullish)",
+                "level_name": "ORL",
+                "level_price": 98.8,
+                "trigger_price": 98.42,
+                "detail": "setup detector says reclaim the washout",
+            }
+        ],
+    )
+
+    assert state == {
+        "state": "failed_breakdown",
+        "bias": "CALLS",
+        "level_name": "ORL",
+        "level_price": 98.8,
+        "trigger_price": 98.42,
+        "score": 88,
+        "reason": "setup detector says reclaim the washout",
+        "source": "setup_card",
+    }
