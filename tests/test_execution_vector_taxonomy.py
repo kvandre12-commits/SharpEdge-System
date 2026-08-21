@@ -61,7 +61,7 @@ def test_momentum_family_makes_double_counting_risk_visible():
     }
 
     assert {"trend_score", "pressure_score", "regime_score"} <= momentum_parts
-    assert VECTOR_PART_TAXONOMY["pressure_score"]["category"] == SUSPECT_DRIFT_VOICE
+    assert VECTOR_PART_TAXONOMY["pressure_score"]["category"] == CORE_STRUCTURAL
     assert VECTOR_PART_TAXONOMY["regime_score"]["category"] == SUSPECT_DRIFT_VOICE
     assert "participation" in VECTOR_PART_TAXONOMY["pressure_score"]["overlap_families"]
     assert "balance" in VECTOR_PART_TAXONOMY["regime_score"]["overlap_families"]

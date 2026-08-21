@@ -107,10 +107,10 @@ VECTOR_PART_TAXONOMY: dict[str, VectorPartTaxonomy] = {
         "note": "Overextension context that can govern chasing risk.",
     },
     "balance_context_score": {
-        "category": CONTEXT_GOVERNOR,
+        "category": CORE_STRUCTURAL,
         "correlation_family": BALANCE,
         "overlap_families": (LOCATION,),
-        "note": "Balance/value context that affects trust in directional evidence.",
+        "note": "Core adjunct for balance/value confluence or disagreement; overlaps location, so keep the weight modest.",
     },
     "volatility_score": {
         "category": CONTEXT_GOVERNOR,
@@ -125,10 +125,10 @@ VECTOR_PART_TAXONOMY: dict[str, VectorPartTaxonomy] = {
         "note": "Coil/compression context for potential expansion.",
     },
     "pressure_score": {
-        "category": SUSPECT_DRIFT_VOICE,
+        "category": CORE_STRUCTURAL,
         "correlation_family": MOMENTUM,
         "overlap_families": (PARTICIPATION, TACTICAL_CANDLE),
-        "note": "Fast order-flow pressure; damped when it merely echoes trend.",
+        "note": "Core adjunct for short-horizon follow-through pressure; damped when it merely echoes trend.",
     },
     "expansion_fuel_score": {
         "category": ADVISORY_SURFACE,
@@ -141,6 +141,12 @@ VECTOR_PART_TAXONOMY: dict[str, VectorPartTaxonomy] = {
             MOMENTUM,
         ),
         "note": "Advisory read for why price can still travel even when participation confirmation and fuel diverge.",
+    },
+    "line_authority_score": {
+        "category": ADVISORY_SURFACE,
+        "correlation_family": LOCATION,
+        "overlap_families": (PRICE_STRUCTURE, BALANCE, AUCTION),
+        "note": "Advisory read of how the latest candle interacts with visible reference rails (VWAP/OR/PD/balance lines); overlaps location and structure, so keep it advisory-only.",
     },
     "regime_score": {
         "category": SUSPECT_DRIFT_VOICE,
