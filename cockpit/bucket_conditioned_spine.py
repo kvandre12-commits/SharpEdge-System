@@ -85,9 +85,9 @@ BUCKET_PROFILES = {
 }
 
 BUCKET_SCORE_OFFSETS = {
-    "a_plus_trend_day": 6,
-    "failed_breakdown_long_day": 8,
-    "failed_breakout_short_day": 8,
+    "a_plus_trend_day": 10,
+    "failed_breakdown_long_day": 12,
+    "failed_breakout_short_day": 12,
     "range_balance_day": 0,
     "trap_noise_day": -12,
     "news_vol_shock_day": -20,
