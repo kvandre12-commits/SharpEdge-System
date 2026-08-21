@@ -182,7 +182,7 @@ def db_context() -> dict[str, Any]:
         con.close()
 
 
-def stale_inputs(
+def input_freshness(
     monitor: dict[str, Any], context: dict[str, Any]
 ) -> list[dict[str, Any]]:
     inputs = [
@@ -190,28 +190,72 @@ def stale_inputs(
             "monitor_gap",
             monitor.get("latest_gap_event", {}).get("session_date"),
             MAX_CURRENT_AGE_DAYS,
+            "artifact",
+            str(MONITOR_JSON),
         ),
-        ("risk_layer", context.get("risk", {}).get("date"), MAX_CURRENT_AGE_DAYS),
-        ("signal", context.get("signal", {}).get("date"), MAX_CURRENT_AGE_DAYS),
-        ("regime", context.get("regime", {}).get("date"), MAX_CURRENT_AGE_DAYS),
+        (
+            "risk_layer",
+            context.get("risk", {}).get("date"),
+            MAX_CURRENT_AGE_DAYS,
+            "sqlite",
+            f"{DB_PATH}:risk_decision_layer",
+        ),
+        (
+            "signal",
+            context.get("signal", {}).get("date"),
+            MAX_CURRENT_AGE_DAYS,
+            "sqlite",
+            f"{DB_PATH}:signals_daily",
+        ),
+        (
+            "regime",
+            context.get("regime", {}).get("date"),
+            MAX_CURRENT_AGE_DAYS,
+            "sqlite",
+            f"{DB_PATH}:regime_daily",
+        ),
         (
             "options_positioning",
             context.get("options", {}).get("session_date"),
             MAX_OPTIONS_AGE_DAYS,
+            "sqlite",
+            f"{DB_PATH}:options_positioning_metrics",
         ),
     ]
-    stale: list[dict[str, Any]] = []
-    for name, value, max_age in inputs:
+    assessments: list[dict[str, Any]] = []
+    for name, value, max_age, source_kind, source_ref in inputs:
         age = age_days(value)
+        status = "current"
+        reason = None
         if age is None:
-            stale.append(
-                {"input": name, "date": value, "reason": "missing_or_invalid_date"}
-            )
+            status = "missing_or_invalid"
+            reason = "missing_or_invalid_date"
         elif age > max_age:
-            stale.append(
-                {"input": name, "date": value, "age_days": age, "max_age_days": max_age}
-            )
-    return stale
+            status = "stale"
+            reason = "age_exceeds_threshold"
+        assessment = {
+            "input": name,
+            "status": status,
+            "date": value,
+            "age_days": age,
+            "max_age_days": max_age,
+            "source_kind": source_kind,
+            "source_ref": source_ref,
+        }
+        if reason:
+            assessment["reason"] = reason
+        assessments.append(assessment)
+    return assessments
+
+
+def stale_inputs(
+    monitor: dict[str, Any], context: dict[str, Any]
+) -> list[dict[str, Any]]:
+    return [
+        item
+        for item in input_freshness(monitor, context)
+        if item["status"] != "current"
+    ]
 
 
 def build_contract() -> dict[str, Any]:
@@ -254,7 +298,8 @@ def build_contract() -> dict[str, Any]:
         blocking_reasons.append(f"sample_n_below_{MIN_STANDARD_SAMPLE_N}")
         risk_flags.append("low_sample")
 
-    stale = stale_inputs(monitor, context)
+    freshness_inputs = input_freshness(monitor, context)
+    stale = [item for item in freshness_inputs if item["status"] != "current"]
     if stale:
         blocking_reasons.append("stale_or_missing_inputs")
         risk_flags.append("freshness_gate_failed")
@@ -301,8 +346,11 @@ def build_contract() -> dict[str, Any]:
         "risk_flags": sorted(set(risk_flags)),
         "required_human_action": required_human_action,
         "freshness": {
+            "status": "blocked" if stale else "current",
+            "evaluated_at": utc_now().isoformat(),
             "max_current_age_days": MAX_CURRENT_AGE_DAYS,
             "max_options_age_days": MAX_OPTIONS_AGE_DAYS,
+            "inputs": freshness_inputs,
             "stale_inputs": stale,
         },
         "source_decisions": {

@@ -30,6 +30,7 @@ CSV_FIELDS = [
     "gamma",
     "theta",
     "vega",
+    "greeks_source",
     "in_the_money",
     "moneyness",
     "quote_quality_score",

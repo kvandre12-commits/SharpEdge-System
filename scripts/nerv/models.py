@@ -76,6 +76,7 @@ class NERVOptionQuote:
     gamma: float | None = None
     theta: float | None = None
     vega: float | None = None
+    greeks_source: str | None = None
     in_the_money: bool | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
@@ -127,6 +128,7 @@ class NERVOptionQuote:
             "gamma": self.gamma,
             "theta": self.theta,
             "vega": self.vega,
+            "greeks_source": self.greeks_source,
             "in_the_money": self.in_the_money,
             "moneyness": self.moneyness,
             "source": self.source,

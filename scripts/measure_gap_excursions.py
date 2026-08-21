@@ -64,6 +64,23 @@ METRIC_COLS = {
     "stop_out_probability_proxy": "REAL",
     "expected_stop_distance_pct": "REAL",
     "reward_risk_realized": "REAL",
+    # Causal gap-fill trade metrics. These are target/stop ordered and capped
+    # at the gap-fill target, unlike the legacy full-session opportunity stats
+    # above. Prefer these for live cockpit edge and matrix expectancy.
+    "target_reward_points": "REAL",
+    "target_reward_pct": "REAL",
+    "fill_target_R": "REAL",
+    "realized_trade_R": "REAL",
+    "mae_before_resolution_points": "REAL",
+    "mae_before_resolution_pct": "REAL",
+    "mfe_before_resolution_points": "REAL",
+    "mfe_before_resolution_pct": "REAL",
+    "stop_hit": "INTEGER",
+    "stop_before_fill": "INTEGER",
+    "fill_before_stop": "INTEGER",
+    "same_bar_fill_stop": "INTEGER",
+    "time_to_stop_minutes": "REAL",
+    "trade_outcome": "TEXT",
 }
 
 
@@ -234,6 +251,10 @@ def compute_metrics_for_event(
         float(row.get("gap_pct", 0.0) or 0.0)
     )
 
+    target_reward_points = abs(target - entry)
+    target_reward_pct = target_reward_points / entry if entry else np.nan
+    stop_distance_points = entry * expected_stop_pct
+
     if direction == "UP":
         stop_price = entry * (1.0 - expected_stop_pct)
     else:
@@ -316,6 +337,106 @@ def compute_metrics_for_event(
         out["reward_risk_realized"] = mfe_points / realized_risk
     else:
         out["reward_risk_realized"] = np.nan
+
+    # Use the canonical builder fill truth. The raw scan above can see the
+    # opening bar and would reintroduce fake instant fills. fill_completed/fill_ts
+    # already exclude the opening bar in build_auction_expectancy_events.py.
+    fill_idx = None
+    if int(row.get("fill_completed", 0) or 0) == 1 and row.get("fill_ts") is not None:
+        fill_ts = pd.to_datetime(row.get("fill_ts"), errors="coerce")
+        if pd.notna(fill_ts):
+            bar_ts = pd.to_datetime(bars["ts"], errors="coerce")
+            after = bars.index[bar_ts >= fill_ts]
+            if len(after):
+                fill_idx = int(after[0])
+
+    # -----------------------------
+    # Causal target/stop outcome
+    # -----------------------------
+    # Legacy MAE/MFE above are full-session opportunity stats. For an actual
+    # gap-fill trade from the open, the relevant question is ordered: target
+    # first, stop first, same bar ambiguity, or neither by close. Same-bar is
+    # treated conservatively as stop-first because OHLC bars do not reveal the
+    # intrabar sequence. Yes, conservative is less sexy. It is also less stupid.
+    same_bar = fill_idx is not None and stop_idx is not None and fill_idx == stop_idx
+    fill_before_stop = (
+        fill_idx is not None
+        and not same_bar
+        and (stop_idx is None or fill_idx < stop_idx)
+    )
+    stop_before_fill = (
+        stop_idx is not None
+        and (fill_idx is None or stop_idx <= fill_idx)
+    )
+
+    if fill_before_stop:
+        resolution_idx = fill_idx
+        trade_outcome = "TARGET_FIRST"
+    elif stop_before_fill:
+        resolution_idx = stop_idx
+        trade_outcome = "SAME_BAR_TARGET_STOP" if same_bar else "STOP_FIRST"
+    else:
+        resolution_idx = len(bars) - 1
+        trade_outcome = "NO_TARGET_NO_STOP"
+
+    adverse_to_resolution = adverse_arr[: resolution_idx + 1]
+    favorable_to_resolution = favorable_arr[: resolution_idx + 1]
+
+    mae_before_points = (
+        float(np.nanmax(adverse_to_resolution))
+        if len(adverse_to_resolution)
+        else np.nan
+    )
+    mfe_before_points = (
+        float(np.nanmax(favorable_to_resolution))
+        if len(favorable_to_resolution)
+        else np.nan
+    )
+    if np.isfinite(mfe_before_points):
+        mfe_before_points = min(mfe_before_points, target_reward_points)
+
+    out["target_reward_points"] = target_reward_points
+    out["target_reward_pct"] = target_reward_pct
+    out["fill_target_R"] = (
+        target_reward_points / stop_distance_points
+        if stop_distance_points > 0
+        else np.nan
+    )
+    out["mae_before_resolution_points"] = mae_before_points
+    out["mae_before_resolution_pct"] = (
+        mae_before_points / entry if entry and np.isfinite(mae_before_points) else np.nan
+    )
+    out["mfe_before_resolution_points"] = mfe_before_points
+    out["mfe_before_resolution_pct"] = (
+        mfe_before_points / entry if entry and np.isfinite(mfe_before_points) else np.nan
+    )
+    out["stop_hit"] = int(stop_idx is not None)
+    out["stop_before_fill"] = int(stop_before_fill)
+    out["fill_before_stop"] = int(fill_before_stop)
+    out["same_bar_fill_stop"] = int(same_bar)
+    out["trade_outcome"] = trade_outcome
+
+    if stop_idx is not None:
+        out["time_to_stop_minutes"] = minutes_between(
+            first_ts,
+            str(bars.iloc[stop_idx]["ts"]),
+        )
+
+    if fill_before_stop:
+        out["realized_trade_R"] = out["fill_target_R"]
+    elif stop_before_fill:
+        out["realized_trade_R"] = -1.0
+    else:
+        last_close = float(bars.iloc[-1]["close"])
+        if direction == "UP":
+            close_points = last_close - entry
+        else:
+            close_points = entry - last_close
+        out["realized_trade_R"] = (
+            close_points / stop_distance_points
+            if stop_distance_points > 0
+            else np.nan
+        )
 
     return out
 

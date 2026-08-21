@@ -52,8 +52,8 @@ DECISION_LADDER = [
     },
     {
         "question": "Should I trade?",
-        "layer": "Core Execution Spine",
-        "purpose": "primary execution authority",
+        "layer": "Core Authority Inputs",
+        "purpose": "diagnostic inputs to the bucket-conditioned authority score",
     },
     {
         "question": "Am I being fooled?",
@@ -122,7 +122,7 @@ def build_view(signal: dict[str, Any]) -> dict[str, Any]:
     core_ranked = _sorted_scores(core)
 
     return {
-        "schema": "sharpedge.core_execution_spine_view.v1",
+        "schema": "sharpedge.core_execution_diagnostics_view.v1",
         "ts": signal.get("ts"),
         "symbol": signal.get("symbol"),
         "spot": signal.get("spot"),
@@ -144,12 +144,12 @@ def build_view(signal: dict[str, Any]) -> dict[str, Any]:
         "suspect_drift_voices": drift,
         "decision_ladder": DECISION_LADDER,
         "audit_notes": [
-            "This view restores hierarchy by treating the core spine as the authority layer.",
+            "This view is diagnostic: final authority is engine trade_permission_score / bucket_conditioned_spine.score.",
             "Acceptance is labeled Auction Acceptance here to separate level-acceptance evidence from pure market structure.",
             "Trap and Rejection stay visible as confirmations, not core spine inputs.",
-            "Pressure and Regime are separated as suspect drift voices rather than spine authorities.",
-            "This spine score intentionally does not inherit the engine's acceptance max(acceptance, rejection, trap) score bucket behavior.",
-            "Current spine weights remain fixed for readability; future doctrine could make them regime-aware without changing this audit surface first.",
+            "Pressure and Regime are separated as suspect drift voices rather than authority inputs.",
+            "The normalized weighted score below is a diagnostic read, not a second permission system.",
+            "Current diagnostic weights remain fixed for readability; future doctrine could make them regime-aware without changing the authority contract first.",
         ],
     }
 
@@ -183,23 +183,23 @@ def render_markdown(view: dict[str, Any]) -> str:
     engine = view["engine"]
     core = view["core_spine"]
     lines = [
-        "# Core Execution Spine View",
+        "# Core Execution Diagnostics View",
         "",
         f"- ts: `{view.get('ts')}`",
         f"- symbol: `{view.get('symbol')}`",
         f"- spot: `{view.get('spot')}`",
         f"- engine trade gate: **{engine.get('trade_gate')}**",
-        f"- engine permission: **{engine.get('trade_permission_score')}**",
+        f"- final authority permission: **{engine.get('trade_permission_score')}**",
         f"- engine bias: **{engine.get('bias')}** ({engine.get('bias_strength')})",
-        f"- core spine normalized weighted score: **{core.get('normalized_weighted_score')}**",
+        f"- diagnostic core-input weighted score: **{core.get('normalized_weighted_score')}** _(not authority)_",
         "",
-        "## Core spine authority layer",
+        "## Core authority inputs — diagnostic table",
         "",
         _markdown_table(core["features"]),
-        "## Core spine best",
+        "## Strongest authority inputs",
         "",
         _markdown_bullets(core["best"]),
-        "## Core spine weakest",
+        "## Weakest authority inputs",
         "",
         _markdown_bullets(core["worst"]),
         "## Secondary confirmations",

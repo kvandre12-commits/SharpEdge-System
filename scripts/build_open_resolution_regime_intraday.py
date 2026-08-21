@@ -22,6 +22,18 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - path execution fallback
     from utils.pipeline_state import write_state
 
+import sys as _sys
+
+# Canonical OPEN-resolution classifier — SINGLE SOURCE OF TRUTH shared with the
+# live cockpit (cockpit/open_resolution.py). Import the labeling logic so the
+# historical backtest table and the live read cannot diverge. Data prep
+# (premarket stats, RTH bar selection, NY-time filtering) stays local because
+# the batch reads 15m SQLite bars while the cockpit builds bars from Yahoo 1m.
+_COCKPIT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "cockpit")
+if _COCKPIT_DIR not in _sys.path:
+    _sys.path.insert(0, _COCKPIT_DIR)
+from open_resolution import classify  # noqa: E402
+
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 SYMBOL = os.getenv("SYMBOL", "SPY")
 BARS_TABLE = os.getenv("INTRADAY_BARS_TABLE", "spy_bars_15m")
@@ -176,150 +188,6 @@ def first_rth_bar(bars: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     # With 15m bars, there should be exactly one bar. Return the first.
     return rth[0]
 
-def classify(session_date: str,
-             pm: Dict[str, Optional[float]],
-             keys: Dict[str, Optional[float]],
-             rths: List[Dict[str, Any]]) -> Dict[str, Any]:
-
-    notes = []
-    pm_return = pm["pm_return"]
-    pm_rr = pm["pm_range_ratio"]
-
-    # Setup qualifier: same as before, but direction-aware
-    has_range = (pm_rr is not None and pm_rr >= PM_RANGE_RATIO_THRESH)
-    flush_down = (pm_return is not None and pm_return <= PM_RETURN_THRESH)
-    rip_up     = (pm_return is not None and pm_return >= PM_UP_RETURN_THRESH)
-
-    setup_dir = "NONE"
-    if has_range and flush_down:
-        setup_dir = "DOWN"
-    elif has_range and rip_up:
-        setup_dir = "UP"
-
-    if setup_dir == "NONE":
-        return {
-            "pm_initiative_flush": 0,
-            "setup_dir": "NONE",
-            "key_source": None,
-            "failed_breakdown_open": 0,
-            "accepted_breakdown_open": 0,
-            "open_regime_label": "NO_SETUP",
-            "regime_confidence": 10.0,
-            "notes": "no initiative flush/rip setup",
-            "break_level": None,
-            "flush_low": pm["pm_low"],
-        }
-
-    # Choose true key level based on setup direction
-    break_level = None
-    key_source = None
-
-    if setup_dir == "DOWN":
-        break_level = keys.get("prior_key_low")
-        key_source = "PRIOR_KEY_LOW"
-    else:
-        break_level = keys.get("prior_key_high")
-        key_source = "PRIOR_KEY_HIGH"
-
-    if break_level is None:
-        break_level = pm["pm_open"]
-        key_source = "FALLBACK_PM_OPEN"
-        notes.append("break_level fallback=pm_open (true key missing)")
-
-    # Need at least the first bar
-    if not rths:
-        return {
-            "pm_initiative_flush": 1,
-            "setup_dir": setup_dir,
-            "key_source": key_source,
-            "failed_breakdown_open": 0,
-            "accepted_breakdown_open": 0,
-            "open_regime_label": "MISSING_RTH",
-            "regime_confidence": 0.0,
-            "notes": "missing first RTH bar",
-            "break_level": break_level,
-            "flush_low": pm["pm_low"],
-        }
-
-    b1 = rths[0]
-    b2 = rths[1] if len(rths) > 1 else None
-
-    o1, h1, l1, c1 = map(float, (b1["open"], b1["high"], b1["low"], b1["close"]))
-    c2 = float(b2["close"]) if b2 else None
-
-    flush_low = pm["pm_low"]
-    flush_high = pm["pm_high"]
-
-    # Direction-specific logic
-    failed = 0
-    accepted = 0
-    label = "UNRESOLVED_OPEN"
-    conf = 35.0
-
-    if setup_dir == "DOWN":
-        swept = (l1 < break_level)
-        reclaimed = swept and (c1 > break_level)
-
-        # Acceptance now requires 2 bars (reduces fake opens)
-        accept_close_1 = (c1 < break_level)
-        accept_close_2 = (c2 is not None and c2 < break_level)
-
-        if reclaimed:
-            failed = 1
-            label = "FAILED_BREAKDOWN_OPEN"
-            conf = 72.0
-            notes.append("swept below prior_key_low and closed back above")
-        elif accept_close_1 and accept_close_2:
-            accepted = 1
-            label = "ACCEPTED_BREAKDOWN_OPEN_2BAR"
-            conf = 70.0
-            notes.append("accepted below prior_key_low for 2 bars")
-        elif flush_low is not None and c1 < float(flush_low) and (c2 is None or c2 < float(flush_low)):
-            accepted = 1
-            label = "ACCEPTED_BREAKDOWN_OPEN_STRONG"
-            conf = 75.0
-            notes.append("accepted below premarket flush low")
-        else:
-            notes.append("no reclaim/accept yet (down setup)")
-
-    else:  # UP setup
-        swept = (h1 > break_level)
-        rejected = swept and (c1 < break_level)
-
-        accept_close_1 = (c1 > break_level)
-        accept_close_2 = (c2 is not None and c2 > break_level)
-
-        if rejected:
-            failed = 1
-            label = "FAILED_BREAKOUT_OPEN"
-            conf = 72.0
-            notes.append("swept above prior_key_high and closed back below")
-        elif accept_close_1 and accept_close_2:
-            accepted = 1
-            label = "ACCEPTED_BREAKOUT_OPEN_2BAR"
-            conf = 70.0
-            notes.append("accepted above prior_key_high for 2 bars")
-        elif flush_high is not None and c1 > float(flush_high) and (c2 is None or c2 > float(flush_high)):
-            accepted = 1
-            label = "ACCEPTED_BREAKOUT_OPEN_STRONG"
-            conf = 75.0
-            notes.append("accepted above premarket high")
-        else:
-            notes.append("no reject/accept yet (up setup)")
-
-    return {
-        "pm_initiative_flush": 1,
-        "setup_dir": setup_dir,
-        "key_source": key_source,
-        "failed_breakdown_open": failed,
-        "accepted_breakdown_open": accepted,
-        "open_regime_label": label,
-        "regime_confidence": float(min(conf, 100.0)),
-        "notes": "; ".join(notes),
-        "break_level": break_level,
-        "flush_low": float(flush_low) if flush_low is not None else None,
-    }
-                 
 def upsert(con: sqlite3.Connection, row: Dict[str, Any]) -> None:
     con.execute(
         """

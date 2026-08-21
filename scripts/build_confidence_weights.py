@@ -58,6 +58,15 @@ W_EXPECTANCY = float(os.getenv("CONF_W_EXPECTANCY", "15"))
 W_TRADABILITY = float(os.getenv("CONF_W_TRADABILITY", "15"))
 W_PATH = float(os.getenv("CONF_W_PATH", "15"))
 W_RISK = float(os.getenv("CONF_W_RISK", "15"))
+W_TIMING = float(os.getenv("CONF_W_TIMING", "10"))
+
+FAST_FILL_MINUTES = float(os.getenv("CONF_FAST_FILL_MINUTES", "45"))
+SLOW_FILL_MINUTES = float(os.getenv("CONF_SLOW_FILL_MINUTES", "120"))
+VERY_SLOW_FILL_MINUTES = float(os.getenv("CONF_VERY_SLOW_FILL_MINUTES", "240"))
+FULL_MAE_PENALTY_PCT = float(os.getenv("CONF_FULL_MAE_PENALTY_PCT", "0.01"))
+FULL_ASYMMETRY_RATIO = float(os.getenv("CONF_FULL_ASYMMETRY_RATIO", "3.0"))
+SORTINO_LOW = float(os.getenv("CONF_SORTINO_LOW", "-1.0"))
+SORTINO_HIGH = float(os.getenv("CONF_SORTINO_HIGH", "3.0"))
 
 TOP_N = int(os.getenv("CONF_TOP_N", "50"))
 
@@ -111,6 +120,9 @@ REQUIRED_NUMERIC_COLS = [
     "max_drawdown",
     "stop_out_rate_proxy",
     "tradability_score",
+    "median_time_to_fill_minutes",
+    "median_MAE_pct",
+    "median_MFE_pct",
 ]
 
 
@@ -120,10 +132,13 @@ def connect() -> sqlite3.Connection:
 
 
 def table_exists(con: sqlite3.Connection, table: str) -> bool:
-    return con.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
-        (table,),
-    ).fetchone() is not None
+    return (
+        con.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+            (table,),
+        ).fetchone()
+        is not None
+    )
 
 
 def clamp(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
@@ -214,6 +229,69 @@ def expectancy_quality(expectancy: pd.Series) -> pd.Series:
     return normalize_positive(pos)
 
 
+def _finite(row: pd.Series, col: str, default: float = 0.0) -> float:
+    value = row.get(col, default)
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return default
+    if pd.isna(value) or not np.isfinite(value):
+        return default
+    return value
+
+
+def normalize_sortino(value: float) -> float:
+    return clamp((value - SORTINO_LOW) / max(SORTINO_HIGH - SORTINO_LOW, 1e-9))
+
+
+def calculate_timing_quality_components(row: pd.Series) -> dict[str, float]:
+    """Score whether an edge fills cleanly enough to deserve size.
+
+    This deliberately rewards fast/calm/asymmetric fills and punishes slow,
+    high-MAE, downside-volatile fills. The output components are 0..1 so they
+    can feed confidence/risk layers without mystery units. Boring is good.
+    """
+    ttf = _finite(row, "median_time_to_fill_minutes", SLOW_FILL_MINUTES)
+    if ttf <= 0:
+        ttf = SLOW_FILL_MINUTES
+    median_mae = abs(_finite(row, "median_MAE_pct", _finite(row, "avg_MAE_pct")))
+    median_mfe = abs(_finite(row, "median_MFE_pct", _finite(row, "avg_MFE_pct")))
+    sortino = _finite(row, "sortino_ratio", 0.0)
+
+    if ttf <= FAST_FILL_MINUTES:
+        fast_fill_bonus = clamp((FAST_FILL_MINUTES - ttf) / FAST_FILL_MINUTES)
+        slow_fill_penalty = 0.0
+    else:
+        fast_fill_bonus = 0.0
+        slow_fill_penalty = clamp(
+            (ttf - SLOW_FILL_MINUTES)
+            / max(VERY_SLOW_FILL_MINUTES - SLOW_FILL_MINUTES, 1e-9)
+        )
+
+    median_mae_penalty = clamp(median_mae / max(FULL_MAE_PENALTY_PCT, 1e-9))
+    mfe_asymmetry_score = clamp(
+        (median_mfe / max(median_mae, 0.0001)) / max(FULL_ASYMMETRY_RATIO, 1e-9)
+    )
+    sortino_quality_score = normalize_sortino(sortino)
+
+    timing_quality_score = clamp(
+        0.25 * fast_fill_bonus
+        - 0.20 * slow_fill_penalty
+        + 0.15 * (1.0 - median_mae_penalty)
+        + 0.30 * mfe_asymmetry_score
+        + 0.30 * sortino_quality_score
+    )
+
+    return {
+        "fast_fill_bonus": fast_fill_bonus,
+        "slow_fill_penalty": slow_fill_penalty,
+        "median_MAE_penalty": median_mae_penalty,
+        "MFE_asymmetry_score": mfe_asymmetry_score,
+        "sortino_quality_score": sortino_quality_score,
+        "timing_quality_score": timing_quality_score,
+    }
+
+
 def risk_quality(row: pd.Series) -> float:
     fill_rate = clamp(row.get("fill_rate", 0.0))
     failed_fill_rate = clamp(row.get("failed_fill_rate", 0.0))
@@ -232,11 +310,13 @@ def risk_quality(row: pd.Series) -> float:
     payoff_ratio = row.get("payoff_ratio", 0.0)
     if pd.isna(payoff_ratio) or not np.isfinite(payoff_ratio):
         payoff_ratio = 0.0
-    payoff_quality = clamp(float(payoff_ratio) / 2.0)  # 2:1 or better gets full asymmetry credit
+    payoff_quality = clamp(
+        float(payoff_ratio) / 2.0
+    )  # 2:1 or better gets full asymmetry credit
 
     # MAE and DD may be pct or R-like units. These transforms saturate penalties without exploding.
-    mae_penalty = clamp(mae / 0.02)       # 2% adverse excursion = full penalty
-    dd_penalty = clamp(max_dd / 0.05)     # 5% cumulative drawdown/R-dd = full penalty
+    mae_penalty = clamp(mae / 0.02)  # 2% adverse excursion = full penalty
+    dd_penalty = clamp(max_dd / 0.05)  # 5% cumulative drawdown/R-dd = full penalty
 
     score = (
         0.30 * fill_rate
@@ -291,7 +371,9 @@ def load_matrix(con: sqlite3.Connection) -> pd.DataFrame:
 
     df = pd.read_sql_query(f"SELECT * FROM {IN_TABLE}", con)
     if df.empty:
-        raise RuntimeError(f"{IN_TABLE} returned 0 rows. Cannot build confidence weights.")
+        raise RuntimeError(
+            f"{IN_TABLE} returned 0 rows. Cannot build confidence weights."
+        )
 
     if "n" not in df.columns:
         raise RuntimeError(f"{IN_TABLE} missing required column: n")
@@ -322,6 +404,13 @@ def build_confidence(df: pd.DataFrame) -> pd.DataFrame:
         )
     ]
 
+    timing_components = out.apply(
+        calculate_timing_quality_components,
+        axis=1,
+        result_type="expand",
+    )
+    out = pd.concat([out, timing_components], axis=1)
+
     out["risk_quality_score"] = out.apply(risk_quality, axis=1)
     out["expectancy_quality_score"] = expectancy_quality(out["expectancy"])
     out["tradability_quality_score"] = normalize_positive(out["tradability_score"])
@@ -334,10 +423,19 @@ def build_confidence(df: pd.DataFrame) -> pd.DataFrame:
         + W_TRADABILITY * out["tradability_quality_score"]
         + W_PATH * out["path_quality_score"]
         + W_RISK * out["risk_quality_score"]
+        + W_TIMING * out["timing_quality_score"]
+    )
+    total_weight = max(
+        W_SAMPLE + W_FILL + W_EXPECTANCY + W_TRADABILITY + W_PATH + W_RISK + W_TIMING,
+        1.0,
     )
 
-    out["raw_confidence_score"] = raw.clip(lower=0.0, upper=100.0)
-    out["confidence_score"] = np.minimum(out["raw_confidence_score"], out["sample_cap"]).round(2)
+    out["raw_confidence_score"] = (raw / total_weight * 100.0).clip(
+        lower=0.0, upper=100.0
+    )
+    out["confidence_score"] = np.minimum(
+        out["raw_confidence_score"], out["sample_cap"]
+    ).round(2)
     out["confidence_label"] = out["confidence_score"].apply(confidence_label)
     out["deployment_ready"] = [
         deployment_ready(label, bucket)
@@ -373,11 +471,15 @@ def build_confidence(df: pd.DataFrame) -> pd.DataFrame:
         "confidence_score",
         "deployment_ready",
         "risk_quality_score",
+        "timing_quality_score",
         "path_quality_score",
         "n",
         "expectancy",
     ]
-    out = out.sort_values(sort_cols, ascending=[False, False, False, False, False, False]).reset_index(drop=True)
+    out = out.sort_values(
+        sort_cols,
+        ascending=[False, False, False, False, False, False, False],
+    ).reset_index(drop=True)
     return out
 
 
@@ -405,7 +507,9 @@ def main() -> None:
         print("OK: wrote outputs/confidence_matrix.csv")
         print("OK: wrote outputs/top_confidence_states.csv")
 
-        label_counts = confidence["confidence_label"].value_counts(dropna=False).to_dict()
+        label_counts = (
+            confidence["confidence_label"].value_counts(dropna=False).to_dict()
+        )
         bucket_counts = confidence["sample_bucket"].value_counts(dropna=False).to_dict()
         ready_count = int(confidence["deployment_ready"].sum())
         print(f"OK: confidence labels={label_counts}")

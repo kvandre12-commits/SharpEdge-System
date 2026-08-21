@@ -308,6 +308,8 @@ def main():
           vol_trend_state=excluded.vol_trend_state,
           dp_strength=excluded.dp_strength,
           dp_state=excluded.dp_state,
+          macro_stress=excluded.macro_stress,
+          macro_state=excluded.macro_state,
           compression_flag=excluded.compression_flag,
           regime_label=excluded.regime_label,
           regime_id=excluded.regime_id,

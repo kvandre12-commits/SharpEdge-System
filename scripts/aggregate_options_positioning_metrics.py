@@ -18,6 +18,20 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - path execution fallback
     from utils.pipeline_state import write_state
 
+import sys as _sys
+
+# Canonical gamma-flip + dealer-state logic — SINGLE SOURCE OF TRUTH shared with
+# the live cockpit (cockpit/dealer_positioning.py). Data prep (SQLite chain/OI
+# aggregation) stays local; the flip + dealer-state labeling is imported so the
+# historical table and the live read cannot diverge.
+_COCKPIT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "cockpit")
+if _COCKPIT_DIR not in _sys.path:
+    _sys.path.insert(0, _COCKPIT_DIR)
+from dealer_positioning import (  # noqa: E402
+    compute_dealer_state,
+    compute_flip,
+)
+
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 UNDERLYING = os.getenv("SYMBOL", "SPY")
 DTE_MIN = int(os.getenv("DTE_MIN", "0"))
@@ -67,66 +81,6 @@ def get_spot_for_session(con: sqlite3.Connection, session_date: str) -> Optional
     ).fetchone()
 
     return float(row[0]) if row and row[0] is not None else None
-
-
-def compute_flip(strikes: List[float], net: List[float], spot: Optional[float]) -> Optional[float]:
-    if spot is None or len(strikes) < 2:
-        return None
-
-    s = np.array(strikes, dtype=float)
-    g = np.array(net, dtype=float)
-    order = np.argsort(s)
-    s, g = s[order], g[order]
-
-    for a in range(len(s) - 1):
-        if np.sign(g[a]) != np.sign(g[a + 1]):
-            x1, x2 = float(s[a]), float(s[a + 1])
-            g1, g2 = float(g[a]), float(g[a + 1])
-            if g2 == g1:
-                return float(x1)
-            return float(x1 + (0.0 - g1) * (x2 - x1) / (g2 - g1))
-
-    return None
-
-
-def compute_dealer_state(
-    spot: Optional[float],
-    gamma_flip: Optional[float],
-    max_total_oi_strike: Optional[float],
-    pcr_oi: Optional[float],
-    pcr_vol: Optional[float],
-) -> Tuple[Optional[float], Optional[str]]:
-    if spot is None:
-        return None, None
-
-    gamma_proxy = None
-    dealer_hint = "NEUTRAL"
-
-    if gamma_flip is not None:
-        gamma_proxy = float(spot - gamma_flip)
-        if gamma_proxy > 0:
-            dealer_hint = "LONG_GAMMA"
-        elif gamma_proxy < 0:
-            dealer_hint = "SHORT_GAMMA"
-
-    if max_total_oi_strike is not None:
-        wall_distance_pct = abs(spot - max_total_oi_strike) / spot
-        if wall_distance_pct <= PIN_THRESH_PCT:
-            dealer_hint = "PINNED"
-
-    if pcr_oi is not None:
-        if pcr_oi > 1.4:
-            dealer_hint = "DEFENSIVE"
-        elif pcr_oi < 0.7 and dealer_hint != "PINNED":
-            dealer_hint = "CHASE"
-
-    if pcr_vol is not None and pcr_vol > 1.8:
-        dealer_hint = "UNWIND_RISK"
-
-    if not COMPUTE_STATE:
-        dealer_hint = None
-
-    return gamma_proxy, dealer_hint
 
 
 def pick_oi_expiry_col(con: sqlite3.Connection) -> Optional[str]:
@@ -255,7 +209,10 @@ def compute_metrics(con, snapshot_ts):
         max_total_oi_strike=max_total_oi_strike,
         pcr_oi=pcr_oi,
         pcr_vol=pcr_vol,
+        pin_thresh_pct=PIN_THRESH_PCT,
     )
+    if not COMPUTE_STATE:
+        dealer_hint = None
 
     return (
         snapshot_ts,

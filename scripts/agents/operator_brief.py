@@ -30,6 +30,7 @@ OUT_WATCHLIST_JSON = OUTDIR / "operator_watchlist.json"
 OUT_JOURNAL_JSONL = OUTDIR / "operator_journal_append.jsonl"
 TRADE_HINTS_JSON = OUTDIR / "trade_journal_hints.json"
 SIGNAL_JSON = OUTDIR / "signal.json"
+NERV_CURATOR_JSON = OUTDIR / "nerv_curator.json"
 CONNECTOR_AUDIT_JSON = OUTDIR / "chatgpt_robinhood_connector_audit.json"
 CONNECTOR_AUDIT_LOG_JSONL = OUTDIR / "robinhood_connector_audit_log.jsonl"
 
@@ -65,6 +66,7 @@ def load_inputs() -> tuple[
     dict[str, Any],
     dict[str, Any],
     dict[str, Any],
+    dict[str, Any],
 ]:
     return (
         read_json(CONTROLLER_JSON),
@@ -74,6 +76,7 @@ def load_inputs() -> tuple[
         read_json(TRADE_HINTS_JSON),
         read_json(CONNECTOR_AUDIT_JSON),
         read_json(SIGNAL_JSON),
+        read_json(NERV_CURATOR_JSON),
     )
 
 
@@ -140,6 +143,41 @@ def summarize_execution_logic(signal: dict[str, Any]) -> dict[str, Any]:
         "setup_bias": setup_conviction.get("bias"),
         "setup_tag": setup_conviction.get("setup_tag"),
         "entry_workflow": ((setup_conviction.get("entry_gate") or {}).get("workflow")),
+    }
+
+
+def summarize_liquidity_read(curator: dict[str, Any]) -> dict[str, Any]:
+    if curator.get("schema") != "sharpedge.nerv_curator.v1":
+        return {"available": False}
+
+    summary = curator.get("hey_guy_summary") or {}
+    return {
+        "available": True,
+        "generated_at_utc": curator.get("generated_at_utc"),
+        "symbol": curator.get("symbol"),
+        "headline": curator.get("headline"),
+        "stance": curator.get("stance"),
+        "plain_english": summary.get("plain_english"),
+        "liquidity_spot": summary.get("liquidity_spot"),
+        "flow_balance": summary.get("flow_balance"),
+        "bias_alignment": summary.get("bias_alignment"),
+        "quote_quality_context": summary.get("quote_quality_context"),
+        "put_pressure_score": summary.get("put_pressure_score"),
+        "call_pressure_score": summary.get("call_pressure_score"),
+        "put_pressure_pct": summary.get("put_pressure_pct"),
+        "call_pressure_pct": summary.get("call_pressure_pct"),
+        "dominant_side": summary.get("dominant_side"),
+        "call_side_summary": summary.get("call_side_summary"),
+        "put_side_summary": summary.get("put_side_summary"),
+        "call_flow": list(summary.get("call_flow") or [])[:2],
+        "put_flow": list(summary.get("put_flow") or [])[:2],
+        "near_money_tape": list(summary.get("near_money_tape") or [])[:4],
+        "supporting_flow": list(summary.get("supporting_flow") or [])[:2],
+        "opposing_flow": list(summary.get("opposing_flow") or [])[:2],
+        "confirms": list(summary.get("confirms") or [])[:2],
+        "invalidates": list(summary.get("invalidates") or [])[:2],
+        "watch_next": list(curator.get("watch_next") or [])[:3],
+        "warnings": list(curator.get("warnings") or [])[:2],
     }
 
 
@@ -280,6 +318,7 @@ def build_brief_payload(
     hints: dict[str, Any],
     connector_audit: dict[str, Any],
     signal: dict[str, Any],
+    curator: dict[str, Any],
 ) -> dict[str, Any]:
     operator_action = choose_operator_action(contract)
     gap = monitor.get("latest_gap_event", {})
@@ -290,6 +329,7 @@ def build_brief_payload(
     latest_execution_audit = summarize_latest_execution_audit(connector_audit)
     execution_logic = summarize_execution_logic(signal)
     permission_score_trend = summarize_permission_score_trend(signal)
+    liquidity_read = summarize_liquidity_read(curator)
     artifacts = {
         "controller": str(CONTROLLER_JSON),
         "monitor": str(MONITOR_JSON),
@@ -301,6 +341,8 @@ def build_brief_payload(
         artifacts["connector_audit"] = str(CONNECTOR_AUDIT_JSON)
         if CONNECTOR_AUDIT_LOG_JSONL.exists():
             artifacts["connector_audit_log"] = str(CONNECTOR_AUDIT_LOG_JSONL)
+    if liquidity_read.get("available"):
+        artifacts["nerv_curator"] = str(NERV_CURATOR_JSON)
 
     return {
         "schema_version": "operator_brief.v1",
@@ -345,6 +387,7 @@ def build_brief_payload(
         "historical_hints": summarize_historical_hints(hints),
         "execution_logic": execution_logic,
         "permission_score_trend": permission_score_trend,
+        "options_liquidity_read": liquidity_read,
         "latest_execution_audit": latest_execution_audit,
         "next_steps": build_next_steps(
             operator_action,
@@ -358,7 +401,7 @@ def build_brief_payload(
 
 
 def build_brief() -> dict[str, Any]:
-    controller, monitor, contract, warnings, hints, connector_audit, signal = (
+    controller, monitor, contract, warnings, hints, connector_audit, signal, curator = (
         load_inputs()
     )
     return build_brief_payload(
@@ -369,6 +412,7 @@ def build_brief() -> dict[str, Any]:
         hints,
         connector_audit,
         signal,
+        curator,
     )
 
 
@@ -487,7 +531,7 @@ def build_journal_entry_payload(
 
 
 def build_journal_entry() -> dict[str, Any]:
-    controller, monitor, contract, warnings, hints, connector_audit, signal = (
+    controller, monitor, contract, warnings, hints, connector_audit, signal, curator = (
         load_inputs()
     )
     brief = build_brief_payload(
@@ -498,6 +542,7 @@ def build_journal_entry() -> dict[str, Any]:
         hints,
         connector_audit,
         signal,
+        curator,
     )
     return build_journal_entry_payload(brief, controller, monitor, contract, warnings)
 
@@ -529,6 +574,7 @@ def render_text(brief: dict[str, Any]) -> str:
     historical = brief.get("historical_hints", {})
     execution_logic = brief.get("execution_logic", {})
     permission_trend = brief.get("permission_score_trend", {})
+    liquidity_read = brief.get("options_liquidity_read", {})
     execution_audit = brief.get("latest_execution_audit", {})
     lines = [
         "SHARPEDGE OPERATOR BRIEF",
@@ -579,6 +625,32 @@ def render_text(brief: dict[str, Any]) -> str:
                 f"- Low sample: {historical.get('low_sample')}",
             ]
         )
+    if liquidity_read.get("available"):
+        lines.extend(
+            [
+                "",
+                "Options liquidity read:",
+                f"- Stance: {liquidity_read.get('stance') or 'unknown'}",
+                f"- Read: {liquidity_read.get('plain_english') or 'none'}",
+                f"- Liquidity spot: {liquidity_read.get('liquidity_spot') or 'none'}",
+                f"- Flow balance: {liquidity_read.get('flow_balance') or 'none'}",
+                f"- Bias alignment: {liquidity_read.get('bias_alignment') or 'unknown'}",
+                f"- Quote quality: {liquidity_read.get('quote_quality_context') or 'unknown'}",
+            ]
+        )
+        put_flow = liquidity_read.get("put_flow") or []
+        if put_flow:
+            lines.append(f"- Put side: {' | '.join(put_flow)}")
+        call_flow = liquidity_read.get("call_flow") or []
+        if call_flow:
+            lines.append(f"- Call side: {' | '.join(call_flow)}")
+        if liquidity_read.get("put_side_summary"):
+            lines.append(f"- Put summary: {liquidity_read['put_side_summary']}")
+        if liquidity_read.get("call_side_summary"):
+            lines.append(f"- Call summary: {liquidity_read['call_side_summary']}")
+        watch_next = liquidity_read.get("watch_next") or []
+        if watch_next:
+            lines.append(f"- Watch next: {' | '.join(watch_next[:2])}")
     if execution_audit.get("available"):
         lines.extend(
             [
@@ -596,7 +668,7 @@ def render_text(brief: dict[str, Any]) -> str:
 
 def main() -> None:
     OUTDIR.mkdir(parents=True, exist_ok=True)
-    controller, monitor, contract, warnings, hints, connector_audit, signal = (
+    controller, monitor, contract, warnings, hints, connector_audit, signal, curator = (
         load_inputs()
     )
     brief = build_brief_payload(
@@ -607,6 +679,7 @@ def main() -> None:
         hints,
         connector_audit,
         signal,
+        curator,
     )
     watchlist = build_watchlist_payload(brief)
     journal_entry = build_journal_entry_payload(

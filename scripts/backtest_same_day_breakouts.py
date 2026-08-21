@@ -26,6 +26,10 @@ AGG_MAP = {
 # Overlay weights (tune later)
 OVERLAY_WEIGHTS = {
     "fomc": 1.0,
+    "jobs": 0.9,
+    "treasury": 0.7,
+    "treasury_auction": 0.4,
+    "earnings": 0.8,
     "tariff": 0.8,
     "darkpool": 1.2,
     "vix": 1.0,

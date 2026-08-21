@@ -15,6 +15,15 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - path execution fallback
     from utils.pipeline_state import parse_date, utc_now, write_state
 
+import sys as _sys
+
+# Canonical z_to_strength — SINGLE SOURCE shared with the live cockpit macro
+# overlay (cockpit/macro_overlay.py) so batch and live overlay strengths agree.
+_COCKPIT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "cockpit")
+if _COCKPIT_DIR not in _sys.path:
+    _sys.path.insert(0, _COCKPIT_DIR)
+from macro_overlay import z_to_strength  # noqa: E402
+
 FRED_API_KEY = os.getenv("FRED_API_KEY")
 SYMBOL = os.getenv("SYMBOL", "SPY")
 OUTPUT_PATH = "outputs/spy_macro_overlays_daily.csv"
@@ -105,12 +114,6 @@ def zscore(series: pd.Series, win: int = 252) -> pd.Series:
     mean = series.rolling(win, min_periods=40).mean()
     std = series.rolling(win, min_periods=40).std()
     return (series - mean) / std
-
-
-def z_to_strength(value: Any) -> float:
-    if pd.isna(value):
-        return 0.0
-    return float(max(0.0, min(1.0, (value - 1.0) / 1.5)))
 
 
 def build_macro_frame() -> pd.DataFrame:

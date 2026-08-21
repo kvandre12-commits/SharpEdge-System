@@ -20,6 +20,21 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - path execution fallback
     from utils.pipeline_state import write_state
 
+import sys as _sys
+
+# Canonical auction classifier — SINGLE SOURCE OF TRUTH shared with the live
+# cockpit (cockpit/auction_regime.py). We import it here so the historical
+# backtest table and the live cockpit read can never diverge. Hard-fail if the
+# module cannot be located rather than silently falling back to stale logic.
+_COCKPIT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "cockpit")
+if _COCKPIT_DIR not in _sys.path:
+    _sys.path.insert(0, _COCKPIT_DIR)
+from auction_regime import (  # noqa: E402
+    classify_regime,
+    compute_true_range,
+    rolling_sma,
+)
+
 DB_PATH = os.getenv("SPY_DB_PATH", "data/spy_truth.db")
 SYMBOL = os.getenv("SYMBOL", "SPY")
 
@@ -106,96 +121,6 @@ def fetch_bars(con: sqlite3.Connection, symbol: str, bars_table: str) -> List[Di
     rows = con.execute(q, (symbol,)).fetchall()
     cols = [c[0] for c in con.execute(q, (symbol,)).description]
     return [dict(zip(cols, r)) for r in rows]
-
-
-def compute_true_range(prev_close: Optional[float], high: float, low: float) -> float:
-    if prev_close is None:
-        return float(high - low)
-    return float(max(high - low, abs(high - prev_close), abs(low - prev_close)))
-
-
-def rolling_sma(values: List[float], window: int) -> List[Optional[float]]:
-    out: List[Optional[float]] = [None] * len(values)
-    s = 0.0
-    for i, v in enumerate(values):
-        s += v
-        if i >= window:
-            s -= values[i - window]
-        if i >= window - 1:
-            out[i] = s / window
-    return out
-
-
-def classify_regime(
-    prior_high: float,
-    prior_low: float,
-    o: float, h: float, l: float, c: float,
-    tr: float, atr: Optional[float]
-) -> Tuple[str, Dict[str, int], float, str]:
-    flags = {
-        "broke_above_high": int(h > prior_high),
-        "broke_below_low": int(l < prior_low),
-        "failed_breakout": 0,
-        "failed_breakdown": 0,
-        "reclaimed_level": 0,
-        "rejected_level": 0,
-    }
-
-    if atr is None or atr <= 0:
-        return ("UNCLASSIFIED", flags, 0.0, "ATR unavailable; need lookback sessions")
-
-    ratio = tr / atr
-
-    broke_above = (h > prior_high)
-    broke_below = (l < prior_low)
-    close_back_below_prior_high = (c < prior_high)
-    close_back_above_prior_low = (c > prior_low)
-
-    reclaimed = broke_below and close_back_above_prior_low
-    rejected = broke_above and close_back_below_prior_high
-
-    flags["reclaimed_level"] = int(reclaimed)
-    flags["rejected_level"] = int(rejected)
-
-    notes = []
-    confidence = 0.0
-
-    # FAILED regimes
-    if reclaimed and ratio >= FAILED_MIN_RANGE_ATR:
-        flags["failed_breakdown"] = 1
-        confidence = 60.0
-        if ratio >= 1.5:
-            confidence += 15.0
-        if abs(c - prior_low) / max(1e-6, atr) >= 0.25:
-            confidence += 10.0
-        notes.append("swept prior low and reclaimed")
-        return ("FAILED_BREAKDOWN", flags, min(confidence, 100.0), "; ".join(notes))
-
-    if rejected and ratio >= FAILED_MIN_RANGE_ATR:
-        flags["failed_breakout"] = 1
-        confidence = 60.0
-        if ratio >= 1.5:
-            confidence += 15.0
-        if abs(prior_high - c) / max(1e-6, atr) >= 0.25:
-            confidence += 10.0
-        notes.append("swept prior high and rejected")
-        return ("FAILED_BREAKOUT", flags, min(confidence, 100.0), "; ".join(notes))
-
-    # CLEAN continuation
-    if broke_above and (c > prior_high) and ratio >= CLEAN_MIN_RANGE_ATR:
-        notes.append("broke and held above prior high")
-        return ("CLEAN_BREAKOUT", flags, 50.0 + min((ratio - 1.0) * 20.0, 30.0), "; ".join(notes))
-
-    if broke_below and (c < prior_low) and ratio >= CLEAN_MIN_RANGE_ATR:
-        notes.append("broke and held below prior low")
-        return ("CLEAN_BREAKDOWN", flags, 50.0 + min((ratio - 1.0) * 20.0, 30.0), "; ".join(notes))
-
-    # COMPRESSION
-    if ratio <= COMPRESSION_MAX_RANGE_ATR and (not broke_above) and (not broke_below):
-        notes.append("range compression")
-        return ("RANGE_COMPRESSION", flags, 40.0, "; ".join(notes))
-
-    return ("UNCLASSIFIED", flags, 20.0, "no strong regime match")
 
 
 def upsert(con: sqlite3.Connection, event: Dict) -> None:

@@ -127,6 +127,20 @@ def load_events(con):
     if "symbol" in df.columns:
         df = df[df["symbol"].fillna(SYMBOL) == SYMBOL].copy()
 
+    if "has_intraday_bars" in df.columns:
+        before = len(df)
+        has_bars = (
+            pd.to_numeric(df["has_intraday_bars"], errors="coerce")
+            .fillna(0)
+            .astype(int)
+            .eq(1)
+        )
+        df = df[has_bars].copy()
+        print(
+            f"DEBUG intraday-covered events: {len(df)} "
+            f"(excluded {before - len(df)} no-intraday rows)"
+        )
+
     required = {"event_type", "gap_direction"}
     missing = required - set(df.columns)
     if missing:
@@ -174,11 +188,22 @@ def enrich_metrics(df):
     ).astype(int)
 
     out["_time_to_fill"] = safe_num(out, ["time_to_fill_minutes", "minutes_to_fill"])
-    out["_mae"] = safe_num(out, ["MAE_pct", "mae_pct"])
-    out["_mfe"] = safe_num(out, ["MFE_pct", "mfe_pct"])
-    out["_stop"] = safe_num(out, ["stop_out_probability_proxy", "stop_out_rate_proxy"])
+    # Prefer causal target/stop metrics from measure_gap_excursions.py. Fall
+    # back to legacy full-session opportunity stats for older DBs.
+    out["_mae"] = safe_num(
+        out,
+        ["mae_before_resolution_pct", "MAE_pct", "mae_pct"],
+    )
+    out["_mfe"] = safe_num(
+        out,
+        ["mfe_before_resolution_pct", "MFE_pct", "mfe_pct"],
+    )
+    out["_stop"] = safe_num(
+        out,
+        ["stop_before_fill", "stop_hit", "stop_out_probability_proxy", "stop_out_rate_proxy"],
+    )
 
-    payoff = safe_num(out, ["reward_risk_realized", "realized_r", "ret"])
+    payoff = safe_num(out, ["realized_trade_R", "reward_risk_realized", "realized_r", "ret"])
     missing = payoff.isna()
     payoff.loc[missing] = out.loc[missing, "_mfe"].fillna(0) - out.loc[missing, "_mae"].abs().fillna(0)
     out["_payoff"] = payoff

@@ -17,18 +17,24 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT / "scripts" / "analysis"))
+sys.path.insert(0, str(ROOT / "cockpit"))
 
-from nerv.io import (  # noqa: E402
+from nerv.io import (
     write_liquidity_board_csv,
     write_liquidity_board_json,
     write_provider_status_json,
     write_snapshot_csv,
     write_snapshot_json,
 )
-from nerv.provider_status import provider_statuses  # noqa: E402
-from nerv.runtime_retention import DEFAULT_RETENTION_HOURS, prune_stale_files  # noqa: E402
-from nerv.yfinance_adapter import YFinanceOptionsAdapter  # noqa: E402
+from nerv.provider_status import provider_statuses
+from nerv.runtime_retention import (
+    DEFAULT_RETENTION_HOURS,
+    prune_stale_files,
+)
+from nerv.yfinance_adapter import YFinanceOptionsAdapter
 
 DEFAULT_SYMBOLS = [
     "STNG",
@@ -48,6 +54,25 @@ DEFAULT_SYMBOLS = [
 
 def parse_csv_arg(value: str) -> list[str]:
     return [item.strip().upper() for item in value.split(",") if item.strip()]
+
+
+def parse_iv_heat_targets(value: str) -> dict[str, float]:
+    targets: dict[str, float] = {}
+    for item in value.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if ":" not in item:
+            print(
+                f"[nerv/iv] ignoring malformed target {item!r}; expected SYMBOL:STRIKE"
+            )
+            continue
+        symbol, strike = item.split(":", 1)
+        try:
+            targets[symbol.strip().upper()] = float(strike)
+        except ValueError:
+            print(f"[nerv/iv] ignoring malformed strike in {item!r}")
+    return targets
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -109,6 +134,31 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Write provider status and exit without fetching chains.",
     )
+    parser.add_argument(
+        "--iv-heat-targets",
+        default=os.getenv("NERV_IV_HEAT_TARGETS", "SPY:750"),
+        help="Comma-separated SYMBOL:STRIKE targets for automatic IV/RV13 heat reports. Empty disables.",
+    )
+    parser.add_argument(
+        "--iv-heat-output-dir",
+        default=os.getenv("NERV_IV_HEAT_OUTPUT_DIR", "outputs/iv_heat_harvest"),
+        help="Output directory for automatic IV/RV13 heat artifacts.",
+    )
+    parser.add_argument(
+        "--iv-heat-range",
+        default=os.getenv("NERV_IV_HEAT_RANGE", "6mo"),
+        help="Yahoo range used for realized-vol proxy in automatic IV heat reports.",
+    )
+    parser.add_argument(
+        "--skip-panel-refresh",
+        action="store_true",
+        help="Do not regenerate the cockpit Regime/NERV sidecar after IV heat updates.",
+    )
+    parser.add_argument(
+        "--skip-curator-refresh",
+        action="store_true",
+        help="Do not regenerate the shared NERV curator sidecar after IV heat updates.",
+    )
     return parser
 
 
@@ -123,8 +173,12 @@ def main() -> int:
 
     print(f"[nerv] provider status: {status_path}")
     for status in statuses:
-        configured = "configured" if status["configured"] else "missing credentials"
-        print(f"[nerv] {status['name']}: {configured} ({status['data_mode']})")
+        blockers = ", ".join(status.get("blockers", [])) or "none"
+        print(
+            f"[nerv] {status['name']}: {status['status']} "
+            f"(available={status['available']}, blockers={blockers}, "
+            f"mode={status['data_mode']})"
+        )
 
     if args.status_only:
         return 0
@@ -170,9 +224,112 @@ def main() -> int:
     if summary["error_count"]:
         for error in summary["errors"]:
             print(f"[nerv] WARNING {error['symbol']}: {error['error']}")
+    _write_iv_heat_artifacts(
+        snapshot_path=json_path,
+        symbols=symbols,
+        targets=parse_iv_heat_targets(args.iv_heat_targets),
+        output_dir=Path(args.iv_heat_output_dir),
+        data_range=args.iv_heat_range,
+        refresh_panel=not args.skip_panel_refresh,
+        skip_curator_refresh=args.skip_curator_refresh,
+    )
     _print_top_board(board_json_path)
     print("[nerv] research-only: confirm final executable prices at broker.")
     return 0
+
+
+def _write_iv_heat_artifacts(
+    *,
+    snapshot_path: Path,
+    symbols: list[str],
+    targets: dict[str, float],
+    output_dir: Path,
+    data_range: str,
+    refresh_panel: bool,
+    skip_curator_refresh: bool,
+) -> None:
+    if not targets:
+        return
+    matched = [symbol for symbol in symbols if symbol in targets]
+    if not matched:
+        return
+    try:
+        from model_iv_heat_harvest import write_iv_heat_report
+    except Exception as exc:  # noqa: BLE001 - sidecar must not break NERV
+        print(f"[nerv/iv] unavailable: {exc}")
+        return
+
+    wrote = False
+    for symbol in matched:
+        try:
+            paths = write_iv_heat_report(
+                symbol=symbol,
+                snapshot_path=snapshot_path,
+                output_dir=output_dir,
+                data_range=data_range,
+                target_strike=targets[symbol],
+            )
+        except Exception as exc:  # noqa: BLE001 - keep NERV fetch alive
+            print(f"[nerv/iv] WARNING {symbol}: {exc}")
+            continue
+        wrote = True
+        print(
+            "[nerv/iv] {symbol} IV/RV13 heat: {json_path} {markdown_path}".format(
+                symbol=symbol,
+                json_path=paths["json"],
+                markdown_path=paths["markdown"],
+            )
+        )
+        if not skip_curator_refresh:
+            _write_nerv_curator(
+                board_path=snapshot_path.parent / "nerv_liquidity_board.json",
+                iv_heat_path=Path(paths["json"]),
+            )
+    if wrote and refresh_panel:
+        _refresh_regime_nerv_panel()
+
+
+def _write_nerv_curator(*, board_path: Path, iv_heat_path: Path) -> None:
+    try:
+        from scripts.agents.nerv_curator import (
+            DEFAULT_JSON,
+            DEFAULT_SIGNAL,
+            DEFAULT_TXT,
+            build_packet,
+            write_packet,
+        )
+
+        packet = build_packet(
+            board_path=board_path,
+            iv_heat_path=iv_heat_path,
+            signal_path=DEFAULT_SIGNAL,
+        )
+        write_packet(packet, DEFAULT_JSON, DEFAULT_TXT)
+    except Exception as exc:  # noqa: BLE001 - curator is a read-only sidecar
+        print(f"[nerv/curator] skipped: {exc}")
+        return
+    print(f"[nerv/curator] wrote: {DEFAULT_JSON} {DEFAULT_TXT}")
+
+
+def _refresh_regime_nerv_panel() -> None:
+    raw_refresh = (
+        os.environ.get("COCKPIT_PAGE_REFRESH_SECONDS")
+        or os.environ.get("COCKPIT_REFRESH_SECONDS")
+        or os.environ.get("COCKPIT_INTERVAL")
+        or "10"
+    )
+    try:
+        refresh_seconds = max(int(raw_refresh), 1)
+    except ValueError:
+        refresh_seconds = 10
+    try:
+        from regime_nerv_panel import write_surfaces
+
+        paths = write_surfaces(refresh_seconds=refresh_seconds)
+    except Exception as exc:  # noqa: BLE001 - panel is a side effect only
+        print(f"[nerv/iv] panel refresh skipped: {exc}")
+        return
+    print(f"[nerv/iv] panel refreshed: {paths['panel']}")
 
 
 def _print_top_board(board_json_path: Path, *, limit: int = 8) -> None:

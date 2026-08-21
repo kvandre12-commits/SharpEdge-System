@@ -28,12 +28,14 @@ New columns:
 Path labels:
 - DIRECT_FILL
 - SQUEEZE_THEN_FILL
-- PARTIAL_FILL_REJECT
-- FAILED_FILL_CONTINUATION
 - ROTATIONAL_BALANCE_THEN_FILL
 - ACCEPTANCE_RECLAIM
+- STANDARD_FILL                 (ordinary reversion fill; catch-all for filled days)
+- PARTIAL_FILL_REJECT
+- FAILED_FILL_CONTINUATION
 - LIQUIDITY_VACUUM_CONTINUATION
 - NO_GAP
+- NO_INTRADAY_BARS            (cannot classify path; missing 15m coverage)
 - UNCLASSIFIED
 """
 
@@ -187,10 +189,13 @@ def classify_row(r, bars: pd.DataFrame):
         return default
 
     if bars.empty:
+        default["fill_path_type"] = "NO_INTRADAY_BARS"
+        default["acceptance_behavior"] = "NO_PATH_DATA"
+        default["initiative_behavior"] = "NO_PATH_DATA"
         return default
 
     gap_dir = str(r["gap_direction"]).upper()
-    fill_level = r["gap_fill_level"]
+    fill_level = float(r["gap_fill_level"])
 
     open_px = float(r["session_open"])
     high_px = float(r["session_high"])
@@ -199,52 +204,39 @@ def classify_row(r, bars: pd.DataFrame):
 
     bars = bars.reset_index(drop=True)
 
+    # Canonical fill truth comes from the builder (fill_completed / fill_ts),
+    # which already excludes the opening bar. We deliberately do NOT re-derive
+    # fill from session extremes -- that created a second, conflicting fill
+    # truth in the same table.
+    filled = int(r.get("fill_completed", 0) or 0) == 1
+    fill_ts = r.get("fill_ts")
+
     if gap_dir == "UP":
         gap_size = abs(open_px - fill_level)
         mfe_toward_fill = open_px - low_px
         adverse_away = high_px - open_px
-        fill_hit = bool(low_px <= fill_level)
-        move_toward_fill = (
-            mfe_toward_fill / gap_size
-            if gap_size > 0
-            else 0.0
-        )
-        adverse_ratio = (
-            adverse_away / open_px
-            if open_px > 0
-            else 0.0
-        )
     else:
         gap_size = abs(fill_level - open_px)
         mfe_toward_fill = high_px - open_px
         adverse_away = open_px - low_px
-        fill_hit = bool(high_px >= fill_level)
-        move_toward_fill = (
-            mfe_toward_fill / gap_size
-            if gap_size > 0
-            else 0.0
-        )
-        adverse_ratio = (
-            adverse_away / open_px
-            if open_px > 0
-            else 0.0
-        )
 
+    move_toward_fill = mfe_toward_fill / gap_size if gap_size > 0 else 0.0
+    adverse_ratio = adverse_away / open_px if open_px > 0 else 0.0
+
+    # Locate the fill bar by the canonical fill_ts (already after the opening
+    # bar), so a small gap whose OPENING bar straddles fill_level is never
+    # mislabeled a fast DIRECT_FILL.
     fill_bar_idx = None
+    if filled and fill_ts is not None and not bars.empty:
+        fts = pd.to_datetime(fill_ts, errors="coerce")
+        if pd.notna(fts):
+            after = bars.index[bars["ts"] >= fts]
+            if len(after):
+                fill_bar_idx = int(after[0])
 
-    if fill_hit:
-        for idx, b in bars.iterrows():
-            if gap_dir == "UP":
-                if float(b["low"]) <= fill_level:
-                    fill_bar_idx = idx
-                    break
-            else:
-                if float(b["high"]) >= fill_level:
-                    fill_bar_idx = idx
-                    break
-
+    # ---- filled paths (most specific first) ----
     if (
-        fill_hit
+        filled
         and fill_bar_idx is not None
         and fill_bar_idx <= FAST_FILL_BARS
         and adverse_ratio <= LOW_ADVERSE_EXCURSION_PCT
@@ -255,10 +247,7 @@ def classify_row(r, bars: pd.DataFrame):
         default["initiative_behavior"] = "IMMEDIATE_REVERSION"
         return default
 
-    if (
-        fill_hit
-        and adverse_ratio >= SQUEEZE_AWAY_RATIO * abs(gap_pct)
-    ):
+    if filled and adverse_ratio >= SQUEEZE_AWAY_RATIO * abs(gap_pct):
         default["fill_path_type"] = "SQUEEZE_THEN_FILL"
         default["squeeze_then_fill"] = 1
         default["initiative_behavior"] = "SQUEEZE_AWAY_FIRST"
@@ -267,13 +256,13 @@ def classify_row(r, bars: pd.DataFrame):
 
     midpoint = (open_px + fill_level) / 2.0
     bars_near_mid = 0
-
     for _, b in bars.head(8).iterrows():
-        dist = abs(float(b["close"]) - midpoint) / midpoint
-        if dist <= ROTATION_BAND_PCT:
-            bars_near_mid += 1
+        if midpoint:
+            dist = abs(float(b["close"]) - midpoint) / midpoint
+            if dist <= ROTATION_BAND_PCT:
+                bars_near_mid += 1
 
-    if fill_hit and bars_near_mid >= 4:
+    if filled and bars_near_mid >= 4:
         default["fill_path_type"] = "ROTATIONAL_BALANCE_THEN_FILL"
         default["rotational_balance_then_fill"] = 1
         default["initiative_behavior"] = "ROTATIONAL_AUCTION"
@@ -281,45 +270,36 @@ def classify_row(r, bars: pd.DataFrame):
         return default
 
     open_regime = str(r.get("open_regime_label", "") or "")
+    failed_breakdown_open = int(r.get("failed_breakdown_open", 0) or 0)
 
-    failed_breakdown_open = int(
-        r.get("failed_breakdown_open", 0) or 0
-    )
-
-    if (
-        fill_hit
-        and (
-            failed_breakdown_open == 1
-            or "FAILED_BREAKDOWN" in open_regime
-        )
+    if filled and (
+        failed_breakdown_open == 1 or "FAILED_BREAKDOWN" in open_regime
     ):
         default["fill_path_type"] = "ACCEPTANCE_RECLAIM"
         default["acceptance_behavior"] = "FAILED_BREAKDOWN_RECLAIM"
         default["initiative_behavior"] = "REVERSAL_ACCEPTANCE"
         return default
 
-    if (
-        not fill_hit
-        and move_toward_fill >= MIN_PARTIAL_FILL_RATIO
-    ):
+    # Catch-all for ordinary reversion fills that match no sharper path.
+    # Without this, every "normal" fill day fell through to UNCLASSIFIED
+    # (~44% of history), starving the expectancy matrix of the most common
+    # outcome. STANDARD_FILL keeps the filled/no-fill accounting honest.
+    if filled:
+        default["fill_path_type"] = "STANDARD_FILL"
+        default["acceptance_behavior"] = "STANDARD_ACCEPTANCE"
+        default["initiative_behavior"] = "NORMAL_REVERSION"
+        return default
+
+    # ---- no-fill paths (everything below is guaranteed not filled) ----
+    if move_toward_fill >= MIN_PARTIAL_FILL_RATIO:
         default["fill_path_type"] = "PARTIAL_FILL_REJECT"
         default["partial_fill"] = 1
         default["acceptance_behavior"] = "REJECTED_BEFORE_FILL"
         default["initiative_behavior"] = "FAILED_REVERSION"
         return default
 
-    if (
-        not fill_hit
-        and (
-            (
-                gap_dir == "UP"
-                and close_px > open_px
-            )
-            or (
-                gap_dir == "DOWN"
-                and close_px < open_px
-            )
-        )
+    if (gap_dir == "UP" and close_px > open_px) or (
+        gap_dir == "DOWN" and close_px < open_px
     ):
         default["fill_path_type"] = "FAILED_FILL_CONTINUATION"
         default["failed_fill"] = 1
@@ -327,15 +307,10 @@ def classify_row(r, bars: pd.DataFrame):
         default["acceptance_behavior"] = "CONTINUATION_ACCEPTANCE"
         default["initiative_behavior"] = "TREND_CONTINUATION"
 
-        range_pct = (high_px - low_px) / open_px
-
+        range_pct = (high_px - low_px) / open_px if open_px else 0.0
         if range_pct >= LIQUIDITY_VACUUM_RANGE_PCT:
-            default["fill_path_type"] = (
-                "LIQUIDITY_VACUUM_CONTINUATION"
-            )
-            default["initiative_behavior"] = (
-                "LIQUIDITY_VACUUM"
-            )
+            default["fill_path_type"] = "LIQUIDITY_VACUUM_CONTINUATION"
+            default["initiative_behavior"] = "LIQUIDITY_VACUUM"
 
         return default
 

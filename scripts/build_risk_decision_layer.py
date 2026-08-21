@@ -17,6 +17,8 @@ MACRO_STRESS_THRESH = float(os.getenv("MACRO_STRESS_THRESH", "0.70"))
 
 OUTPUT_CSV = "outputs/risk_decision_layer.csv"
 TOP_OUTPUT_CSV = "outputs/top_risk_allocations.csv"
+CANDIDATE_OUTPUT_CSV = "outputs/risk_decision_candidates.csv"
+WRITE_CANDIDATES = os.getenv("RISK_WRITE_CANDIDATES", "0") == "1"
 
 
 def connect():
@@ -43,6 +45,7 @@ def ensure_table(con):
       confidence_score REAL,
       path_quality_score REAL,
       risk_quality_score REAL,
+      timing_quality_score REAL,
       expectancy REAL,
       payoff_ratio REAL,
 
@@ -69,6 +72,11 @@ def ensure_table(con):
       PRIMARY KEY(symbol, date)
     )
     """)
+    cols = {r[1] for r in con.execute("PRAGMA table_info(risk_decision_layer)")}
+    if "timing_quality_score" not in cols:
+        con.execute(
+            "ALTER TABLE risk_decision_layer ADD COLUMN timing_quality_score REAL"
+        )
     con.commit()
 
 
@@ -118,6 +126,25 @@ def normalize(x, low, high):
     return float(max(0.0, min(1.0, (x - low) / (high - low))))
 
 
+def select_daily_records(records: pd.DataFrame) -> pd.DataFrame:
+    """Select the one risk row that represents each symbol/date.
+
+    Upstream joins can legitimately create many candidate rows per session.
+    The canonical risk-decision artifact must match the SQLite primary-key
+    contract: one selected row per (symbol, date). Candidate explosion is useful
+    for debugging only; it is not the daily decision layer. Little CSV goblin,
+    stay in your lane.
+    """
+    return (
+        records.sort_values(
+            ["deployment_confidence", "tradability_score", "sample_n"],
+            ascending=[False, False, False],
+        )
+        .drop_duplicates(["symbol", "date"], keep="first")
+        .reset_index(drop=True)
+    )
+
+
 def deployment_bucket(row):
     conf = row["deployment_confidence"]
     trad = row["tradability_score"]
@@ -164,15 +191,19 @@ def main():
 
         base = conf.copy()
 
-        merge_keys = [k for k in [
-            "event_type",
-            "regime_id",
-            "open_regime_label",
-            "vol_state",
-            "vol_trend_state",
-            "macro_state",
-            "dp_state"
-        ] if k in conf.columns and k in cond.columns]
+        merge_keys = [
+            k
+            for k in [
+                "event_type",
+                "regime_id",
+                "open_regime_label",
+                "vol_state",
+                "vol_trend_state",
+                "macro_state",
+                "dp_state",
+            ]
+            if k in conf.columns and k in cond.columns
+        ]
 
         if merge_keys:
             base = base.merge(cond, on=merge_keys, how="left", suffixes=("", "_cond"))
@@ -182,29 +213,54 @@ def main():
             reg = pd.read_sql_query(
                 "SELECT date, symbol, vol_state, macro_state, dp_state, macro_stress FROM regime_daily WHERE symbol=?",
                 con,
-                params=(SYMBOL,)
+                params=(SYMBOL,),
             )
-            base = base.merge(reg, on=[c for c in ["date", "symbol", "vol_state", "macro_state", "dp_state"] if c in base.columns and c in reg.columns], how="left")
+            base = base.merge(
+                reg,
+                on=[
+                    c
+                    for c in ["date", "symbol", "vol_state", "macro_state", "dp_state"]
+                    if c in base.columns and c in reg.columns
+                ],
+                how="left",
+            )
 
         if table_exists(con, "open_resolution_regime"):
             op = pd.read_sql_query(
                 "SELECT session_date as date, underlying as symbol, open_regime_label, regime_confidence FROM open_resolution_regime WHERE underlying=?",
                 con,
-                params=(SYMBOL,)
+                params=(SYMBOL,),
             )
-            base = base.merge(op, on=[c for c in ["date", "symbol", "open_regime_label"] if c in base.columns and c in op.columns], how="left")
+            base = base.merge(
+                op,
+                on=[
+                    c
+                    for c in ["date", "symbol", "open_regime_label"]
+                    if c in base.columns and c in op.columns
+                ],
+                how="left",
+            )
 
         if table_exists(con, "options_positioning_metrics"):
             opt = pd.read_sql_query(
                 "SELECT session_date as date, underlying as symbol, dealer_state_hint, pcr_oi FROM options_positioning_metrics WHERE underlying=?",
                 con,
-                params=(SYMBOL,)
+                params=(SYMBOL,),
             )
-            base = base.merge(opt, on=[c for c in ["date", "symbol"] if c in base.columns and c in opt.columns], how="left")
+            base = base.merge(
+                opt,
+                on=[
+                    c
+                    for c in ["date", "symbol"]
+                    if c in base.columns and c in opt.columns
+                ],
+                how="left",
+            )
 
         safe_col(base, "confidence_score", 0.0)
         safe_col(base, "path_quality_score", 0.0)
         safe_col(base, "risk_quality_score", 0.0)
+        safe_col(base, "timing_quality_score", 0.5)
         safe_col(base, "expectancy", 0.0)
         safe_col(base, "payoff_ratio", 0.0)
         safe_col(base, "avg_MAE_pct", 0.0)
@@ -215,42 +271,55 @@ def main():
         safe_col(base, "n", 0)
         safe_col(base, "macro_stress", 0.0)
 
-        base["sample_n"] = pd.to_numeric(base["n"], errors="coerce").fillna(0).astype(int)
+        base["sample_n"] = (
+            pd.to_numeric(base["n"], errors="coerce").fillna(0).astype(int)
+        )
 
         expectancy_score = base["expectancy"].apply(lambda x: normalize(x, -0.01, 0.03))
         payoff_score = base["payoff_ratio"].apply(lambda x: normalize(x, 0.5, 3.0))
         fill_score = base["fill_rate"].apply(lambda x: normalize(x, 0.30, 0.90))
 
-        mae_penalty = 1.0 - base["avg_MAE_pct"].apply(lambda x: normalize(abs(x), 0.002, 0.03))
-        fail_penalty = 1.0 - base["failed_fill_rate"].apply(lambda x: normalize(x, 0.05, 0.60))
-        squeeze_penalty = 1.0 - base["squeeze_risk"].apply(lambda x: normalize(x, 0.05, 0.50))
+        mae_penalty = 1.0 - base["avg_MAE_pct"].apply(
+            lambda x: normalize(abs(x), 0.002, 0.03)
+        )
+        fail_penalty = 1.0 - base["failed_fill_rate"].apply(
+            lambda x: normalize(x, 0.05, 0.60)
+        )
+        squeeze_penalty = 1.0 - base["squeeze_risk"].apply(
+            lambda x: normalize(x, 0.05, 0.50)
+        )
 
         base["tradability_score"] = (
-            expectancy_score * 0.25 +
-            payoff_score * 0.15 +
-            fill_score * 0.15 +
-            base["path_quality_score"].fillna(0) * 0.20 +
-            base["risk_quality_score"].fillna(0) * 0.15 +
-            mae_penalty * 0.10
+            expectancy_score * 0.25
+            + payoff_score * 0.15
+            + fill_score * 0.15
+            + base["path_quality_score"].fillna(0) * 0.20
+            + base["risk_quality_score"].fillna(0) * 0.15
+            + mae_penalty * 0.10
         ).clip(0, 1)
 
         instability = (
-            (1.0 - fail_penalty) * 0.35 +
-            (1.0 - squeeze_penalty) * 0.25 +
-            base["macro_stress"].fillna(0) * 0.20
+            (1.0 - fail_penalty) * 0.35
+            + (1.0 - squeeze_penalty) * 0.25
+            + base["macro_stress"].fillna(0) * 0.20
         )
 
+        timing_quality = base["timing_quality_score"].fillna(0.5).clip(0, 1)
+        confidence_component = base["confidence_score"].fillna(0).clip(0, 100) / 100.0
+
         base["deployment_confidence"] = (
-            base["confidence_score"].fillna(0) * 0.40 +
-            base["path_quality_score"].fillna(0) * 0.20 +
-            base["risk_quality_score"].fillna(0) * 0.20 +
-            base["tradability_score"] * 0.20
+            confidence_component * 0.35
+            + base["path_quality_score"].fillna(0) * 0.17
+            + base["risk_quality_score"].fillna(0) * 0.18
+            + base["tradability_score"] * 0.15
+            + timing_quality * 0.15
         ).clip(0, 1)
 
         base["confidence_of_inaction"] = (
-            instability * 0.50 +
-            (1.0 - base["tradability_score"]) * 0.30 +
-            (1.0 - base["deployment_confidence"]) * 0.20
+            instability * 0.42
+            + (1.0 - base["tradability_score"]) * 0.24
+            + (1.0 - timing_quality) * 0.18
+            + (1.0 - base["deployment_confidence"]) * 0.16
         ).clip(0, 1)
 
         reasons = []
@@ -272,6 +341,9 @@ def main():
             if r["squeeze_risk"] >= 0.35:
                 deny.append("SQUEEZE_RISK")
 
+            if r["timing_quality_score"] < 0.35:
+                deny.append("POOR_TIMING_QUALITY")
+
             reasons.append(",".join(deny) if deny else "NONE")
 
         base["deployment_denied_reason"] = reasons
@@ -282,6 +354,10 @@ def main():
         base["deployment_state"] = [d[0] for d in decisions]
         base["position_size_multiplier"] = [d[1] for d in decisions]
         base["capital_risk_pct"] = [d[2] for d in decisions]
+
+        timing_size_multiplier = (0.50 + 0.50 * timing_quality).clip(0.50, 1.00)
+        base["position_size_multiplier"] *= timing_size_multiplier
+        base["capital_risk_pct"] *= timing_size_multiplier
 
         vol_compress = base["vol_state"].astype(str).str.lower().eq("high")
         macro_compress = base["macro_stress"].fillna(0) >= VOL_COMPRESS_THRESH
@@ -304,58 +380,43 @@ def main():
         else:
             base["symbol"] = base["symbol"].fillna(SYMBOL)
 
-        out_cols = [
-            "date",
-            "symbol",
-            "deployment_state",
-            "deployment_confidence",
-            "position_size_multiplier",
-            "capital_risk_pct",
-            "confidence_score",
-            "path_quality_score",
-            "risk_quality_score",
-            "expectancy",
-            "payoff_ratio",
-            "avg_MAE_pct",
-            "fill_rate",
-            "failed_fill_rate",
-            "squeeze_risk",
-            "vol_state",
-            "macro_state",
-            "dp_state",
-            "open_regime_label",
-            "dealer_state_hint",
-            "no_trade_score",
-            "confidence_of_inaction",
-            "deployment_denied_reason",
-            "tradability_score",
-            "sample_bucket",
-            "sample_n",
-            "decision_ts"
-        ]
-
         out = base.copy()
         out["mae_pct"] = out["avg_MAE_pct"]
 
-        records = out[[
-            "date","symbol","deployment_state","deployment_confidence",
-            "position_size_multiplier","capital_risk_pct",
-            "confidence_score","path_quality_score","risk_quality_score",
-            "expectancy","payoff_ratio","mae_pct","fill_rate",
-            "failed_fill_rate","squeeze_risk","vol_state",
-            "macro_state","dp_state","open_regime_label",
-            "dealer_state_hint","no_trade_score",
-            "confidence_of_inaction","deployment_denied_reason",
-            "tradability_score","sample_bucket","sample_n","decision_ts"
-        ]]
+        records = out[
+            [
+                "date",
+                "symbol",
+                "deployment_state",
+                "deployment_confidence",
+                "position_size_multiplier",
+                "capital_risk_pct",
+                "confidence_score",
+                "path_quality_score",
+                "risk_quality_score",
+                "timing_quality_score",
+                "expectancy",
+                "payoff_ratio",
+                "mae_pct",
+                "fill_rate",
+                "failed_fill_rate",
+                "squeeze_risk",
+                "vol_state",
+                "macro_state",
+                "dp_state",
+                "open_regime_label",
+                "dealer_state_hint",
+                "no_trade_score",
+                "confidence_of_inaction",
+                "deployment_denied_reason",
+                "tradability_score",
+                "sample_bucket",
+                "sample_n",
+                "decision_ts",
+            ]
+        ]
 
-        db_records = (
-            records.sort_values(
-                ["deployment_confidence", "tradability_score", "sample_n"],
-                ascending=[False, False, False],
-            )
-            .drop_duplicates(["symbol", "date"], keep="first")
-        )
+        db_records = select_daily_records(records)
 
         con.executemany(
             """
@@ -363,31 +424,37 @@ def main():
               date,symbol,deployment_state,deployment_confidence,
               position_size_multiplier,capital_risk_pct,
               confidence_score,path_quality_score,risk_quality_score,
-              expectancy,payoff_ratio,mae_pct,fill_rate,
+              timing_quality_score,expectancy,payoff_ratio,mae_pct,fill_rate,
               failed_fill_rate,squeeze_risk,vol_state,
               macro_state,dp_state,open_regime_label,
               dealer_state_hint,no_trade_score,
               confidence_of_inaction,deployment_denied_reason,
               tradability_score,sample_bucket,sample_n,decision_ts
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
-            db_records.to_records(index=False).tolist()
+            db_records.to_records(index=False).tolist(),
         )
 
         con.commit()
 
         os.makedirs("outputs", exist_ok=True)
 
-        records.to_csv(OUTPUT_CSV, index=False)
+        db_records.to_csv(OUTPUT_CSV, index=False)
+        if WRITE_CANDIDATES:
+            records.to_csv(CANDIDATE_OUTPUT_CSV, index=False)
 
-        top = records.sort_values(
-            ["deployment_confidence", "tradability_score"],
-            ascending=[False, False]
+        top = db_records.sort_values(
+            ["deployment_confidence", "tradability_score"], ascending=[False, False]
         ).head(25)
 
         top.to_csv(TOP_OUTPUT_CSV, index=False)
 
-        print(f"OK: wrote {OUTPUT_CSV} rows={len(records)}")
+        print(
+            f"OK: wrote {OUTPUT_CSV} rows={len(db_records)} "
+            f"selected_from_candidates={len(records)}"
+        )
+        if WRITE_CANDIDATES:
+            print(f"OK: wrote {CANDIDATE_OUTPUT_CSV} rows={len(records)}")
         print(f"OK: wrote {TOP_OUTPUT_CSV} rows={len(top)}")
 
     finally:

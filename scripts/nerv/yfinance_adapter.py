@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from datetime import datetime, timezone
 from typing import Any
 
+from .greeks import merge_observed_and_estimated_greeks
 from .models import NERVOptionQuote, NERVSnapshot, safe_float, safe_int, utc_now_iso
 from .symbols import normalize_underlying, parse_occ_symbol
 
@@ -147,6 +148,20 @@ def _normalize_option_frame(
         if strike is None:
             continue
         quote_timestamp = _timestamp_to_iso(row.get("lastTradeDate"))
+        implied_volatility = safe_float(row.get("impliedVolatility"))
+        greeks, greeks_source = merge_observed_and_estimated_greeks(
+            underlying=underlying,
+            option_type=option_type,
+            spot=underlying_price,
+            strike=strike,
+            implied_volatility=implied_volatility,
+            expiration=expiration,
+            as_of=fetch_ts,
+            observed_delta=safe_float(row.get("delta")),
+            observed_gamma=safe_float(row.get("gamma")),
+            observed_theta=safe_float(row.get("theta")),
+            observed_vega=safe_float(row.get("vega")),
+        )
         quotes.append(
             NERVOptionQuote(
                 underlying=underlying,
@@ -160,7 +175,12 @@ def _normalize_option_frame(
                 last=safe_float(row.get("lastPrice")),
                 volume=safe_int(row.get("volume")),
                 open_interest=safe_int(row.get("openInterest")),
-                implied_volatility=safe_float(row.get("impliedVolatility")),
+                implied_volatility=implied_volatility,
+                delta=greeks.get("delta"),
+                gamma=greeks.get("gamma"),
+                theta=greeks.get("theta"),
+                vega=greeks.get("vega"),
+                greeks_source=greeks_source,
                 in_the_money=_safe_bool(row.get("inTheMoney")),
                 source=SOURCE,
                 data_mode=DATA_MODE,

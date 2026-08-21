@@ -38,6 +38,20 @@ def checklist_item(name: str, ok: bool, detail: str) -> dict[str, Any]:
     return {"name": name, "ok": bool(ok), "detail": detail}
 
 
+def resolve_dashboard_readiness(
+    state_readiness: str,
+    approval: dict[str, Any],
+    stale_inputs: list[dict[str, Any]],
+) -> str:
+    if stale_inputs or approval.get("blocking_reasons"):
+        return "blocked"
+    if approval.get("trade_allowed"):
+        return state_readiness if state_readiness in {"review", "monitor"} else "review"
+    if approval.get("permissions", {}).get("monitor_quotes"):
+        return "monitor"
+    return "blocked"
+
+
 def build_dashboard() -> dict[str, Any]:
     watchlist = read_json(WATCHLIST_JSON)
     workflow = resolve_workflow_state(WORKFLOW_STATE_JSON, BRIEF_JSON, CONTRACT_JSON)
@@ -53,7 +67,11 @@ def build_dashboard() -> dict[str, Any]:
     watch_items = watchlist.get("items", [])
     top_item = watch_items[0] if watch_items else {}
     historical = workflow.get("historical_context", {"available": False})
-    readiness = state.get("readiness", "blocked")
+    readiness = resolve_dashboard_readiness(
+        str(state.get("readiness", "blocked")),
+        approval,
+        stale_inputs,
+    )
 
     checklist = [
         checklist_item(
