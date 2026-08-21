@@ -81,6 +81,28 @@ def _vwap_aligns_with_bias(vwap_context: dict[str, Any], bias: str) -> bool:
     )
 
 
+def _range_balance_reason(
+    *,
+    regime: str,
+    balance_score: int,
+    near_vwap: bool,
+    vwap: dict[str, Any],
+) -> str:
+    reasons = []
+    if regime == "positive":
+        reasons.append("positive gamma/OI proxy favors dampening")
+    if balance_score <= 45:
+        reasons.append("balance context lacks edge confluence")
+    if near_vwap:
+        reasons.append("spot is near VWAP/value magnet")
+    if not reasons:
+        reasons.append("battlefield is range-like")
+    return (
+        f"{', '.join(reasons)}; range/balance bucket caps runner language "
+        f"until an explicit edge trigger appears; {vwap['reason']}"
+    )
+
+
 def classify_day_bucket(
     parts: dict[str, Any],
     pa: dict[str, Any],
@@ -165,7 +187,12 @@ def classify_day_bucket(
             "NEUTRAL",
             RANGE_PLAYBOOKS,
             "fade_edges_avoid_chasing",
-            f"positive gamma, balance disagreement, or VWAP magnet context says range/balance until a trap or fade context appears; {vwap['reason']}",
+            _range_balance_reason(
+                regime=regime,
+                balance_score=balance_score,
+                near_vwap=near_vwap,
+                vwap=vwap,
+            ),
             vwap,
         )
 

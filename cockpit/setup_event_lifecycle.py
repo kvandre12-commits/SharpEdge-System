@@ -87,6 +87,9 @@ def _normalize_setup_event(setup: dict[str, Any]) -> dict[str, Any]:
             "price": level_price if isinstance(level_price, (int, float)) else None,
         },
         "trigger_price": setup.get("trigger_price"),
+        "event_detected": setup.get("event_detected"),
+        "event_age_bars": setup.get("event_age_bars"),
+        "entry_window_open": setup.get("entry_window_open"),
     }
 
 
@@ -278,6 +281,9 @@ def setup_dict_from_event(event: dict[str, Any] | None) -> dict[str, Any]:
         "level_name": level.get("name"),
         "level_price": level.get("price"),
         "trigger_price": event.get("trigger_price"),
+        "event_detected": event.get("event_detected"),
+        "event_age_bars": event.get("event_age_bars"),
+        "entry_window_open": event.get("entry_window_open"),
     }
 
 
@@ -336,6 +342,9 @@ def annotate_setup_conviction(
         "level_name": level.get("name"),
         "level_price": level.get("price"),
         "persisted_without_fresh_trigger": persisted_without_fresh_trigger,
+        "event_detected": event.get("event_detected"),
+        "event_age_bars": event.get("event_age_bars"),
+        "entry_window_open": event.get("entry_window_open"),
     }
     setup_conviction["persisted_setup_thesis"] = {
         "source": "setup_event_lifecycle",

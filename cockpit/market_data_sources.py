@@ -9,6 +9,7 @@ from http_utils import request_json_with_backoff
 
 UA = {"User-Agent": "Mozilla/5.0"}
 YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+CNBC_QUOTE_URL = "https://quote.cnbc.com/quote-html-webservice/quote.htm"
 CBOE_OPTIONS_URL = (
     "https://cdn.cboe.com/api/global/delayed_quotes/options/{symbol}.json"
 )
@@ -30,6 +31,15 @@ def _iso_utc_from_epoch(epoch: Any) -> str | None:
     try:
         return dt.datetime.fromtimestamp(float(epoch), tz=dt.UTC).isoformat()
     except (TypeError, ValueError, OSError):
+        return None
+
+
+def _safe_int(value: Any) -> int | None:
+    try:
+        if value in (None, ""):
+            return None
+        return int(float(value))
+    except (TypeError, ValueError):
         return None
 
 
@@ -97,6 +107,61 @@ def fetch_yahoo_chart_result_with_source(
     )
 
 
+def fetch_cnbc_quote_source(
+    symbol: str = "SPY",
+    *,
+    timeout: int = 10,
+) -> dict[str, Any]:
+    """Fetch CNBC's lightweight quote packet for headline price authority.
+
+    Yahoo chart bars remain the analytics source. This quote is used only as a
+    fresher top-line display price when Yahoo's regularMarketPrice stalls.
+    """
+    payload = request_json_with_backoff(
+        CNBC_QUOTE_URL,
+        params={
+            "symbols": symbol,
+            "requestMethod": "quick",
+            "noform": "1",
+            "fund": "1",
+            "exthrs": "1",
+            "output": "json",
+        },
+        headers=UA,
+        timeout=timeout,
+        attempts=2,
+        base_sleep_seconds=0.5,
+    )
+    quotes = payload.get("QuickQuoteResult", {}).get("QuickQuote") or []
+    quote = quotes[0] if quotes else {}
+    last_time_ms = _safe_int(quote.get("last_time_msec"))
+    last_time_utc = (
+        dt.datetime.fromtimestamp(last_time_ms / 1000, tz=dt.UTC).isoformat()
+        if last_time_ms
+        else None
+    )
+    return {
+        "provider": "cnbc",
+        "endpoint": "quote-html-webservice/quote",
+        "symbol": symbol,
+        "last_price": _safe_float(quote.get("last")),
+        "last_time_raw": quote.get("last_time"),
+        "last_time_utc": last_time_utc,
+        "regular_market_time_utc": last_time_utc,
+        "open": _safe_float(quote.get("open")),
+        "high": _safe_float(quote.get("high")),
+        "low": _safe_float(quote.get("low")),
+        "volume": _safe_float(quote.get("volume")),
+        "previous_close": _safe_float(quote.get("previous_day_closing")),
+        "change": _safe_float(quote.get("change")),
+        "change_percent": _safe_float(quote.get("change_pct")),
+        "market_status": quote.get("curmktstatus"),
+        "real_time": quote.get("realTime"),
+        "source": quote.get("source"),
+        "cached_time_raw": quote.get("cachedTime"),
+    }
+
+
 def fetch_yahoo_regular_session_chart_rows(
     symbol: str = "SPY",
     *,
@@ -143,7 +208,88 @@ def fetch_yahoo_regular_session_chart_rows(
                 }
             )
 
-    return rows, {**source, "bar_count": len(rows)}
+    session_date = rows[-1]["date"] if rows else None
+    return rows, {**source, "bar_count": len(rows), "session_date": session_date}
+
+
+def fetch_yahoo_full_day_1m_rows(
+    symbol: str = "SPY",
+    *,
+    timeout: int = 20,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """1m bars INCLUDING pre/post market, tagged with exchange-local minute_of_day.
+
+    Used by the live OPEN-resolution read, which needs premarket stats the
+    regular-session fetch intentionally drops. Returns dicts with keys:
+    date, minute_of_day, open, high, low, close, volume.
+    """
+    payload = request_json_with_backoff(
+        YAHOO_CHART_URL.format(symbol=symbol),
+        params={"interval": "1m", "range": "1d", "includePrePost": "true"},
+        headers=UA,
+        timeout=timeout,
+        attempts=4,
+        base_sleep_seconds=1.0,
+    )
+    result = payload["chart"]["result"][0]
+    source = describe_yahoo_chart_source(
+        result, symbol=symbol, interval="1m", range_="1d"
+    )
+    meta = result.get("meta", {})
+    gmt = int(meta.get("gmtoffset") or 0)
+    ts = result.get("timestamp") or []
+    q = result["indicators"]["quote"][0]
+    opens = q.get("open") or []
+    highs = q.get("high") or []
+    lows = q.get("low") or []
+    closes = q.get("close") or []
+    volumes = q.get("volume") or []
+
+    rows = []
+    for idx, epoch in enumerate(ts):
+        close = closes[idx] if idx < len(closes) else None
+        if close is None:
+            continue
+        local = dt.datetime.utcfromtimestamp(epoch + gmt)
+        minute = local.hour * 60 + local.minute
+        open_ = opens[idx] if idx < len(opens) and opens[idx] is not None else close
+        high = highs[idx] if idx < len(highs) and highs[idx] is not None else close
+        low = lows[idx] if idx < len(lows) and lows[idx] is not None else close
+        volume = volumes[idx] if idx < len(volumes) and volumes[idx] is not None else 0
+        rows.append(
+            {
+                "date": local.date().isoformat(),
+                "minute_of_day": minute,
+                "open": float(open_),
+                "high": float(high),
+                "low": float(low),
+                "close": float(close),
+                "volume": int(volume or 0),
+            }
+        )
+    session_date = rows[-1]["date"] if rows else None
+    return rows, {
+        **source,
+        "bar_count": len(rows),
+        "includes_prepost": True,
+        "session_date": session_date,
+    }
+
+
+def _drop_terminal_placeholder_rows(
+    rows: list[tuple[int, float, float, float, float, int]],
+) -> tuple[list[tuple[int, float, float, float, float, int]], int]:
+    """Drop Yahoo's terminal zero-volume quote placeholder from analytics rows."""
+    clean = list(rows)
+    dropped = 0
+    while len(clean) > 1:
+        _minute, open_, high, low, close, volume = clean[-1]
+        is_flat = open_ == high == low == close
+        if int(volume) != 0 or not is_flat:
+            break
+        clean.pop()
+        dropped += 1
+    return clean, dropped
 
 
 def fetch_yahoo_intraday_session_rows(
@@ -159,7 +305,7 @@ def fetch_yahoo_intraday_session_rows(
         range_=range_,
         timeout=timeout,
     )
-    rows = [
+    raw_rows = [
         (
             int(row["session_minute"]),
             float(row["open"]),
@@ -170,7 +316,13 @@ def fetch_yahoo_intraday_session_rows(
         )
         for row in regular_rows
     ]
-    return rows, source
+    rows, dropped = _drop_terminal_placeholder_rows(raw_rows)
+    return rows, {
+        **source,
+        "raw_bar_count": len(raw_rows),
+        "bar_count": len(rows),
+        "terminal_placeholder_bars_dropped": dropped,
+    }
 
 
 def fetch_yahoo_prior_day_levels(

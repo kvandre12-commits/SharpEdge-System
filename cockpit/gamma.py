@@ -25,7 +25,7 @@ from typing import Any
 def _nearest_expiry(book):
     today = dt.date.today()
     future = sorted(e for e in book if e >= today)
-    return (future or sorted(book))[0]
+    return future[0] if future else None
 
 
 def max_pain(chain, strikes):
@@ -59,6 +59,19 @@ def gamma_profile(book, spot):
     if not book:
         return {}
     exp = _nearest_expiry(book)
+    if exp is None:
+        latest_expired = max(book)
+        return {
+            "exp": latest_expired.isoformat(),
+            "dte": (latest_expired - dt.date.today()).days,
+            "regime": "unknown",
+            "net_gamma": None,
+            "pin": None,
+            "pin_dist": None,
+            "max_pain": None,
+            "spot": spot,
+            "gamma_data_quality": "expired",
+        }
     chain = book[exp]
     strikes = sorted(chain.keys())
     if not strikes:
@@ -131,7 +144,7 @@ def gamma_card(gp):
         detail = (
             f"{dte_lbl} {gp['exp']} | {pull} | "
             f"careful: cheap 0DTE lottos usually bleed today "
-            f"(tech: positive gamma, max pain ${mp:g})"
+            f"(gamma/OI proxy: positive, max pain ${mp:g})"
         )
     else:
         kind = "warn"
@@ -139,8 +152,8 @@ def gamma_card(gp):
         bias = "RIDE momentum - go directional, breakouts run"
         detail = (
             f"{dte_lbl} {gp['exp']} | no strong magnet holding price, "
-            f"moves snowball | good day for directional 0DTE "
-            f"(tech: negative gamma, max pain ${mp:g})"
+            f"moves can snowball | directional 0DTE context only after trigger "
+            f"(gamma/OI proxy: negative, max pain ${mp:g})"
         )
 
     return {"tag": tag, "bias": bias, "kind": kind, "detail": detail}

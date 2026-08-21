@@ -245,10 +245,10 @@ def build_intraday_timeframe(
     gate = str(spine.get("gate") or permission.get("trade_gate") or "BLOCK")
     score = int(spine.get("score") or permission.get("trade_permission_score") or 0)
     raw_bias = str(spine.get("bias") or permission.get("bias") or "NEUTRAL")
-    action = str(spine.get("recommended_action") or "watch_only")
+    posture = str(spine.get("diagnostic_posture") or "watch_only_context")
     reason = str(spine.get("reason") or permission.get("reason") or "")
 
-    if gate == "BLOCK" or action == "stand_down":
+    if gate == "BLOCK" or posture in {"stand_down", "stand_down_context_only"}:
         return _row(
             "Intraday",
             bias=NEUTRAL,
@@ -256,10 +256,10 @@ def build_intraday_timeframe(
             label="Stand Down",
             kind="warn",
             stance="stand_down",
-            detail=f"{gate} | {action.replace('_', ' ')}. {reason}".strip(),
-            basis={"gate": gate, "action": action, "raw_bias": raw_bias},
+            detail=f"{gate} | {posture.replace('_', ' ')}. {reason}".strip(),
+            basis={"gate": gate, "posture": posture, "raw_bias": raw_bias},
         )
-    if gate == "CAUTION" or action == "watch_edges":
+    if gate == "CAUTION" or posture in {"watch_edges", "watch_edges_context_only"}:
         return _row(
             "Intraday",
             bias=NEUTRAL,
@@ -267,8 +267,8 @@ def build_intraday_timeframe(
             label="Neutral/Caution",
             kind="warn",
             stance="caution",
-            detail=f"{gate} | {action.replace('_', ' ')}. {reason}".strip(),
-            basis={"gate": gate, "action": action, "raw_bias": raw_bias},
+            detail=f"{gate} | {posture.replace('_', ' ')}. {reason}".strip(),
+            basis={"gate": gate, "posture": posture, "raw_bias": raw_bias},
         )
 
     bias = (
@@ -278,8 +278,8 @@ def build_intraday_timeframe(
         "Intraday",
         bias=bias,
         score=score,
-        detail=f"{gate} | {action.replace('_', ' ')}. {reason}".strip(),
-        basis={"gate": gate, "action": action, "raw_bias": raw_bias},
+        detail=f"{gate} | {posture.replace('_', ' ')}. {reason}".strip(),
+        basis={"gate": gate, "posture": posture, "raw_bias": raw_bias},
     )
 
 

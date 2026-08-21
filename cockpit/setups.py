@@ -14,9 +14,14 @@ deliberately conservative and "recent" (only flags setups still actionable).
 
 from __future__ import annotations
 
+from failed_break_interpreter import (
+    collect_failed_break_events,
+    failed_break_setup_card,
+)
 from level_state_engine import build_level_state_map
 from market_data_sources import fetch_yahoo_prior_day_levels
 from range_posture import build_range_posture
+from reference_geometry import distance_pct
 from vwap_posture import build_vwap_posture
 
 RECENT_BARS = 6  # a setup is "actionable" only if it triggered this recently
@@ -44,10 +49,15 @@ HANDOFF_MIN_RNG_POS = 45
 
 # ----------------------------- reference levels -----------------------------
 def opening_range(bars):
-    """(ORH, ORL) from the first OR_MINUTES of the session. bars: (m,o,h,l,c,v)."""
-    early = [b for b in bars if b[0] < OR_MINUTES]
+    """(ORH, ORL) from the first OR_MINUTES of the regular session.
+
+    Premarket fallback rows use negative session minutes. Do not let those
+    become the official opening range before 09:30, or the cockpit starts
+    drawing a fake OR from 04:00 tape. Tiny market-structure crime avoided.
+    """
+    early = [b for b in bars if 0 <= b[0] < OR_MINUTES]
     if not early:
-        early = bars[:6]
+        early = [b for b in bars if b[0] >= 0][:6] or bars[:6]
     orh = max(b[2] for b in early)
     orl = min(b[3] for b in early)
     return orh, orl
@@ -70,78 +80,6 @@ def reference_levels(bars):
 
 
 # ----------------------------- failed breaks -----------------------------
-def _failed_breakdown(level_state):
-    """Price broke BELOW support then reclaimed it recently -> bull trap."""
-    if not level_state or level_state.get("event_state") != "failed_break_reclaimed":
-        return None
-    facts = level_state.get("facts") or {}
-    reclaim_idx = facts.get("reclaim_above_level_index")
-    bars_ago = facts.get("bars_since_reclaim_above_level")
-    deepest = facts.get("breach_below_deepest_low")
-    depth = facts.get("breach_below_depth_pct")
-    level = level_state.get("level_price")
-    name = level_state.get("level_name")
-    if (
-        reclaim_idx is None
-        or bars_ago is None
-        or bars_ago > RECENT_BARS
-        or deepest is None
-        or depth is None
-        or level is None
-    ):
-        return None
-    return {
-        "tag": "FAILED BREAKDOWN",
-        "bias": "CALLS (bullish)",
-        "kind": "ok",
-        "detail": (
-            f"reclaimed {name} ${level:.2f} {bars_ago}m ago after "
-            f"stabbing ${deepest:.2f} (-{depth:.2f}% below) - bear trap"
-        ),
-        "score": depth + (RECENT_BARS - bars_ago),
-        "level_name": name,
-        "level_price": round(level, 2),
-        "trigger_price": round(deepest, 2),
-        "bars_ago": bars_ago,
-    }
-
-
-def _failed_breakout(level_state):
-    """Price broke ABOVE resistance then rejected back below recently -> bull trap."""
-    if not level_state or level_state.get("event_state") != "failed_break_rejected":
-        return None
-    facts = level_state.get("facts") or {}
-    reject_idx = facts.get("reject_below_level_index")
-    bars_ago = facts.get("bars_since_reject_below_level")
-    highest = facts.get("breach_above_highest_high")
-    ext = facts.get("breach_above_extension_pct")
-    level = level_state.get("level_price")
-    name = level_state.get("level_name")
-    if (
-        reject_idx is None
-        or bars_ago is None
-        or bars_ago > RECENT_BARS
-        or highest is None
-        or ext is None
-        or level is None
-    ):
-        return None
-    return {
-        "tag": "FAILED BREAKOUT",
-        "bias": "PUTS (bearish)",
-        "kind": "bad",
-        "detail": (
-            f"rejected {name} ${level:.2f} {bars_ago}m ago after "
-            f"poking ${highest:.2f} (+{ext:.2f}% above) - bull trap"
-        ),
-        "score": ext + (RECENT_BARS - bars_ago),
-        "level_name": name,
-        "level_price": round(level, 2),
-        "trigger_price": round(highest, 2),
-        "bars_ago": bars_ago,
-    }
-
-
 def detect_failed_breaks(bars, levels):
     """Return canonical failed-break setup-event identity cards.
 
@@ -151,26 +89,42 @@ def detect_failed_breaks(bars, levels):
     - downstream vector/authority layers may corroborate or ignore that setup,
       but they should not redefine what setup card was emitted here.
     """
-    out = []
+    level_order = ("ORL", "PDL", "ORH", "PDH")
     level_states = build_level_state_map(
         bars,
         levels,
-        level_names=("ORL", "PDL", "ORH", "PDH"),
+        level_names=level_order,
         recent_window=RECENT_BARS,
     )
-    for name in ("ORL", "PDL"):
-        r = _failed_breakdown(level_states.get(name))
-        if r:
-            out.append(r)
-    for name in ("ORH", "PDH"):
-        r = _failed_breakout(level_states.get(name))
-        if r:
-            out.append(r)
-    out.sort(key=lambda d: d["score"], reverse=True)
-    return out
+    events = collect_failed_break_events(
+        level_states,
+        level_order=level_order,
+        recent_bars=RECENT_BARS,
+    )
+    return [failed_break_setup_card(event) for event in events]
 
 
 # ----------------------------- exhaustion -----------------------------
+_DOWNSIDE_VW_RSI_STATES = {"bullish_divergence", "oversold", "confirming_up"}
+_UPSIDE_VW_RSI_STATES = {"bearish_divergence", "overbought", "confirming_down"}
+
+
+def _volume_weighted_rsi_exhaustion_signal(pa: dict, side: str) -> str:
+    packet = (pa or {}).get("volume_weighted_rsi") or {}
+    if not packet.get("active"):
+        return ""
+    if str(packet.get("volume_quality") or "") != "usable":
+        return ""
+    state = str(packet.get("state") or "")
+    value = packet.get("value")
+    value_text = f" {float(value):.1f}" if isinstance(value, (int, float)) else ""
+    if side == "downside" and state in _DOWNSIDE_VW_RSI_STATES:
+        return f"VW-RSI {state.replace('_', ' ')}{value_text}"
+    if side == "upside" and state in _UPSIDE_VW_RSI_STATES:
+        return f"VW-RSI {state.replace('_', ' ')}{value_text}"
+    return ""
+
+
 def detect_exhaustion(bars, pa):
     """Flag possible exhaustion at the day's extremes. Returns list of cards."""
     out = []
@@ -201,17 +155,21 @@ def detect_exhaustion(bars, pa):
     r_prev = rate(closes[-10:-5]) if len(closes) >= 10 else r_now
     decel = abs(r_now) < abs(r_prev) * 0.6
 
-    signals = []
+    base_signals = []
     if climax >= 2.5:
-        signals.append(f"volume climax {climax:.1f}x")
+        base_signals.append(f"volume climax {climax:.1f}x")
     if decel:
-        signals.append(f"momentum fading ({r_prev:+.2f}%->{r_now:+.2f}%)")
+        base_signals.append(f"momentum fading ({r_prev:+.2f}%->{r_now:+.2f}%)")
 
     if at_low:
+        signals = list(base_signals)
         if lower_wick >= 0.5:
             signals.append(f"long lower wick ({lower_wick * 100:.0f}% of bar)")
         if abs_vs_vwap >= EXHAUSTION_STRETCH_MIN_PCT:
             signals.append(f"stretched {pa['vs_vwap']:+.2f}% from VWAP")
+        vw_rsi_signal = _volume_weighted_rsi_exhaustion_signal(pa, "downside")
+        if vw_rsi_signal:
+            signals.append(vw_rsi_signal)
         if len(signals) >= 2:
             out.append(
                 {
@@ -223,10 +181,14 @@ def detect_exhaustion(bars, pa):
                 }
             )
     if at_high:
+        signals = list(base_signals)
         if upper_wick >= 0.5:
             signals.append(f"long upper wick ({upper_wick * 100:.0f}% of bar)")
         if abs_vs_vwap >= EXHAUSTION_STRETCH_MIN_PCT:
             signals.append(f"stretched {pa['vs_vwap']:+.2f}% from VWAP")
+        vw_rsi_signal = _volume_weighted_rsi_exhaustion_signal(pa, "upside")
+        if vw_rsi_signal:
+            signals.append(vw_rsi_signal)
         if len(signals) >= 2:
             out.append(
                 {
@@ -407,17 +369,9 @@ def read_volatility_structure(bars, pa=None):
     return state
 
 
-def _distance_pct(spot, level):
-    if not isinstance(spot, (int, float)) or spot <= 0:
-        return None
-    if not isinstance(level, (int, float)):
-        return None
-    return abs(spot - level) / spot * 100
-
-
 def _near_wall(spot, op):
     for key, label in (("call_wall", "call wall"), ("put_wall", "put wall")):
-        dist = _distance_pct(spot, op.get(key))
+        dist = distance_pct(spot, op.get(key))
         if dist is not None and dist < WALL_PROXIMITY_PCT:
             return label, op.get(key), dist
     return None, None, None
@@ -492,7 +446,7 @@ def detect_negative_gamma_continuation(pa, op, gp, bars=None):
     ):
         return None
     pin = (gp or {}).get("pin")
-    pin_dist = _distance_pct(spot, pin)
+    pin_dist = distance_pct(spot, pin)
     pivot = _recent_downside_exhaustion_pivot(bars or []) if bars else None
     accepted_above_vwap = bool(vwap_posture.get("accepted_above_vwap"))
     rng_pos = float((pa or {}).get("rng_pos") or 0)
@@ -523,7 +477,7 @@ def detect_negative_gamma_continuation(pa, op, gp, bars=None):
             "score": 72 + min(int(round(vol * 5)), 10),
         }
     detail = (
-        f"negative gamma continuation candidate | price {vs_vwap:+.2f}% above VWAP "
+        f"negative gamma/OI proxy continuation candidate | price {vs_vwap:+.2f}% above VWAP "
         f"| 15m momentum {mom:+.2f}% | volume {vol:.1f}x confirms"
     )
     if pin_dist is not None:
@@ -550,7 +504,7 @@ def detect_sticky_noise(pa, op, gp):
     vol = float((pa or {}).get("vol_mult") or 0)
     pin = (gp or {}).get("pin")
     wall_label, wall_price, wall_dist = _near_wall(spot, op or {})
-    pin_dist = _distance_pct(spot, pin)
+    pin_dist = distance_pct(spot, pin)
 
     conditions = []
     if not bool(vwap_posture.get("has_upside_control")):
@@ -572,7 +526,7 @@ def detect_sticky_noise(pa, op, gp):
         "tag": "STICKY NOISE",
         "bias": "stand down / mean reversion only",
         "kind": "warn",
-        "detail": "positive gamma chop context | " + " | ".join(conditions),
+        "detail": "positive gamma/OI proxy chop context | " + " | ".join(conditions),
         "score": 42 + len(conditions),
     }
 

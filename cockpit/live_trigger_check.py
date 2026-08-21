@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from range_posture import build_range_posture
+from reference_geometry import distance_pct
 
 TRIGGER_RESULT_FIELDS = (
     "status",
@@ -57,12 +58,6 @@ def _result(
     }
 
 
-def _pct_distance(a: float | None, b: float | None) -> float | None:
-    if not a or not b:
-        return None
-    return abs(a - b) / a * 100
-
-
 def _numeric_level_items(levels: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         {"name": name, "label": name, "price": float(price), "source": "intraday_prior"}
@@ -100,7 +95,7 @@ def nearest_edge_level(
     candidates = [*_numeric_level_items(levels), *_context_legend_items(pa or {})]
     ranked = []
     for candidate in candidates:
-        distance = _pct_distance(float(spot), candidate["price"])
+        distance = distance_pct(float(spot), candidate["price"])
         if distance is None:
             continue
         ranked.append({**candidate, "distance_pct": distance})

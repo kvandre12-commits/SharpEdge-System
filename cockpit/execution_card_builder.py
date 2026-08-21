@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from authority_self_audit import build_authority_self_audit
 from setup_conviction import build_setup_conviction, sync_setup_evidence_fields
 import execution_vector_primitives as prim
 from execution_expansion_potential import build_execution_expansion_potential
@@ -44,7 +45,9 @@ def build_execution_flow(
             "gate": bucket_conditioned_spine.get("gate"),
             "score": bucket_conditioned_spine.get("score"),
             "bias": bucket_conditioned_spine.get("bias"),
-            "recommended_action": bucket_conditioned_spine.get("recommended_action"),
+            "diagnostic_posture": bucket_conditioned_spine.get("diagnostic_posture"),
+            "advisory_only": bucket_conditioned_spine.get("advisory_only", True),
+            "authority_role": bucket_conditioned_spine.get("authority_role"),
             "reason": bucket_conditioned_spine.get("reason"),
         },
         "execution_permission": {
@@ -173,6 +176,7 @@ def _build_authority_adjudication(
     grammar: dict[str, Any],
     permission: int,
     bias_label: str,
+    authority_self_audit: dict[str, Any],
 ) -> dict[str, Any]:
     candidate = _candidate_thesis(setup_conviction)
     because = _clean_reasons(
@@ -181,7 +185,7 @@ def _build_authority_adjudication(
     )
     despite = _clean_reasons(reasons.get("warnings"), limit=3)
     chosen_action = str(
-        bucket_conditioned_spine.get("recommended_action") or "watch_only"
+        bucket_conditioned_spine.get("diagnostic_posture") or "watch_only_context"
     )
     gate = str(bucket_conditioned_spine.get("gate") or prim.gate_label(permission))
     bucket = str(market_day.get("bucket") or "unclassified_day")
@@ -213,22 +217,36 @@ def _build_authority_adjudication(
         for voice in voices
         if voice.get("bias") not in {None, "", "NEUTRAL", bias_label}
     ]
-    summary = (
-        f"This may be occurring: {candidate.get('label') or 'no active setup thesis'}. "
-        f"But we are doing: {chosen_action} ({gate} / {bias_label}) because "
-        f"{'; '.join(because[:2]) or 'authority reasons are still sparse'}."
+    final_authority = str(
+        authority_self_audit.get("final_authority_source")
+        or "approval_decision_plus_operator"
     )
+    score_role = str(
+        authority_self_audit.get("score_spine_role") or "diagnostic_advisory"
+    )
+    summary = (
+        f"Context may be occurring: {candidate.get('label') or 'no active setup thesis'}. "
+        f"Cockpit read posture: {chosen_action} ({gate} / {bias_label}) because "
+        f"{'; '.join(because[:2]) or 'authority reasons are still sparse'}. "
+        f"Score-spine role={score_role}; final authority={final_authority}."
+    )
+    cockpit_read = {
+        "gate": gate,
+        "action": chosen_action,
+        "bias": bias_label,
+        "bucket": bucket,
+        "score": int(bucket_conditioned_spine.get("score") or permission),
+        "authority_engine": str(grammar.get("authority_engine") or "legacy"),
+        "score_spine_role": score_role,
+        "final_authority_source": final_authority,
+        "advisory_only": True,
+        "authority_role": "diagnostic_advisory",
+    }
     return {
         "schema": "sharpedge.authority_adjudication.v1",
         "this_may_be_occurring": candidate,
-        "we_are_doing_this": {
-            "gate": gate,
-            "action": chosen_action,
-            "bias": bias_label,
-            "bucket": bucket,
-            "score": int(bucket_conditioned_spine.get("score") or permission),
-            "authority_engine": str(grammar.get("authority_engine") or "legacy"),
-        },
+        "cockpit_read": cockpit_read,
+        "we_are_doing_this": cockpit_read,
         "because": because,
         "despite": despite,
         "competing_voices": voices,
@@ -259,6 +277,8 @@ def build_trade_permission_card(
     volume_state: dict[str, Any] | None = None,
     trend_state: dict[str, Any] | None = None,
     time_state: dict[str, Any] | None = None,
+    graph_state: dict[str, Any] | None = None,
+    line_authority: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     bias_label, bias_strength = _resolve_display_bias(
         bias_value, bucket_conditioned_spine
@@ -294,6 +314,13 @@ def build_trade_permission_card(
         setups,
         corroboration_parts=corroboration_parts or parts,
     )
+    authority_self_audit = build_authority_self_audit(
+        authority_engine=str(grammar.get("authority_engine") or "legacy"),
+        authority_mode=str(grammar.get("mode") or "full_stack"),
+        bucket_conditioned_spine=bucket_conditioned_spine,
+        raw_permission=raw_permission,
+        permission=permission,
+    )
     card = {
         "schema": "sharpedge.trade_permission.v1",
         "raw_vector_permission_score": raw_permission,
@@ -311,6 +338,8 @@ def build_trade_permission_card(
         "volume_state": volume_state or {},
         "trend_state": trend_state or {},
         "time_state": time_state or {},
+        "graph_state": graph_state or {},
+        "line_authority": line_authority or {},
         "market_day": market_day,
         "execution_flow": build_execution_flow(
             market_day,
@@ -318,10 +347,15 @@ def build_trade_permission_card(
             permission,
             bias_label,
         ),
-        "execution_hierarchy": build_execution_hierarchy(parts, score_weights),
+        "execution_hierarchy": build_execution_hierarchy(
+            parts,
+            score_weights,
+            graph_state,
+        ),
         "execution_expansion_potential": expansion_potential,
         "execution_vector_interactions": vector_interactions,
         "bucket_conditioned_spine": bucket_conditioned_spine,
+        "authority_self_audit": authority_self_audit,
         "spine_phase_model": spine_phase_model,
         "execution_grammar": grammar,
         "authority_engine": str(grammar.get("authority_engine") or "legacy"),
@@ -340,6 +374,7 @@ def build_trade_permission_card(
             grammar=grammar,
             permission=permission,
             bias_label=bias_label,
+            authority_self_audit=authority_self_audit,
         ),
     }
     return sync_setup_evidence_fields(card)

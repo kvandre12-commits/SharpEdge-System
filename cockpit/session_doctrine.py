@@ -21,16 +21,18 @@ OPENING_AUCTION_LATE_WEIGHT = 0.2
 def market_open_datetime(base: date | datetime | None = None) -> datetime:
     if isinstance(base, datetime):
         session_date = base.date()
+        timezone = base.tzinfo
     else:
-        session_date = base or datetime.today().date()
+        session_date = base or datetime.now().astimezone().date()
+        timezone = None
     return datetime.combine(
         session_date,
-        time(SESSION_OPEN_HOUR, SESSION_OPEN_MINUTE),
+        time(SESSION_OPEN_HOUR, SESSION_OPEN_MINUTE, tzinfo=timezone),
     )
 
 
 def session_datetime_from_minute(
-    minute: int | float,
+    minute: float,
     base: date | datetime | None = None,
 ) -> datetime:
     return market_open_datetime(base) + timedelta(minutes=float(minute))
@@ -45,7 +47,7 @@ def clock_label(current_time: datetime) -> str:
 
 
 def classify_session_window(
-    minutes_since_open_value: int | float,
+    minutes_since_open_value: float,
     *,
     clock: str | None = None,
 ) -> dict[str, Any]:
@@ -95,7 +97,7 @@ def classify_session_window(
 
 
 def opening_auction_decay_profile(
-    minutes_since_open_value: int | float,
+    minutes_since_open_value: float,
 ) -> dict[str, Any]:
     minutes = float(minutes_since_open_value)
     if minutes < OPENING_AUCTION_FULL_WEIGHT_UNTIL:

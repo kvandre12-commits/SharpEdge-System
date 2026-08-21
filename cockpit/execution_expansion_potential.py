@@ -118,7 +118,7 @@ def build_expansion_fuel_surface(
     elif state == "low_confirmation_high_fuel":
         score = max(score, 80)
     reason = {
-        "dealer_gamma_feedback": "expansion fuel is active: dealer hedging feedback can keep price moving",
+        "dealer_gamma_feedback": "expansion fuel is active: gamma/OI proxy implies hedging feedback may keep price moving",
         "thin_liquidity_vacuum_proxy": "expansion fuel is active: thin participation can still let price travel",
         "structural_acceptance": "expansion fuel is active: structural acceptance is carrying the move",
         "counterparty_trap": "expansion fuel is active: trapped counterparties/stops can keep feeding the move",
@@ -194,11 +194,11 @@ def build_execution_expansion_potential(
         mechanisms.append(
             _mechanism(
                 "dealer_gamma_feedback",
-                "Dealers are chasing the move",
+                "Gamma proxy may amplify the move",
                 "fuel",
                 "high" if dealer >= 70 else "moderate",
                 _reason(scores, "dealer_gamma_score")
-                or "negative gamma supports hedging feedback and expansion",
+                or "negative gamma/OI proxy may support hedging feedback and expansion",
             )
         )
 
@@ -209,7 +209,7 @@ def build_execution_expansion_potential(
                 "Thin participation can still travel",
                 "fuel",
                 "moderate",
-                "Participation is weak, but negative gamma plus one-sided pressure/acceptance means price may still move because the tape is thin rather than institutionally sponsored.",
+                "Participation is weak, but negative gamma/OI proxy plus one-sided pressure/acceptance means price may still move because the tape is thin rather than institutionally sponsored.",
             )
         )
 
@@ -333,7 +333,7 @@ def build_expansion_fuel_surface_from_summary(
     elif state == "low_confirmation_high_fuel":
         score = max(score, 80)
     reason = {
-        "dealer_gamma_feedback": "expansion fuel is active: dealer hedging feedback can keep price moving",
+        "dealer_gamma_feedback": "expansion fuel is active: gamma/OI proxy implies hedging feedback may keep price moving",
         "thin_liquidity_vacuum_proxy": "expansion fuel is active: thin participation can still let price travel",
         "structural_acceptance": "expansion fuel is active: structural acceptance is carrying the move",
         "counterparty_trap": "expansion fuel is active: trapped counterparties/stops can keep feeding the move",

@@ -60,9 +60,19 @@ def _tag(setup: dict[str, Any] | None) -> str:
     return str((setup or {}).get("tag", "")).upper()
 
 
+def _entry_window_allows_action(setup: dict[str, Any], tag: str) -> bool:
+    if tag not in {"FAILED BREAKDOWN", "FAILED BREAKOUT"}:
+        return True
+    return bool(setup.get("entry_window_open", True))
+
+
 def gate_metadata(setup: dict[str, Any] | None) -> dict[str, Any]:
     setup = setup or {}
-    meta = _GATE_MAP.get(_tag(setup), {})
+    tag = _tag(setup)
+    meta = _GATE_MAP.get(tag, {})
+    actionable = bool(meta.get("actionable", False)) and _entry_window_allows_action(
+        setup, tag
+    )
     return {
         "tag": setup.get("tag"),
         "bias": setup.get("bias"),
@@ -70,7 +80,10 @@ def gate_metadata(setup: dict[str, Any] | None) -> dict[str, Any]:
         "gate_id": meta.get("gate_id"),
         "gate_family": meta.get("gate_family"),
         "workflow": meta.get("workflow"),
-        "actionable": bool(meta.get("actionable", False)),
+        "actionable": actionable,
+        "event_detected": setup.get("event_detected"),
+        "event_age_bars": setup.get("event_age_bars"),
+        "entry_window_open": setup.get("entry_window_open"),
         "level_name": setup.get("level_name"),
         "level_price": setup.get("level_price"),
         "trigger_price": setup.get("trigger_price"),

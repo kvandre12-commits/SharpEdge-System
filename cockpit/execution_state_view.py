@@ -165,6 +165,101 @@ def render_time_state_block(time_state: dict[str, Any] | None = None) -> str:
     return _block("TIME STATE", color, lines)
 
 
+def render_core_spine_state_hint(
+    part_name: str,
+    permission: dict[str, Any] | None = None,
+) -> str:
+    permission = permission or {}
+    if part_name == "structure_score":
+        state = permission.get("structure_state") or {}
+        if not state:
+            return ""
+        return (
+            f'<div style="color:{MUTE};font-size:10px;margin-top:3px">'
+            f"state: {_esc(str(state.get('state') or 'unknown').replace('_', ' ').upper())}"
+            f" • quality {_esc(str(state.get('sequence_quality') or 'n/a').upper())}</div>"
+        )
+    if part_name == "acceptance_score":
+        state = permission.get("acceptance_state") or {}
+        rep = state.get("representative_level") or {}
+        if not state:
+            return ""
+        rep_label = rep.get("level_name") or "n/a"
+        rep_price = rep.get("level_price")
+        rep_text = (
+            f"{rep_label} {float(rep_price):.2f}"
+            if isinstance(rep_price, (int, float))
+            else rep_label
+        )
+        return (
+            f'<div style="color:{MUTE};font-size:10px;margin-top:3px">'
+            f"state: {_esc(str(state.get('state') or 'unknown').replace('_', ' ').upper())}"
+            f" • rep {_esc(rep_text)}</div>"
+        )
+    if part_name == "location_score":
+        state = permission.get("location_state") or {}
+        nearest = state.get("nearest_reference") or {}
+        if not state:
+            return ""
+        nearest_name = nearest.get("reference_name") or "n/a"
+        nearest_price = nearest.get("reference_price")
+        nearest_text = (
+            f"{nearest_name} {float(nearest_price):.2f}"
+            if isinstance(nearest_price, (int, float))
+            else nearest_name
+        )
+        return (
+            f'<div style="color:{MUTE};font-size:10px;margin-top:3px">'
+            f"state: {_esc(str(state.get('state') or 'unknown').replace('_', ' ').upper())}"
+            f" • nearest {_esc(nearest_text)}</div>"
+        )
+    if part_name == "volume_score":
+        state = permission.get("volume_state") or {}
+        if not state:
+            return ""
+        return (
+            f'<div style="color:{MUTE};font-size:10px;margin-top:3px">'
+            f"state: {_esc(str(state.get('confirmation') or 'missing').upper())}"
+            f" • local {float(state.get('local_mult') or 0.0):.2f}x"
+            f" • session {float(state.get('session_mult') or 0.0):.2f}x</div>"
+        )
+    if part_name == "trend_score":
+        state = permission.get("trend_state") or {}
+        components = state.get("component_states") or {}
+        if not state:
+            return ""
+        bits = [
+            f"state: {str(state.get('state') or 'unknown').replace('_', ' ').upper()}"
+        ]
+        bits.extend(f"{name}:{value}" for name, value in components.items())
+        return (
+            f'<div style="color:{MUTE};font-size:10px;margin-top:3px">'
+            f"{_esc(' • '.join(bits))}</div>"
+        )
+    if part_name == "time_of_day_score":
+        state = permission.get("time_state") or {}
+        if not state:
+            return ""
+        return (
+            f'<div style="color:{MUTE};font-size:10px;margin-top:3px">'
+            f"state: {_esc(str(state.get('state') or 'unknown').replace('_', ' ').upper())}"
+            f" • clock {_esc(state.get('clock') or 'n/a')}</div>"
+        )
+    if part_name == "dealer_gamma_score":
+        state = permission.get("dealer_state") or {}
+        gamma = state.get("gamma_state") or {}
+        pin = state.get("pin_state") or {}
+        if not state:
+            return ""
+        return (
+            f'<div style="color:{MUTE};font-size:10px;margin-top:3px">'
+            f"state: {_esc(str(state.get('state') or 'unknown').replace('_', ' ').upper())}"
+            f" • gamma {_esc(gamma.get('state') or 'n/a')}"
+            f" • pin {_esc(pin.get('state') or 'n/a')}</div>"
+        )
+    return ""
+
+
 def render_execution_state_packets_block(
     permission: dict[str, Any] | None = None,
 ) -> str:
@@ -188,10 +283,25 @@ def render_execution_state_packets_block(
     )
 
 
+def render_execution_state_packets_details(
+    permission: dict[str, Any] | None = None,
+) -> str:
+    packets = render_execution_state_packets_block(permission)
+    if not packets:
+        return ""
+    return (
+        f'<details style="margin-top:10px">'
+        f'<summary style="cursor:pointer;color:{MUTE};font-size:11px">Execution state packet details (debug)</summary>'
+        f"{packets}</details>"
+    )
+
+
 __all__ = [
     "render_acceptance_state_block",
     "render_dealer_state_block",
+    "render_core_spine_state_hint",
     "render_execution_state_packets_block",
+    "render_execution_state_packets_details",
     "render_location_state_block",
     "render_structure_state_block",
     "render_time_state_block",

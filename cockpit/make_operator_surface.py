@@ -5,10 +5,15 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from operator_surface_liquidity_view import render_options_liquidity_card
+from operator_surface_option_expression_view import render_option_expression_card
+from operator_surface_position_lab_view import render_position_lab_card
 
 OUT_DIR = Path(__file__).resolve().parent
 ROOT_DIR = OUT_DIR.parent
@@ -29,6 +34,16 @@ CYAN = "#39c5cf"
 
 def _esc(value: Any) -> str:
     return html.escape(str(value))
+
+
+def _page_refresh_seconds() -> int:
+    raw = os.environ.get("COCKPIT_PAGE_REFRESH_SECONDS") or os.environ.get(
+        "COCKPIT_REFRESH_SECONDS"
+    )
+    try:
+        return max(int(raw or "45"), 1)
+    except ValueError:
+        return 45
 
 
 def _read_json(name: str) -> dict[str, Any]:
@@ -482,6 +497,8 @@ def render() -> str:
     watchlist = _read_json("operator_watchlist.json")
     beta = _read_json("robinhood_beta_execution.json")
     signal = _read_json("signal.json")
+    position_lab = _read_json("spy_position_lab.json")
+    option_expression = _read_json("spy_option_expression.json")
     journal_entries = _read_jsonl_tail("operator_journal_append.jsonl", limit=3)
     now = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -521,16 +538,17 @@ def render() -> str:
         ]
     )
 
+    refresh_seconds = _page_refresh_seconds()
     return f"""<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="45">
+  <meta http-equiv="refresh" content="{refresh_seconds}">
   <title>SharpEdge Operator Surface</title>
 </head>
 <body style="margin:0;min-height:100vh;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior-y:contain;background:{BG};color:{FG};font-family:ui-monospace,SFMono-Regular,Menlo,monospace">
-  <div style="padding:14px 14px 28px;max-width:1100px;margin:0 auto">
+  <main style="padding:14px 14px 28px;max-width:1100px;margin:0 auto;box-sizing:border-box;overflow-wrap:anywhere">
     <div style="display:flex;justify-content:space-between;gap:16px;align-items:baseline;flex-wrap:wrap;margin-bottom:12px">
       <div>
         <h1 style="margin:0;font-size:26px">SharpEdge Operator Surface</h1>
@@ -546,6 +564,9 @@ def render() -> str:
     {_recent_work_card()}
     {_connector_card()}
     {_watchlist_card(watchlist)}
+    {render_option_expression_card(option_expression, card=_card, chip=_chip, list_block=_list_block, status_color=_status_color, fg=FG, mute=MUTE, blue=BLUE, amber=AMBER, cyan=CYAN)}
+    {render_position_lab_card(position_lab, card=_card, chip=_chip, list_block=_list_block, status_color=_status_color, fg=FG, mute=MUTE, blue=BLUE, amber=AMBER, cyan=CYAN)}
+    {render_options_liquidity_card(brief, card=_card, chip=_chip, list_block=_list_block, status_color=_status_color, fg=FG, mute=MUTE, blue=BLUE, cyan=CYAN, red=RED, green=GREEN)}
     {_journal_card(journal_entries)}
     {_card("workflow state", workflow_body, BLUE)}
     {_card("approval state", approval_body, RED if blockers else GREEN)}
@@ -553,7 +574,7 @@ def render() -> str:
     {_card("blocking reasons", _chip_block(blockers, RED, empty="none"), RED if blockers else GREEN)}
     {_card("risk flags", _chip_block(risk_flags, AMBER, empty="none"), AMBER)}
     {_card("next steps", _list_block(plan_steps, empty="no next steps recorded"), BLUE)}
-  </div>
+  </main>
 </body>
 </html>"""
 

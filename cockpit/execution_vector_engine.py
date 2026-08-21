@@ -16,8 +16,10 @@ import execution_vector_context as ctx
 import execution_vector_primitives as prim
 from execution_card_builder import build_trade_permission_card
 from failed_break_facts import failed_break_facts_for_levels
+from graph_state import build_graph_state
 from acceptance_state_engine import build_acceptance_state
 from dealer_state_engine import build_dealer_state
+from line_authority_engine import build_line_authority
 from location_state_engine import build_location_state
 from time_state_engine import build_time_state
 from trend_state_engine import build_trend_state
@@ -55,6 +57,7 @@ class ExecutionVectorEngine:
         self.volume_state = {}
         self.trend_state = {}
         self.time_state = {}
+        self.line_authority = {}
 
     def _get_minutes_since_open(self, current_time: datetime) -> float:
         return minutes_since_open(current_time)
@@ -476,6 +479,12 @@ class ExecutionVectorEngine:
         self.volume_state = build_volume_profile(self.bars)
         self.trend_state = build_trend_state(self.bars, self.pa)
         self.time_state = build_time_state(self.bars)
+        self.line_authority = build_line_authority(
+            self.bars,
+            self.pa,
+            self.full_levels,
+        )
+        line_authority_score = self.line_authority.get("score_part") or {}
         parts = {
             "structure_score": self._score_structure(),
             "acceptance_score": self._score_acceptance(),
@@ -493,6 +502,11 @@ class ExecutionVectorEngine:
             "regime_score": self._score_regime(),
             "compression_score": score_compression(self.pa, self.volatility_structure),
             "balance_context_score": score_balance_context(self.pa),
+            "line_authority_score": ScorePart(
+                int(line_authority_score.get("score") or 0),
+                self._label_to_bias(str(line_authority_score.get("bias") or "NEUTRAL")),
+                str(line_authority_score.get("reason") or "line authority unavailable"),
+            ),
         }
         parts["opening_auction_score"] = self._opening_auction_decay(
             parts["opening_auction_score"]
@@ -539,7 +553,13 @@ class ExecutionVectorEngine:
             self.gp,
             self.setups,
         )
-        spine = build_bucket_conditioned_spine(parts, market_day)
+        graph_state = build_graph_state(
+            self.bars,
+            self.pa,
+            self.full_levels,
+            self.setups,
+        )
+        spine = build_bucket_conditioned_spine(parts, market_day, graph_state)
         return build_trade_permission_card(
             parts=parts,
             setups=self.setups,
@@ -561,6 +581,8 @@ class ExecutionVectorEngine:
             volume_state=self.volume_state,
             trend_state=self.trend_state,
             time_state=self.time_state,
+            graph_state=graph_state,
+            line_authority=self.line_authority,
         )
 
 

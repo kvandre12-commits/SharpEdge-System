@@ -116,6 +116,7 @@ def render_runner_handoff_live_html(
         magnitude or {},
         gp or {},
         permission_trend or {},
+        {},
         edge_token_position or {},
         regime_refinement or {},
         weekly_context,

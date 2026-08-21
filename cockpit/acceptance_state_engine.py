@@ -8,8 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-import execution_vector_context as ctx
-import execution_vector_primitives as prim
+from level_interaction_facts import level_interaction_facts_for_levels
 
 ACCEPTANCE_WINDOW = 3
 
@@ -23,14 +22,19 @@ def _numeric_levels(levels: dict[str, Any] | None) -> dict[str, float]:
 
 
 def _acceptance_for_level(
-    closes: list[float],
-    level_name: str,
-    level_price: float,
+    facts: dict[str, Any],
     *,
     acceptance_window: int,
 ) -> dict[str, Any] | None:
-    buffer = prim.buffer_for_price(level_price)
-    if all(close > level_price + buffer for close in closes):
+    level_name = str(facts.get("level_name") or "")
+    level_price = float(facts.get("level_price") or 0.0)
+    buffer = float(facts.get("buffer") or 0.0)
+    window_used = int(facts.get("acceptance_window_used") or 0)
+    above = int(facts.get("closes_above_count") or 0)
+    below = int(facts.get("closes_below_count") or 0)
+    if window_used < int(acceptance_window):
+        return None
+    if above >= int(acceptance_window):
         return {
             "level_name": level_name,
             "level_price": level_price,
@@ -38,7 +42,7 @@ def _acceptance_for_level(
             "buffer": buffer,
             "reason": f"{acceptance_window} closes accepted above {level_name} {level_price:.2f}",
         }
-    if all(close < level_price - buffer for close in closes):
+    if below >= int(acceptance_window):
         return {
             "level_name": level_name,
             "level_price": level_price,
@@ -55,18 +59,22 @@ def build_acceptance_state(
     *,
     acceptance_window: int = ACCEPTANCE_WINDOW,
 ) -> dict[str, Any]:
-    closes = [
-        float(close) for close in ctx.recent_closes(list(bars), acceptance_window)
-    ]
-    latest_close = closes[-1] if closes else None
     clean_levels = _numeric_levels(levels)
+    latest_close = float(bars[-1][4]) if bars else None
+    recent_close_count = min(len(bars), int(acceptance_window)) if bars else 0
+    facts_by_level = level_interaction_facts_for_levels(
+        bars,
+        clean_levels,
+        level_names=tuple(clean_levels.keys()),
+        acceptance_window=int(acceptance_window),
+    )
     packet = {
         "schema": "sharpedge.acceptance_state.v1",
         "state": "insufficient_data",
         "bias": "NEUTRAL",
         "reason": f"need {int(acceptance_window)} closes for acceptance",
         "acceptance_window": int(acceptance_window),
-        "recent_close_count": len(closes),
+        "recent_close_count": recent_close_count,
         "latest_close": latest_close,
         "evaluated_level_count": len(clean_levels),
         "evaluated_levels": sorted(clean_levels.keys()),
@@ -74,14 +82,12 @@ def build_acceptance_state(
         "accepted_levels": [],
         "representative_level": {},
     }
-    if len(closes) < int(acceptance_window):
+    if recent_close_count < int(acceptance_window):
         return packet
     accepted_levels = []
-    for level_name, level_price in clean_levels.items():
+    for level_name, facts in facts_by_level.items():
         acceptance = _acceptance_for_level(
-            closes,
-            level_name,
-            level_price,
+            facts,
             acceptance_window=int(acceptance_window),
         )
         if not acceptance:
@@ -89,7 +95,9 @@ def build_acceptance_state(
         accepted_levels.append(
             {
                 **acceptance,
-                "distance_from_latest_close": abs(level_price - latest_close),
+                "distance_from_latest_close": abs(
+                    float(facts["level_price"]) - latest_close
+                ),
             }
         )
     accepted_levels.sort(

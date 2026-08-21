@@ -110,7 +110,8 @@ def build_ace_authority_card(
         "gate": spine.get("gate"),
         "score": spine.get("score"),
         "bias": spine.get("bias"),
-        "recommended_action": spine.get("recommended_action"),
+        "diagnostic_posture": spine.get("diagnostic_posture"),
+        "authority_role": spine.get("authority_role"),
     }
     card["legacy_engine_retained_for_context_only"] = {
         "uses_day_bucket_context": True,

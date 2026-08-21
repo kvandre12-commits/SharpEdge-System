@@ -5,16 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from range_posture import build_range_posture
+from reference_geometry import distance_pct
 
 
 def _clamp_score(value: float) -> int:
     return max(0, min(100, int(round(value))))
-
-
-def _distance_pct(spot: float, level: Any) -> float | None:
-    if not isinstance(level, (int, float)) or spot <= 0:
-        return None
-    return abs(float(level) - spot) / spot * 100.0
 
 
 def _compression_score(volatility_structure: dict[str, Any]) -> dict[str, Any]:
@@ -82,8 +77,8 @@ def _location_pressure(
     spot = float(pa.get("spot") or 0.0)
     posture = build_range_posture(pa)
     balance_width = float(pa.get("balance_width_pct") or 0.0)
-    near_call = _distance_pct(spot, op.get("call_wall"))
-    near_put = _distance_pct(spot, op.get("put_wall"))
+    near_call = distance_pct(spot, op.get("call_wall"))
+    near_put = distance_pct(spot, op.get("put_wall"))
     score = 10
     bias = "unclear"
     reasons = []
@@ -122,9 +117,9 @@ def _gamma_constraint(
 ) -> dict[str, Any]:
     spot = float(pa.get("spot") or 0.0)
     regime = str(gp.get("regime") or "unknown")
-    pin_dist = _distance_pct(spot, gp.get("pin"))
-    call_dist = _distance_pct(spot, op.get("call_wall"))
-    put_dist = _distance_pct(spot, op.get("put_wall"))
+    pin_dist = distance_pct(spot, gp.get("pin"))
+    call_dist = distance_pct(spot, op.get("call_wall"))
+    put_dist = distance_pct(spot, op.get("put_wall"))
     score = 12
     reasons = []
     bias = "unclear"

@@ -8,44 +8,17 @@ from __future__ import annotations
 
 from typing import Any
 
-import execution_vector_primitives as prim
+from reference_geometry import numeric_reference_map, reference_row
 
 AT_REFERENCE_PCT = 0.08
 NEAR_REFERENCE_PCT = 0.20
-
-
-def _numeric_references(references: dict[str, Any] | None) -> dict[str, float]:
-    return {
-        str(name): float(value)
-        for name, value in (references or {}).items()
-        if isinstance(value, (int, float))
-    }
-
-
-def _relation(spot: float, reference_price: float) -> str:
-    buffer = prim.buffer_for_price(reference_price)
-    if spot > reference_price + buffer:
-        return "above"
-    if spot < reference_price - buffer:
-        return "below"
-    return "at_reference"
-
-
-def _reference_row(spot: float, name: str, price: float) -> dict[str, Any]:
-    return {
-        "reference_name": name,
-        "reference_price": price,
-        "relation": _relation(spot, price),
-        "distance": abs(spot - price),
-        "distance_pct": abs(spot - price) / spot * 100 if spot else None,
-    }
 
 
 def build_location_state(
     current_price: float | int | None,
     references: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    clean_references = _numeric_references(references)
+    clean_references = numeric_reference_map(references)
     spot = float(current_price) if isinstance(current_price, (int, float)) else None
     packet = {
         "schema": "sharpedge.location_state.v1",
@@ -64,7 +37,7 @@ def build_location_state(
         return packet
 
     rows = [
-        _reference_row(spot, name, price) for name, price in clean_references.items()
+        reference_row(spot, name, price) for name, price in clean_references.items()
     ]
     rows.sort(
         key=lambda item: (float(item["distance_pct"] or 0.0), item["reference_name"])

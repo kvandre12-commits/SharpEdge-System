@@ -13,6 +13,7 @@ from typing import Any
 
 from execution_hierarchy import CORE_EXECUTION_SPINE_PART_NAMES
 from range_posture import build_range_posture
+from reference_geometry import distance_pct
 
 HEAD = "head"
 BODY = "body"
@@ -30,9 +31,9 @@ def _f(value: Any, default: float = 0.0) -> float:
 def _pin_distance_pct(pa: dict[str, Any], gp: dict[str, Any]) -> float | None:
     spot = _f(pa.get("spot"))
     pin = gp.get("pin")
-    if not spot or not isinstance(pin, (int, float)):
+    if not spot:
         return None
-    return abs(spot - float(pin)) / spot * 100
+    return distance_pct(spot, pin)
 
 
 def _setup_tags(setups: list[dict[str, Any]] | None) -> set[str]:
@@ -156,6 +157,34 @@ def _time_of_day_phase(item: dict[str, Any]) -> dict[str, str]:
     return _phase_meta(BODY, "session timing is supportive but not especially fresh")
 
 
+def _pressure_phase(
+    item: dict[str, Any], pa: dict[str, Any], range_posture: dict[str, Any]
+) -> dict[str, str]:
+    score = int(item.get("score") or 0)
+    vol_mult = _f(pa.get("vol_mult"))
+    if score < 50:
+        return _phase_meta(INACTIVE, "pressure is mixed or not one-sided enough")
+    if score >= 64 and vol_mult >= 2.5:
+        return _phase_meta(TAIL, "pressure is hot; chase risk can rise quickly")
+    if score >= 64 and bool(range_posture.get("is_emerging_from_value")):
+        return _phase_meta(HEAD, "one-sided pressure is emerging from value")
+    if score >= 58:
+        return _phase_meta(BODY, "pressure is helping the current read")
+    return _phase_meta(INACTIVE, "pressure is present but not decisive")
+
+
+def _balance_context_phase(item: dict[str, Any]) -> dict[str, str]:
+    score = int(item.get("score") or 0)
+    reason = str(item.get("reason") or "").lower()
+    if "disagreement" in reason or score <= 35:
+        return _phase_meta(TAIL, "balance disagreement is capping trust in the read")
+    if score >= 70:
+        return _phase_meta(HEAD, "balance context is aligned with the read")
+    if score >= 55:
+        return _phase_meta(BODY, "balance context is usable but not dominant")
+    return _phase_meta(INACTIVE, "balance context is not adding conviction")
+
+
 def _dealer_gamma_phase(
     item: dict[str, Any], pa: dict[str, Any], gp: dict[str, Any]
 ) -> dict[str, str]:
@@ -179,7 +208,9 @@ _PHASE_RESOLVERS = {
     "structure_score": _structure_phase,
     "acceptance_score": _acceptance_phase,
     "trend_score": _trend_phase,
+    "pressure_score": _pressure_phase,
     "location_score": _location_phase,
+    "balance_context_score": _balance_context_phase,
     "volume_score": _volume_phase,
     "time_of_day_score": _time_of_day_phase,
     "dealer_gamma_score": _dealer_gamma_phase,
@@ -203,7 +234,9 @@ def annotate_spine_score_phases(
         item = annotated.get(name)
         if not item:
             continue
-        resolver = _PHASE_RESOLVERS[name]
+        resolver = _PHASE_RESOLVERS.get(name)
+        if resolver is None:
+            continue
         if name == "acceptance_score":
             item.update(resolver(item, range_posture, setups))
         elif name == "dealer_gamma_score":
@@ -211,6 +244,8 @@ def annotate_spine_score_phases(
         elif name == "structure_score":
             item.update(resolver(item, range_posture))
         elif name == "trend_score":
+            item.update(resolver(item, pa, range_posture))
+        elif name == "pressure_score":
             item.update(resolver(item, pa, range_posture))
         elif name == "location_score":
             item.update(resolver(item, range_posture))

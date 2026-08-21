@@ -63,6 +63,8 @@ def build_decision_receipt(
     target_plan: dict[str, Any],
     setups: list[dict[str, Any]] | None = None,
     previous_receipt: dict[str, Any] | None = None,
+    session_date: str | None = None,
+    session_date_source: str = "signal_ts",
 ) -> dict[str, Any]:
     setup = primary_trade_setup(setups)
     context_setup = primary_context_setup(setups)
@@ -78,7 +80,9 @@ def build_decision_receipt(
         "ts": signal_ts,
         "symbol": symbol,
         "spot": spot,
-        "session_date": signal_ts[:10],
+        "session_date": session_date or signal_ts[:10],
+        "session_date_source": session_date_source,
+        "wall_clock_date": signal_ts[:10],
         "permission": permission.get("trade_permission_score"),
         "execution_permission": permission.get(
             "execution_permission_score", permission.get("trade_permission_score")
