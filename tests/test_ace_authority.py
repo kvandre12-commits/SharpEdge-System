@@ -82,6 +82,12 @@ def test_score_trade_permission_can_switch_to_ace_authority_with_env(monkeypatch
     assert card["execution_hierarchy"]["suspect_drift_voices"] == []
     assert card["market_day"]["bucket"]
     assert card["authority_summary"]["bucket"] == card["market_day"]["bucket"]
+    assert card["authority_summary"]["diagnostic_posture"]
+    audit = card["authority_self_audit"]
+    assert audit["status"] == "demoted_pending_calibration"
+    assert audit["score_spine_role"] == "diagnostic_advisory"
+    assert audit["final_authority_source"] == "approval_decision_plus_operator"
+    assert audit["tightened_facts"]
 
 
 def test_explicit_authority_engine_argument_overrides_environment(monkeypatch):
@@ -103,7 +109,14 @@ def test_explicit_authority_engine_argument_overrides_environment(monkeypatch):
 
     assert legacy_card.get("authority_engine") == "legacy"
     assert legacy_card.get("authority_mode") == "full_stack"
-    assert legacy_card["authority_adjudication"]["we_are_doing_this"]["authority_engine"] == "legacy"
+    assert (
+        legacy_card["authority_adjudication"]["cockpit_read"]["authority_engine"]
+        == "legacy"
+    )
+    assert (
+        legacy_card["authority_adjudication"]["we_are_doing_this"]["authority_engine"]
+        == "legacy"
+    )
     ace_voice = next(
         voice
         for voice in legacy_card["authority_adjudication"]["competing_voices"]
@@ -111,7 +124,9 @@ def test_explicit_authority_engine_argument_overrides_environment(monkeypatch):
     )
     assert ace_voice["advisory_only"] is True
     assert ace_voice["engine"] == "ace"
-    assert legacy_card["authority_adjudication"]["advisory_engines"][0]["engine"] == "ace"
+    assert (
+        legacy_card["authority_adjudication"]["advisory_engines"][0]["engine"] == "ace"
+    )
     assert "pressure_score" in legacy_card["scores"]
     assert legacy_card["execution_hierarchy"]["suspect_drift_voices"]
 

@@ -54,3 +54,29 @@ def test_location_score_derives_from_pure_spatial_state():
     assert between.bias == NEUTRAL
     assert missing.score == 34
     assert missing.bias == NEUTRAL
+
+
+def test_location_state_detects_near_reference_before_directional_extremes():
+    packet = build_location_state(100.0, {"PDC": 100.18, "VWAP": 99.2})
+
+    assert packet["state"] == "near_reference"
+    assert packet["bias"] == "NEUTRAL"
+    assert packet["nearest_reference"]["reference_name"] == "PDC"
+    assert packet["nearest_reference"]["relation"] == "below"
+
+
+def test_location_state_geometry_does_not_depend_on_semantic_reference_names():
+    semantic = build_location_state(100.0, {"FAILED_BREAKDOWN_RECLAIMED": 100.18})
+    plain = build_location_state(100.0, {"VWAP": 100.18})
+
+    assert semantic["state"] == plain["state"] == "near_reference"
+    assert semantic["bias"] == plain["bias"] == "NEUTRAL"
+    assert (
+        semantic["nearest_reference"]["reference_price"]
+        == plain["nearest_reference"]["reference_price"]
+    )
+    assert (
+        semantic["nearest_reference"]["relation"]
+        == plain["nearest_reference"]["relation"]
+        == "below"
+    )

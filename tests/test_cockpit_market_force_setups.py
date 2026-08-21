@@ -76,6 +76,6 @@ def test_sticky_noise_detects_positive_gamma_no_edge_species():
     assert card is not None
     assert card["tag"] == "STICKY NOISE"
     assert card["bias"] == "stand down / mean reversion only"
-    assert "positive gamma chop context" in card["detail"]
+    assert "positive gamma/OI proxy chop context" in card["detail"]
     assert "vs VWAP" in card["detail"]
     assert "not confirming" in card["detail"]

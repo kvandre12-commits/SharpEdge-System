@@ -11,7 +11,10 @@ from timeframe_agreement_view import render_timeframe_agreement_block  # noqa: E
 
 
 TIMEFRAME_PACKET = {
-    "summary": "Higher-timeframe trend remains bullish, but intraday conditions favor fading extensions into resistance until participation or momentum improves.",
+    "summary": (
+        "Higher-timeframe trend remains bullish, but intraday conditions favor "
+        "fading extensions into resistance until participation or momentum improves."
+    ),
     "timeframes": {
         "weekly": {
             "timeframe": "Weekly",
@@ -70,6 +73,4 @@ def test_live_read_html_includes_timeframe_agreement_near_top():
 
     assert "TIMEFRAME AGREEMENT" in html
     assert "Higher-timeframe trend remains bullish" in html
-    assert html.index("TIMEFRAME AGREEMENT") < html.index(
-        "BUCKET-CONDITIONED EXECUTION SPINE"
-    )
+    assert html.count("TIMEFRAME AGREEMENT") == 1

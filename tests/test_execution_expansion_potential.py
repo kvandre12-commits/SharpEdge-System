@@ -23,7 +23,7 @@ def test_expansion_potential_can_split_low_confirmation_from_high_fuel():
         "dealer_gamma_score": {
             "score": 72,
             "bias": "NEUTRAL",
-            "reason": "negative gamma supports expansion",
+            "reason": "negative gamma/OI proxy may support expansion",
         },
         "pressure_score": {
             "score": 64,

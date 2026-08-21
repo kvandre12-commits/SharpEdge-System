@@ -218,5 +218,12 @@ def test_yfinance_adapter_normalizes_fake_chain() -> None:
     assert call["source"] == "yfinance"
     assert call["underlying_price"] == 550.0
     assert call["midpoint"] == 10.25
+    assert call["greeks_source"] == "estimated"
+    assert 0.9 < call["delta"] <= 1.0
+    assert call["gamma"] >= 0
+    assert call["theta"] < 0
+    assert call["vega"] >= 0
     assert put["option_type"] == "put"
     assert put["open_interest"] == 654
+    assert put["greeks_source"] == "estimated"
+    assert -0.1 < put["delta"] <= 0

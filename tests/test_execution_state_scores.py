@@ -121,14 +121,14 @@ def test_score_dealer_state_maps_shared_dealer_states():
         {
             "state": "positive_gamma_gravity",
             "bias": "PUTS",
-            "reason": "positive gamma pinning near call wall",
+            "reason": "positive gamma/OI proxy pinning near call wall",
         }
     )
     expansion = score_dealer_state(
         {
             "state": "negative_gamma_expansion",
             "bias": "CALLS",
-            "reason": "negative gamma supports expansion",
+            "reason": "negative gamma/OI proxy may support expansion",
         }
     )
     unknown = score_dealer_state(

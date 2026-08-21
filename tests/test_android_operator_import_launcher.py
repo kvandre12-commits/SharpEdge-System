@@ -63,7 +63,7 @@ def test_launch_operator_packet_to_android_dry_run_writes_result(tmp_path, monke
     )
     _write_text(
         tmp_path / "cockpit/cockpit.html",
-        '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="45"></head>'
+        '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="2"></head>'
         "<body><h1>SharpEdge Cockpit</h1></body></html>",
     )
     _write_text(

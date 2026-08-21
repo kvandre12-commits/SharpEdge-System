@@ -72,3 +72,23 @@ def test_gamma_profile_uses_informative_gamma_to_find_nearby_pin():
     assert profile["pin"] == 745.0
     assert profile["gamma_data_quality"] == "ok"
     assert profile["net_gamma"] is not None
+
+
+def test_gamma_profile_rejects_expired_only_chain():
+    expired = dt.date.today() - dt.timedelta(days=1)
+    book = {
+        expired: {
+            745.0: {
+                "C": {"gamma": 0.08, "open_interest": 1000},
+                "P": {"gamma": 0.07, "open_interest": 900},
+            }
+        }
+    }
+
+    profile = gamma_profile(book, 745.0)
+
+    assert profile["regime"] == "unknown"
+    assert profile["gamma_data_quality"] == "expired"
+    assert profile["dte"] == -1
+    assert profile["pin"] is None
+    assert gamma_card(profile) is None

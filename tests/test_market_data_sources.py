@@ -56,6 +56,29 @@ def test_fetch_yahoo_chart_result_retries_on_429_then_succeeds():
     assert mocked_get.call_count == 3
 
 
+def test_drop_terminal_placeholder_rows_preserves_real_rows():
+    rows = [
+        (0, 100.0, 100.5, 99.9, 100.2, 1000),
+        (1, 100.2, 100.2, 100.2, 100.2, 0),
+    ]
+
+    clean, dropped = mds._drop_terminal_placeholder_rows(rows)
+
+    assert clean == [rows[0]]
+    assert dropped == 1
+
+
+def test_drop_terminal_placeholder_rows_keeps_only_row_and_nonflat_zero_volume():
+    single = [(0, 100.0, 100.0, 100.0, 100.0, 0)]
+    nonflat = [
+        (0, 100.0, 100.5, 99.9, 100.2, 1000),
+        (1, 100.2, 100.4, 100.1, 100.3, 0),
+    ]
+
+    assert mds._drop_terminal_placeholder_rows(single) == (single, 0)
+    assert mds._drop_terminal_placeholder_rows(nonflat) == (nonflat, 0)
+
+
 def test_fetch_cboe_options_book_returns_richer_source_fields():
     payload = {
         "data": {

@@ -88,6 +88,30 @@ def test_operator_surface_render_uses_local_operator_artifacts(tmp_path):
                     "blocking_reasons": ["manual_review_required"],
                     "risk_flags": ["late_session", "connector_pending"],
                 },
+                "options_liquidity_read": {
+                    "available": True,
+                    "plain_english": "Calls are winning right now even though the thesis was cautious.",
+                    "liquidity_spot": "2026-06-27 CALL 501 mid 1.20 bid/ask 1.10/1.30 vol 900 OI 2100 (near-money-flow).",
+                    "flow_balance": "Crosswired tape; CALLs are leading quote-weighted focus-line pressure by 2.10x against the stated bias.",
+                    "bias_alignment": "crosswired",
+                    "quote_quality_context": "Both sides have usable enough quotes for the flow comparison to matter.",
+                    "put_pressure_score": 1200.0,
+                    "call_pressure_score": 2520.0,
+                    "put_pressure_pct": 32,
+                    "call_pressure_pct": 68,
+                    "dominant_side": "call",
+                    "put_flow": [
+                        "2026-06-27 PUT 499 mid 0.90 bid/ask 0.85/0.95 vol 500 OI 1700 (near-money-flow)."
+                    ],
+                    "call_flow": [
+                        "2026-06-27 CALL 501 mid 1.20 bid/ask 1.10/1.30 vol 900 OI 2100 (near-money-flow)."
+                    ],
+                    "put_side_summary": "PUT side quality usable; strongest visible lines are 2026-06-27 PUT 499 mid 0.90 bid/ask 0.85/0.95 vol 500 OI 1700 (near-money-flow).",
+                    "call_side_summary": "CALL side quality usable; strongest visible lines are 2026-06-27 CALL 501 mid 1.20 bid/ask 1.10/1.30 vol 900 OI 2100 (near-money-flow).",
+                    "watch_next": [
+                        "Watch 501 acceptance before trusting the call lead."
+                    ],
+                },
                 "next_steps": ["Review reclaim", "Wait for connector feedback"],
             }
         ),
@@ -221,6 +245,13 @@ def test_operator_surface_render_uses_local_operator_artifacts(tmp_path):
     assert "hold" in html
     assert "FAILED BREAKDOWN" in html
     assert "latest operator journal" in html
+    assert "options liquidity" in html
+    assert "Put side" in html
+    assert "Call side" in html
+    assert "Pressure split" in html
+    assert "lead: call" in html
+    assert "2026-06-27 PUT 499" in html
+    assert "2026-06-27 CALL 501" in html
     assert "21 DTE ATM CALLS watch for failed breakdown" in html
     assert "permission_score_trend_weakening_-9" in html
     assert "connector_pending" in html

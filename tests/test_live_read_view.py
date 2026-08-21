@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from live_read_view import (  # noqa: E402
+from live_read_view import (
     _active_setup_level_badge,
     infer_target,
     reachability_context,
@@ -14,6 +14,7 @@ from live_read_view import (  # noqa: E402
     render_live_read_html,
     render_location_strip,
     render_permission_section,
+    render_regime_read_block,
     render_structure_state_block,
     summarize_permission_scores,
 )
@@ -76,7 +77,7 @@ def _permission(bias: str = "CALLS") -> dict:
             "gamma_state": {"state": "gamma_expansion"},
             "pin_state": {"state": "far_pin"},
             "wall_state": {"state": "no_near_wall"},
-            "reason": "negative gamma supports expansion; accepted breaks can run",
+            "reason": "negative gamma/OI proxy may support expansion; accepted breaks can run",
         },
         "volume_state": {
             "schema": "sharpedge.volume_profile.v1",
@@ -116,7 +117,7 @@ def _permission(bias: str = "CALLS") -> dict:
             "surface": {
                 "score": 80,
                 "bias": "CALLS",
-                "reason": "expansion fuel is active: dealer hedging feedback can keep price moving",
+                "reason": "expansion fuel is active: gamma/OI proxy implies hedging feedback may keep price moving",
             },
             "summary": {
                 "state": "low_confirmation_high_fuel",
@@ -128,10 +129,10 @@ def _permission(bias: str = "CALLS") -> dict:
             "mechanisms": [
                 {
                     "mechanism_id": "dealer_gamma_feedback",
-                    "label": "Dealers are chasing the move",
+                    "label": "Gamma proxy may amplify the move",
                     "family": "fuel",
                     "strength": "high",
-                    "reason": "negative gamma supports hedging feedback and expansion",
+                    "reason": "negative gamma/OI proxy may support hedging feedback and expansion",
                 }
             ],
         },
@@ -460,7 +461,7 @@ def test_render_permission_section_shows_expansion_potential_block():
     assert "surface:" in html
     assert "participation:" in html
     assert "fuel:" in html
-    assert "Dealers are chasing the move" in html
+    assert "Gamma proxy may amplify the move" in html
     assert "Participation is not confirming much" in html
 
 
@@ -506,7 +507,8 @@ def test_render_permission_section_includes_reason_summary_and_reachability():
     )
 
     assert "SETUP CONVICTION" in html
-    assert "EXECUTION PERMISSION" in html
+    assert "EXECUTION READ" in html
+    assert "approval_decision is final authority" in html
     assert "status: CONFIRMED" in html
     assert "first seen 10:12" in html
     assert "TOP REASONS TO TRADE" not in html
@@ -540,7 +542,7 @@ def test_render_execution_state_packets_block_shows_live_logic_brain_states():
     assert "TREND STATE" in html
     assert "TIME STATE" in html
     assert "trend components aligned up" in html
-    assert "negative gamma supports expansion" in html
+    assert "negative gamma/OI proxy may support expansion" in html
 
 
 def test_render_html_embeds_new_live_read_sections():
@@ -568,8 +570,14 @@ def test_render_html_embeds_new_live_read_sections():
     )
 
     assert "SharpEdge Live Read - SPY" in html
+    assert "<main " in html
+    assert "</main>" in html
+    assert "overflow-x:auto" in html
+    assert "overflow-x:hidden" not in html
+    assert 'http-equiv="refresh" content="10"' in html
+    assert "auto 10s" in html
     assert "SETUP CONVICTION" in html
-    assert "EXECUTION PERMISSION" in html
+    assert "EXECUTION READ" in html
     assert "TOP REASONS TO TRADE" not in html
     assert "TOP REASONS TO WAIT" not in html
     assert "REMAINING EXPECTED MOVE VS DISTANCE TO TARGET" in html
@@ -577,10 +585,11 @@ def test_render_html_embeds_new_live_read_sections():
     assert "Reachable today:" in html
     assert "PERMISSION SCORE TREND" in html
     assert "EDGE TOKEN ENGINE" not in html
+    assert "Execution state packet details (debug)" in html
     assert "EXECUTION STATE PACKETS" in html
     assert "ACCEPTANCE STATE" in html
     assert "DEALER STATE" in html
-    assert "BUCKET-CONDITIONED EXECUTION SPINE" in html
+    assert "TODAY'S LIVE BATTLEFIELD + EXECUTION SPINE" in html
     assert "08:30" in html
     assert "FAILED BREAKDOWN CONFIRMED @ ORL" in html
     assert "Setup lifecycle since last update" in html
@@ -594,9 +603,90 @@ def test_render_html_embeds_new_live_read_sections():
     assert "H1 peak $100.40" in html
     assert "Prior month high $100.80" in html
     assert "ACTIVE SETUP LEVEL" not in html
-    assert html.index("BUCKET-CONDITIONED EXECUTION SPINE") < html.index(
+    assert html.index("TODAY'S LIVE BATTLEFIELD + EXECUTION SPINE") < html.index(
+        "EXECUTION STATE PACKETS"
+    )
+    assert html.index("TODAY'S LIVE BATTLEFIELD + EXECUTION SPINE") < html.index(
         "WEEKLY CONTEXT"
     )
+
+
+def test_render_html_shows_cboe_quote_under_authoritative_price():
+    html = render_live_read_html(
+        pa={
+            "spot": 737.09,
+            "display_spot": 737.09,
+            "spot_source": "yahoo_regular_market_price",
+            "day_chg": -1.38,
+            "vwap": 738.42,
+            "price_authority": {
+                "state": "yahoo_regular_market_price",
+                "cboe_bid": 737.47,
+                "cboe_ask": 737.49,
+                "cboe_last_trade_time_raw": "2026-07-23T15:19:15",
+            },
+        },
+        op={"put_wall": 728.0, "call_wall": 752.0},
+        lines=[("Bears in control", "bad", "below VWAP")],
+        permission=_permission(),
+        stamp="15:39:00",
+    )
+
+    assert "$737.09" in html
+    assert "yahoo_regular_market_price" in html
+    assert "CBOE delayed options quote" in html
+    assert "bid/ask $737.47 / $737.49" in html
+    assert "mid $737.48" in html
+    assert "Δ vs display +0.39" in html
+    assert "context only, not top-price authority" in html
+
+
+def test_stale_regime_read_is_backdrop_only():
+    html = render_regime_read_block(
+        {
+            "available": True,
+            "date": "2026-06-10",
+            "headline": "REGIME mrll0",
+            "story": "Structural backdrop: mid vol, rising voltrend.",
+            "stale_days": 37,
+        }
+    )
+
+    assert "REGIME BACKDROP ONLY" in html
+    assert "STALE BATCH CONTEXT" in html
+    assert "do not use this as today's live day classifier" in html
+
+
+def test_render_html_places_live_battlefield_before_stale_regime():
+    permission = _permission()
+    permission["market_day"] = {
+        "bucket": "unclassified_day",
+        "score": 45,
+        "bias": "NEUTRAL",
+        "allowed_playbooks": [],
+        "risk_posture": "wait_for_trigger",
+        "reason": "not enough evidence for a clean day type",
+    }
+    html = render_live_read_html(
+        pa={"spot": 100.0, "day_chg": 0.1, "vwap": 100.1},
+        op={"put_wall": 98.5, "call_wall": 101.5},
+        lines=[("Neutral", "info", "waiting")],
+        permission=permission,
+        micro={"ch_lo": 99.2, "ch_hi": 100.8},
+        magnitude={"exp_move_realized_usd": 0.9},
+        gp={"pin": 100.3, "regime": "negative"},
+        regime_read={
+            "available": True,
+            "date": "2026-06-10",
+            "headline": "REGIME mrll0",
+            "story": "Structural backdrop only.",
+            "stale_days": 37,
+        },
+        stamp="11:15:00",
+    )
+
+    assert "TODAY'S LIVE BATTLEFIELD: AWAITING CLEAN DAY TYPE" in html
+    assert html.index("TODAY'S LIVE BATTLEFIELD") < html.index("REGIME BACKDROP ONLY")
 
 
 def test_render_html_makes_handoff_setup_loud():
@@ -675,15 +765,21 @@ def test_render_permission_section_limits_main_spine_to_core_vectors():
         permission_trend=_trend(),
     )
 
-    assert "Main table shows core spine vectors only." in html
-    assert "Supporting surfaces off main spine:" in html
+    assert "approval_decision is final authority" in html
+    assert "Authority inputs:" in html
+    assert "Diagnostic/supporting surfaces, not authority scores:" in html
     assert "Participation" in html
     assert "Structure" in html
     assert "Auction Acceptance" in html
     assert "Balance Context" in html
     assert "Secondary confirmations: Trap" in html
-    assert "Context governors: Balance Context" in html
+    assert "Pressure" in html
+    assert "Balance Context" in html
+    assert "Context governors: Balance Context" not in html
     assert "Advisory surfaces: Expansion Fuel" in html
+    assert "state: BULLISH SEQUENCE • quality CONFIRMED" in html
+    assert "state: CONFIRMED • local 1.40x • session 1.20x" in html
+    assert "Execution state packet details (debug)" in html
 
 
 def test_render_html_shows_active_setup_level_badge_for_failed_break():

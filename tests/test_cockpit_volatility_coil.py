@@ -165,7 +165,16 @@ def test_write_signal_persists_setup_cards_and_volatility_structure(
             "atm_iv": 0.19,
             "exp": "2026-06-23",
         },
-        gp={"regime": "negative", "pin": 99.0, "max_pain": 99.0},
+        gp={
+            "exp": "2026-06-23",
+            "dte": 1,
+            "regime": "negative",
+            "net_gamma": -123.4567,
+            "gamma_data_quality": "ok",
+            "pin": 99.0,
+            "pin_dist": -0.1413,
+            "max_pain": 99.0,
+        },
         gcard=gcard,
         signal_ts="2026-06-25T11:30:00",
         setups=[gcard, coil_card],
@@ -219,6 +228,14 @@ def test_write_signal_persists_setup_cards_and_volatility_structure(
     signal_path = tmp_path / "SharpEdge-System/outputs/signal.json"
     payload = json.loads(signal_path.read_text(encoding="utf-8"))
 
+    assert payload["gamma_exp"] == "2026-06-23"
+    assert payload["gamma_dte"] == 1
+    assert payload["gamma_regime"] == "negative"
+    assert payload["gamma_net"] == -123.4567
+    assert payload["gamma_data_quality"] == "ok"
+    assert payload["pin"] == 99.0
+    assert payload["pin_dist"] == -0.1413
+    assert payload["max_pain"] == 99.0
     assert payload["setup_tag"] == gcard["tag"]
     assert payload["entry_setup_tag"] == "FAILED BREAKDOWN"
     assert payload["entry_setup_bias"] == "CALLS (bullish)"
@@ -252,7 +269,7 @@ def test_write_signal_persists_setup_cards_and_volatility_structure(
     assert payload["session_position_in_range"] == 0.18
 
 
-def test_chart_svg_draws_reference_levels_and_failed_break_markers():
+def test_chart_svg_draws_reference_levels_without_failed_break_signal_by_default():
     rows = [
         (0, 100.0, 100.2, 99.8, 100.0, 1000),
         (1, 100.0, 100.4, 99.7, 100.3, 1000),
@@ -271,14 +288,66 @@ def test_chart_svg_draws_reference_levels_and_failed_break_markers():
 
     svg = chart_svg(rows, pa, levels, setups)
 
-    assert 'viewBox="0 0 1000 420"' in svg
+    assert 'viewBox="0 0 1000 576"' in svg
     assert "ORL 99.75" in svg
     assert "PDL 99.50" in svg
     assert "PDC 100.00" in svg
-    assert "TRIGGER 99.40" in svg
+    assert "TRIGGER 99.40" not in svg
+
+    debug_svg = chart_svg(rows, pa, levels, setups, show_signal_overlays=True)
+    assert "TRIGGER 99.40" in debug_svg
 
 
-def test_chart_svg_can_render_level_state_strip():
+def test_chart_svg_renders_channel_levels_without_logic_badge_by_default():
+    rows = [
+        (0, 100.0, 100.2, 99.8, 100.0, 1000),
+        (1, 100.0, 100.5, 99.9, 100.3, 1000),
+        (2, 100.3, 100.7, 100.1, 100.6, 1000),
+    ]
+    pa = {"vwap": 100.2, "vs_vwap": 0.4}
+
+    svg = chart_svg(
+        rows,
+        pa,
+        {},
+        [],
+        {
+            "channel_low": 99.8,
+            "channel_high": 100.8,
+            "channel_pct": 0.996,
+            "channel_slope_pct": 0.123,
+            "structure_state": "narrow_channel",
+            "volatility_state": "contraction",
+        },
+    )
+
+    assert "CHANNEL LOGIC" not in svg
+    assert "PRESSING CHANNEL HIGH" not in svg
+    assert "CHANNEL MID 100.30" in svg
+
+    debug_svg = chart_svg(
+        rows,
+        pa,
+        {},
+        [],
+        {
+            "channel_low": 99.8,
+            "channel_high": 100.8,
+            "channel_pct": 0.996,
+            "channel_slope_pct": 0.123,
+            "structure_state": "narrow_channel",
+            "volatility_state": "contraction",
+        },
+        show_signal_overlays=True,
+    )
+    assert "CHANNEL LOGIC" in debug_svg
+    assert "PRESSING CHANNEL HIGH" in debug_svg
+    assert "pos 80%" in debug_svg
+    assert "width 0.996%" in debug_svg
+    assert "slope +0.123%" in debug_svg
+
+
+def test_chart_svg_hides_level_state_strip_by_default():
     rows = [
         (0, 100.0, 100.2, 99.8, 100.0, 1000),
         (1, 100.0, 100.4, 99.7, 100.3, 1000),
@@ -298,10 +367,26 @@ def test_chart_svg_can_render_level_state_strip():
         },
     )
 
-    assert "LEVEL STATES" in svg
-    assert "ACCEPT &gt; R" in svg or "ACCEPT > R" in svg
-    assert "HOLD SUPPORT" in svg
-    assert "ACCEPT &gt; REF" in svg or "ACCEPT > REF" in svg
+    assert "LEVEL STATES" not in svg
+    assert "ACCEPT &gt; R" not in svg and "ACCEPT > R" not in svg
+    assert "HOLD SUPPORT" not in svg
+
+    debug_svg = chart_svg(
+        rows,
+        pa,
+        {"ORH": 100.25, "ORL": 99.75, "PDC": 100.0},
+        [],
+        level_states={
+            "ORH": {"event_state": "accepted_above_resistance"},
+            "ORL": {"event_state": "holding_above_support"},
+            "PDC": {"event_state": "accepted_above_reference"},
+        },
+        show_signal_overlays=True,
+    )
+    assert "LEVEL STATES" in debug_svg
+    assert "ACCEPT &gt; R" in debug_svg or "ACCEPT > R" in debug_svg
+    assert "HOLD SUPPORT" in debug_svg
+    assert "ACCEPT &gt; REF" in debug_svg or "ACCEPT > REF" in debug_svg
 
 
 def test_derive_today_carry_levels_finds_primary_and_secondary_swings():

@@ -51,7 +51,7 @@ def _caution_permission() -> dict:
             "gate": "CAUTION",
             "score": 68,
             "bias": "CALLS",
-            "recommended_action": "watch_edges",
+            "diagnostic_posture": "watch_edges_context_only",
             "reason": "range_balance_day conditions the core spine; participation is not convincing enough yet.",
         },
     }
@@ -73,6 +73,7 @@ def test_intraday_caution_uses_neutral_caution_label():
     assert intraday["label"] == "Neutral/Caution"
     assert intraday["stance"] == "caution"
     assert intraday["score"] == 68
+    assert intraday["basis"]["posture"] == "watch_edges_context_only"
 
 
 def test_weekly_lower_shelf_can_still_be_constructive_when_high_in_range():

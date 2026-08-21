@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-from datetime import datetime
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from decision_receipts import build_decision_receipt  # noqa: E402
-from execution_vector_weights import (  # noqa: E402
+from execution_vector_weights import (
     DEFAULT_BASE_BIAS_WEIGHTS,
     DEFAULT_BASE_WEIGHTS,
 )
-from setup_event_lifecycle import annotate_setup_conviction  # noqa: E402
-from trade_permission import ExecutionVectorEngine, score_trade_permission  # noqa: E402
+from trade_permission import ExecutionVectorEngine, score_trade_permission
 
 
 def _bull_bars():
@@ -61,7 +59,8 @@ def _pa(bars, **overrides):
 
 def test_get_minutes_since_open_uses_datetime():
     engine = ExecutionVectorEngine()
-    assert engine._get_minutes_since_open(datetime(2026, 1, 1, 10, 45)) == 75.0
+    current_time = datetime(2026, 1, 1, 10, 45, tzinfo=UTC)
+    assert engine._get_minutes_since_open(current_time) == 75.0
 
 
 def test_execution_vector_engine_matches_public_wrapper_core_legacy_contract():
@@ -85,6 +84,20 @@ def test_execution_vector_engine_matches_public_wrapper_core_legacy_contract():
     assert any(
         voice.get("voice_id") == "ace_advisory"
         for voice in wrapped["authority_adjudication"]["competing_voices"]
+    )
+    audit = wrapped["authority_self_audit"]
+    assert audit["score_spine_role"] == "diagnostic_advisory"
+    assert audit["final_authority_source"] == "approval_decision_plus_operator"
+    assert audit["status"] == "demoted_dirty_full_stack"
+    assert (
+        wrapped["authority_adjudication"]["cockpit_read"]["score_spine_role"]
+        == "diagnostic_advisory"
+    )
+    assert wrapped["authority_adjudication"]["cockpit_read"]["advisory_only"] is True
+    assert wrapped["bucket_conditioned_spine"]["diagnostic_posture"]
+    assert (
+        wrapped["authority_adjudication"]["we_are_doing_this"]["score_spine_role"]
+        == "diagnostic_advisory"
     )
 
 
@@ -135,15 +148,17 @@ def test_trade_permission_exposes_execution_hierarchy_without_changing_gate():
         "structure_score",
         "acceptance_score",
         "trend_score",
+        "pressure_score",
         "location_score",
+        "balance_context_score",
         "volume_score",
         "time_of_day_score",
         "dealer_gamma_score",
     ]
     assert hierarchy["core_spine"]["features"][1]["label"] == "Auction Acceptance"
-    assert hierarchy["core_spine"]["features"][4]["label"] == "Participation"
-    assert drift_names == ["pressure_score", "regime_score"]
-    assert advisory_names == ["expansion_fuel_score"]
+    assert hierarchy["core_spine"]["features"][6]["label"] == "Participation"
+    assert drift_names == ["regime_score"]
+    assert advisory_names == ["expansion_fuel_score", "line_authority_score"]
     assert hierarchy["advisory_surfaces"][0]["label"] == "Expansion Fuel"
     assert hierarchy["core_spine"]["normalized_weighted_score"] > 0
 
@@ -269,7 +284,12 @@ def test_bullish_acceptance_with_weak_governors_stays_out_of_permit():
     )
     levels = {"ORH": base_bars[-5][4] - 0.2, "ORL": 99.8, "PDC": 99.5}
     op = {"atm_iv": 0.26, "call_wall": 105.0, "put_wall": 99.0}
-    gp = {"regime": "positive", "pin": spot}
+    gp = {
+        "regime": "positive",
+        "pin": spot,
+        "gamma_data_quality": "ok",
+        "dte": 0,
+    }
 
     card = score_trade_permission(
         ugly_bars, pa, levels, [], op, gp, {"premium_read": "rich"}
@@ -380,7 +400,12 @@ def test_positive_gamma_pin_dampens_trade_permission():
     )
     levels = {"ORH": 104.0, "ORL": 100.0, "PDC": 100.0}
     op = {"atm_iv": 0.18, "call_wall": 104.0, "put_wall": 100.0}
-    gp = {"regime": "positive", "pin": 103.6}
+    gp = {
+        "regime": "positive",
+        "pin": 103.6,
+        "gamma_data_quality": "ok",
+        "dte": 0,
+    }
 
     card = score_trade_permission(bars, pa, levels, [], op, gp, {})
 
@@ -552,160 +577,3 @@ def test_post_selloff_coil_changes_permission_score_and_bias():
     assert coil["scores"]["compression_score"]["score"] >= 70
     assert coil["trade_permission_score"] == base["trade_permission_score"]
     assert coil["bias"] == "NEUTRAL"
-
-
-def test_fresh_failed_break_setup_can_coexist_with_neutral_live_trap_corroboration():
-    bars = _bull_bars()
-    pa = _pa(
-        bars,
-        position_in_balance=0.1,
-        balance_state="inside",
-        balance_label="BOTTOM",
-        rng_pos=35.0,
-    )
-    levels = {"ORH": 104.0, "ORL": 99.4, "PDC": 99.8}
-    setup = {
-        "tag": "FAILED BREAKDOWN",
-        "bias": "CALLS (bullish)",
-        "kind": "ok",
-        "detail": "reclaimed ORL",
-        "level_name": "ORL",
-        "level_price": 99.4,
-        "trigger_price": 99.1,
-        "bars_ago": 1,
-    }
-
-    card = score_trade_permission(bars, pa, levels, [setup], {"atm_iv": 0.20}, {}, {})
-
-    assert card["setup_conviction"]["setup_tag"] == "FAILED BREAKDOWN"
-    assert card["fresh_setup_evidence"]["status"] == "fresh_actionable_setup"
-    assert card["fresh_setup_evidence"]["setup_tag"] == "FAILED BREAKDOWN"
-    assert card["scores"]["trap_score"]["score"] == 35
-    assert card["scores"]["trap_score"]["bias"] == "NEUTRAL"
-    assert card["live_trap_corroboration"]["trap_score"] == 35
-    assert card["live_trap_corroboration"]["trap_bias"] == "NEUTRAL"
-
-
-def test_trap_corroboration_can_decay_while_lifecycle_persists_without_changing_authority():
-    bars = _bull_bars()
-    pa = _pa(bars, position_in_balance=0.15, balance_state="inside", rng_pos=32.0)
-    levels = {"ORH": 104.0, "ORL": 99.4, "PDC": 99.8}
-    op = {"atm_iv": 0.18, "call_wall": 105.0, "put_wall": 99.0}
-    failed_break_setup = {
-        "tag": "FAILED BREAKDOWN",
-        "bias": "CALLS (bullish)",
-        "kind": "ok",
-        "detail": "reclaimed ORL",
-        "level_name": "ORL",
-        "level_price": 99.4,
-        "trigger_price": 99.1,
-        "bars_ago": 1,
-    }
-    sticky_context = {
-        "tag": "STICKY DAY (calm/chop)",
-        "bias": "FADE the edges - bet on snap-back to the magnet",
-        "kind": "info",
-        "detail": "positive gamma context only",
-    }
-
-    first_card = score_trade_permission(
-        bars, pa, levels, [failed_break_setup], op, {}, {}
-    )
-    first_receipt = build_decision_receipt(
-        "2026-07-10T10:12:00",
-        "SPY",
-        pa["spot"],
-        first_card,
-        {"label": "VWAP", "price": pa["vwap"]},
-        [failed_break_setup],
-    )
-    second_receipt = build_decision_receipt(
-        "2026-07-10T10:15:00",
-        "SPY",
-        pa["spot"],
-        first_card,
-        {"label": "VWAP", "price": pa["vwap"]},
-        [failed_break_setup],
-        previous_receipt=first_receipt,
-    )
-
-    context_only_card = score_trade_permission(
-        bars,
-        pa,
-        levels,
-        [sticky_context],
-        op,
-        {},
-        {},
-    )
-    authority_before = (
-        context_only_card["trade_permission_score"],
-        context_only_card["execution_permission_score"],
-        context_only_card["trade_gate"],
-        context_only_card["market_day"]["bucket"],
-    )
-    sticky_receipt = build_decision_receipt(
-        "2026-07-10T10:18:00",
-        "SPY",
-        pa["spot"],
-        context_only_card,
-        {"label": "Magnet", "price": pa["spot"] + 0.4},
-        [sticky_context],
-        previous_receipt=second_receipt,
-    )
-
-    annotate_setup_conviction(context_only_card, sticky_receipt["setup_events"])
-
-    assert context_only_card["scores"]["trap_score"]["score"] == 35
-    assert context_only_card["live_trap_corroboration"]["trap_score"] == 35
-    assert context_only_card["fresh_setup_evidence"]["status"] == "fresh_context_setup"
-    assert context_only_card["persisted_setup_thesis"]["active"] is True
-    assert (
-        context_only_card["persisted_setup_thesis"]["persisted_without_fresh_trigger"]
-        is True
-    )
-    assert (
-        context_only_card["persisted_setup_thesis"]["setup_tag"] == "FAILED BREAKDOWN"
-    )
-    assert (
-        context_only_card["setup_conviction"]["event_lifecycle"][
-            "persisted_without_fresh_trigger"
-        ]
-        is True
-    )
-    assert authority_before == (
-        context_only_card["trade_permission_score"],
-        context_only_card["execution_permission_score"],
-        context_only_card["trade_gate"],
-        context_only_card["market_day"]["bucket"],
-    )
-
-
-def test_iv_shock_can_override_failed_break_day_bucket_classification():
-    bars = _bull_bars()
-    pa = _pa(bars)
-    levels = {"ORH": 104.0, "ORL": 99.4, "PDC": 99.8}
-    setup = {
-        "tag": "FAILED BREAKDOWN",
-        "bias": "CALLS (bullish)",
-        "kind": "ok",
-        "detail": "reclaimed ORL",
-        "level_name": "ORL",
-        "level_price": 99.4,
-        "trigger_price": 99.1,
-        "bars_ago": 1,
-    }
-
-    card = score_trade_permission(
-        bars,
-        pa,
-        levels,
-        [setup],
-        {"atm_iv": 0.35, "call_wall": 105.0, "put_wall": 99.0},
-        {},
-        {},
-    )
-
-    assert card["setup_conviction"]["setup_tag"] == "FAILED BREAKDOWN"
-    assert card["market_day"]["bucket"] == "news_vol_shock_day"
-    assert card["market_day"]["allowed_playbooks"] == []

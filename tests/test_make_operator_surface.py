@@ -6,7 +6,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cockpit"))
 
-from make_operator_surface import _execution_vector_interactions_card  # noqa: E402
+from make_operator_surface import (
+    _execution_vector_interactions_card,
+    render,
+)
+
+
+def test_operator_surface_has_main_landmark():
+    html = render()
+
+    assert "<main " in html
+    assert "</main>" in html
 
 
 def test_operator_surface_renders_vector_interactions_card():

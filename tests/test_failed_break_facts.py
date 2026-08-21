@@ -78,12 +78,15 @@ def test_detect_failed_breaks_keeps_same_failed_breakdown_setup_card():
             "tag": "FAILED BREAKDOWN",
             "bias": "CALLS (bullish)",
             "kind": "ok",
-            "detail": "reclaimed ORL $100.00 1m ago after stabbing $99.74 (-0.26% below) - bear trap",
+            "detail": "reclaimed ORL $100.00 1m ago after stabbing $99.74 (-0.26% below) - bear trap; entry window open",
             "score": 5.260000000000005,
             "level_name": "ORL",
             "level_price": 100.0,
             "trigger_price": 99.74,
             "bars_ago": 1,
+            "event_age_bars": 1,
+            "event_detected": True,
+            "entry_window_open": True,
         }
     ]
 

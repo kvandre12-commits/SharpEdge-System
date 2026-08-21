@@ -96,7 +96,7 @@ def test_export_operator_packet_writes_live_import(tmp_path, monkeypatch):
     _write_json(signal_path, signal)
     _write_text(
         tmp_path / "cockpit/cockpit.html",
-        '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="45"></head>'
+        '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="2"></head>'
         "<body><h1>Imported cockpit</h1></body></html>",
     )
     _write_text(
@@ -172,4 +172,4 @@ def test_export_operator_packet_writes_live_import(tmp_path, monkeypatch):
     )
     assert proof["android_viewer_bundle_included"] is True
     assert proof["web_viewer_refresh"]["status"] == "refresh_ready"
-    assert proof["web_viewer_refresh"]["cockpit_refresh_seconds"] == 45
+    assert proof["web_viewer_refresh"]["cockpit_refresh_seconds"] == 2

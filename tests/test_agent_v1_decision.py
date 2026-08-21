@@ -34,6 +34,29 @@ class AgentV1DecisionTests(unittest.TestCase):
         )
         self.assertNotIn("risk_layer", stale_by_input)
         self.assertNotIn("regime", stale_by_input)
+        self.assertEqual(stale_by_input["monitor_gap"]["status"], "stale")
+        self.assertEqual(stale_by_input["monitor_gap"]["source_kind"], "artifact")
+
+    def test_input_freshness_reports_current_inputs_and_provenance(self) -> None:
+        monitor = {"latest_gap_event": {"session_date": "2026-06-10"}}
+        context = {
+            "risk": {"date": "2026-06-10"},
+            "signal": {"date": "2026-06-10"},
+            "regime": {"date": "2026-06-10"},
+            "options": {"session_date": "2026-06-10"},
+        }
+
+        with patch.object(
+            agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)
+        ):
+            assessments = agent.input_freshness(monitor, context)
+
+        self.assertEqual(len(assessments), 5)
+        self.assertEqual({item["status"] for item in assessments}, {"current"})
+        self.assertTrue(all(item["source_ref"] for item in assessments))
+        self.assertEqual(
+            {item["source_kind"] for item in assessments}, {"artifact", "sqlite"}
+        )
 
     def test_build_contract_blocks_broker_orders_even_when_trade_edge_exists(
         self,
@@ -60,11 +83,13 @@ class AgentV1DecisionTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self._patched_paths(outputs, db_path):
-                with patch.object(
+            with (
+                self._patched_paths(outputs, db_path),
+                patch.object(
                     agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)
-                ):
-                    contract = agent.build_contract()
+                ),
+            ):
+                contract = agent.build_contract()
 
         self.assertTrue(contract["trade_allowed"])
         self.assertFalse(contract["broker_order_allowed"])
@@ -72,6 +97,9 @@ class AgentV1DecisionTests(unittest.TestCase):
         self.assertEqual(contract["required_human_action"], "confirm_order")
         self.assertEqual(contract["decision"], "operator_confirm_required")
         self.assertEqual(contract["blocking_reasons"], [])
+        self.assertEqual(contract["freshness"]["status"], "current")
+        self.assertEqual(len(contract["freshness"]["inputs"]), 5)
+        self.assertEqual(contract["freshness"]["stale_inputs"], [])
 
     def test_build_contract_uses_manual_fallback_when_bridge_unavailable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -100,11 +128,13 @@ class AgentV1DecisionTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self._patched_paths(outputs, db_path):
-                with patch.object(
+            with (
+                self._patched_paths(outputs, db_path),
+                patch.object(
                     agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)
-                ):
-                    contract = agent.build_contract()
+                ),
+            ):
+                contract = agent.build_contract()
 
         self.assertTrue(contract["trade_allowed"])
         self.assertEqual(contract["monitoring_mode"], "artifact_only_manual_review")
@@ -136,11 +166,13 @@ class AgentV1DecisionTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self._patched_paths(outputs, db_path):
-                with patch.object(
+            with (
+                self._patched_paths(outputs, db_path),
+                patch.object(
                     agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)
-                ):
-                    contract = agent.build_contract()
+                ),
+            ):
+                contract = agent.build_contract()
 
         self.assertFalse(contract["trade_allowed"])
         self.assertFalse(contract["broker_order_allowed"])
@@ -176,11 +208,13 @@ class AgentV1DecisionTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with self._patched_paths(outputs, db_path):
-                with patch.object(
+            with (
+                self._patched_paths(outputs, db_path),
+                patch.object(
                     agent, "utc_now", return_value=datetime(2026, 6, 10, tzinfo=UTC)
-                ):
-                    contract = agent.build_contract()
+                ),
+            ):
+                contract = agent.build_contract()
 
         self.assertEqual(contract["decision"], "monitor")
         self.assertFalse(contract["trade_allowed"])

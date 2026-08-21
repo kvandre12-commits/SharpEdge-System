@@ -14,7 +14,7 @@ def test_dealer_state_detects_positive_gamma_gravity_without_pin():
     packet = build_dealer_state(
         {"spot": 100.0},
         {"call_wall": 100.1, "put_wall": 95.0},
-        {"regime": "positive"},
+        {"regime": "positive", "gamma_data_quality": "ok", "dte": 0},
     )
 
     assert packet["state"] == "positive_gamma_gravity"
@@ -28,12 +28,12 @@ def test_dealer_state_detects_negative_gamma_expansion_without_premium_read():
     packet = build_dealer_state(
         {"spot": 100.0},
         {"call_wall": 102.0, "put_wall": 98.0},
-        {"regime": "negative", "pin": 99.0},
+        {"regime": "negative", "pin": 99.0, "gamma_data_quality": "ok", "dte": 0},
     )
 
     assert packet["state"] == "negative_gamma_expansion"
     assert packet["gamma_state"]["state"] == "gamma_expansion"
-    assert "negative gamma supports expansion" in packet["reason"]
+    assert "negative gamma/OI proxy may support expansion" in packet["reason"]
 
 
 def test_dealer_state_emits_explicit_unknown_when_gamma_quality_is_weak():
@@ -62,7 +62,7 @@ def test_execution_vector_engine_dealer_score_uses_dealer_state_engine():
         {"ORH": 101.0, "ORL": 99.0, "PDC": 100.0},
         [],
         {"call_wall": 100.1, "put_wall": 95.0},
-        {"regime": "positive"},
+        {"regime": "positive", "gamma_data_quality": "ok", "dte": 0},
         {},
     )["dealer_gamma_score"]
     unknown = engine.build_parts(
@@ -83,3 +83,26 @@ def test_execution_vector_engine_dealer_score_uses_dealer_state_engine():
     assert "pinning" in gravity.reason
     assert unknown.score == 40
     assert "dealer unknown" in unknown.reason
+
+
+def test_dealer_state_does_not_assume_missing_gamma_quality_is_ok():
+    packet = build_dealer_state(
+        {"spot": 100.0},
+        {"call_wall": 100.1, "put_wall": 95.0},
+        {"regime": "positive", "dte": 0},
+    )
+
+    assert packet["state"] == "dealer_unknown"
+    assert packet["gamma_state"]["quality"] == "missing"
+
+
+def test_dealer_state_rejects_expired_gamma_packet():
+    packet = build_dealer_state(
+        {"spot": 100.0},
+        {"call_wall": 100.1, "put_wall": 95.0},
+        {"regime": "positive", "gamma_data_quality": "ok", "dte": -1},
+    )
+
+    assert packet["state"] == "dealer_unknown"
+    assert packet["gamma_state"]["state"] == "gamma_unknown"
+    assert packet["gamma_state"]["reason"] == "gamma contract is expired"

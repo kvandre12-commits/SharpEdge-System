@@ -107,3 +107,55 @@ def test_execution_vector_engine_acceptance_score_uses_acceptance_state_engine()
     }
     assert no_acceptance.score == 35
     assert no_acceptance.reason == "no clean level acceptance"
+
+
+def test_acceptance_state_picks_nearest_representative_for_multiple_accepted_below_levels():
+    bars = [
+        (0, 100.04, 100.06, 99.88, 99.96, 1000),
+        (1, 99.96, 99.98, 99.58, 99.64, 1020),
+        (2, 99.64, 99.66, 99.46, 99.54, 1040),
+        (3, 99.54, 99.58, 99.42, 99.50, 1060),
+    ]
+
+    packet = build_acceptance_state(bars, {"PDC": 99.95, "ORL": 99.85, "PDL": 99.75})
+
+    assert packet["state"] == "accepted_below_level"
+    assert packet["bias"] == "PUTS"
+    assert packet["accepted_level_count"] == 3
+    assert packet["representative_level"]["level_name"] == "PDL"
+    assert packet["representative_level"]["distance_from_latest_close"] == 0.25
+
+
+def test_acceptance_state_returns_insufficient_data_before_window_is_met():
+    packet = build_acceptance_state(
+        [
+            (0, 100.0, 100.1, 99.9, 100.02, 1000),
+            (1, 100.02, 100.08, 99.98, 100.04, 1010),
+        ],
+        {"PDC": 100.0},
+        acceptance_window=4,
+    )
+
+    assert packet["state"] == "insufficient_data"
+    assert packet["acceptance_window"] == 4
+    assert packet["recent_close_count"] == 2
+    assert packet["latest_close"] == 100.04
+    assert packet["reason"] == "need 4 closes for acceptance"
+
+
+def test_acceptance_state_tracks_shared_acceptance_window_for_representative_level():
+    packet = build_acceptance_state(
+        _accepted_above_bars(),
+        {"PDC": 100.0, "ORH": 99.95},
+        acceptance_window=4,
+    )
+
+    assert packet["state"] == "accepted_above_level"
+    assert packet["representative_level"] == {
+        "level_name": "PDC",
+        "level_price": 100.0,
+        "acceptance": "accepted_above",
+        "buffer": 0.1,
+        "reason": "4 closes accepted above PDC 100.00",
+        "distance_from_latest_close": 0.4000000000000057,
+    }

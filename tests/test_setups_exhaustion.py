@@ -51,6 +51,49 @@ def test_detect_exhaustion_keeps_setup_owned_stricter_than_canonical_stretch():
     assert cards == []
 
 
+def test_detect_exhaustion_uses_volume_weighted_rsi_as_downside_evidence():
+    cards = detect_exhaustion(
+        _downside_bars(),
+        {
+            "spot": 100.0,
+            "vwap": 100.37,
+            "vs_vwap": -0.37,
+            "rng_pos": 22.0,
+            "volume_weighted_rsi": {
+                "active": True,
+                "state": "bullish_divergence",
+                "value": 41.2,
+                "volume_quality": "usable",
+            },
+        },
+    )
+
+    assert len(cards) == 1
+    assert cards[0]["tag"] == "DOWNSIDE EXHAUSTION"
+    assert "long lower wick" in cards[0]["detail"]
+    assert "VW-RSI bullish divergence 41.2" in cards[0]["detail"]
+
+
+def test_detect_exhaustion_ignores_inactive_volume_weighted_rsi():
+    cards = detect_exhaustion(
+        _downside_bars(),
+        {
+            "spot": 100.0,
+            "vwap": 100.37,
+            "vs_vwap": -0.37,
+            "rng_pos": 22.0,
+            "volume_weighted_rsi": {
+                "active": False,
+                "state": "bullish_divergence",
+                "value": 41.2,
+                "volume_quality": "missing",
+            },
+        },
+    )
+
+    assert cards == []
+
+
 def test_detect_exhaustion_flags_upside_pressing_edge_from_canonical_posture():
     cards = detect_exhaustion(
         _upside_bars(),

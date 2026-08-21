@@ -31,7 +31,7 @@ def test_export_signal_to_android_viewer_copies_trade_gate_contract(tmp_path):
         tmp_path / "phone_companion/views/trading/sharpedge_android_live_import.json"
     )
     cockpit_html = (
-        '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="45"></head>'
+        '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="2"></head>'
         "<body><h1>SharpEdge Cockpit</h1></body></html>"
     )
     cockpit_chart = (

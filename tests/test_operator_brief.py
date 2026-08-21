@@ -203,6 +203,55 @@ class OperatorBriefTests(unittest.TestCase):
                 json.dumps({"connector_status": "drafted"}) + "\n",
                 encoding="utf-8",
             )
+            (outputs / "nerv_curator.json").write_text(
+                json.dumps(
+                    {
+                        "schema": "sharpedge.nerv_curator.v1",
+                        "generated_at_utc": "2026-06-10T20:04:00+00:00",
+                        "symbol": "SPY",
+                        "headline": "Curate NERV around 500 calls.",
+                        "stance": "watch_reclaim_path",
+                        "watch_next": [
+                            "Track reclaim acceptance around 498 then 500.",
+                            "Watch IV/RV13 1.12x.",
+                        ],
+                        "warnings": ["Research only."],
+                        "hey_guy_summary": {
+                            "plain_english": "Liquid calls are showing up around 500, but wait for acceptance.",
+                            "liquidity_spot": "2026-06-21 CALL 500 mid 2.10 bid/ask 2.00/2.20 vol 1200 OI 3400 (target-call).",
+                            "flow_balance": "CALL-led tape; quote-weighted focus-line pressure is 1.80x in favor of CALLs.",
+                            "bias_alignment": "aligned",
+                            "quote_quality_context": "Both sides have usable enough quotes for the flow comparison to matter.",
+                            "put_pressure_score": 1200.0,
+                            "call_pressure_score": 2160.0,
+                            "put_pressure_pct": 36,
+                            "call_pressure_pct": 64,
+                            "dominant_side": "call",
+                            "call_side_summary": "CALL side quality usable; strongest visible lines are 2026-06-14 CALL 501 mid 1.20 bid/ask 1.10/1.30 vol 900 OI 2100 (near-money-flow).",
+                            "put_side_summary": "PUT side quality usable; strongest visible lines are 2026-06-14 PUT 499 mid 0.90 bid/ask 0.85/0.95 vol 500 OI 1700 (near-money-flow).",
+                            "call_flow": [
+                                "2026-06-14 CALL 501 mid 1.20 bid/ask 1.10/1.30 vol 900 OI 2100 (near-money-flow)."
+                            ],
+                            "put_flow": [
+                                "2026-06-14 PUT 499 mid 0.90 bid/ask 0.85/0.95 vol 500 OI 1700 (near-money-flow)."
+                            ],
+                            "near_money_tape": [
+                                "2026-06-14 PUT 499 mid 0.90 bid/ask 0.85/0.95 vol 500 OI 1700 (near-money-flow).",
+                                "2026-06-14 CALL 501 mid 1.20 bid/ask 1.10/1.30 vol 900 OI 2100 (near-money-flow).",
+                            ],
+                            "supporting_flow": [
+                                "2026-06-14 CALL 501 mid 1.20 bid/ask 1.10/1.30 vol 900 OI 2100 (near-money-flow)."
+                            ],
+                            "opposing_flow": [
+                                "2026-06-14 PUT 499 mid 0.90 bid/ask 0.85/0.95 vol 500 OI 1700 (near-money-flow)."
+                            ],
+                            "confirms": ["Spot accepts above 498."],
+                            "invalidates": ["Calls lose bid on the stall."],
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
 
             with self._patched_paths(outputs):
                 payload = brief.build_brief()
@@ -215,6 +264,29 @@ class OperatorBriefTests(unittest.TestCase):
         self.assertIn("SHARPEDGE OPERATOR BRIEF", text)
         self.assertTrue(payload["historical_hints"]["available"])
         self.assertIn("VWAP_FADE", payload["historical_hints"]["top_pattern_summary"])
+        self.assertTrue(payload["options_liquidity_read"]["available"])
+        self.assertIn(
+            "Liquid calls are showing up around 500",
+            payload["options_liquidity_read"]["plain_english"],
+        )
+        self.assertEqual(payload["options_liquidity_read"]["bias_alignment"], "aligned")
+        self.assertIn(
+            "CALL-led tape", payload["options_liquidity_read"]["flow_balance"]
+        )
+        self.assertIn(
+            "usable enough quotes",
+            payload["options_liquidity_read"]["quote_quality_context"],
+        )
+        self.assertEqual(payload["options_liquidity_read"]["put_pressure_pct"], 36)
+        self.assertEqual(payload["options_liquidity_read"]["call_pressure_pct"], 64)
+        self.assertEqual(payload["options_liquidity_read"]["dominant_side"], "call")
+        self.assertIn("Flow balance", text)
+        self.assertIn("Quote quality", text)
+        self.assertIn("Put side", text)
+        self.assertIn("Call side", text)
+        self.assertIn("Put summary", text)
+        self.assertIn("Call summary", text)
+        self.assertIn("Options liquidity read", text)
         self.assertTrue(payload["latest_execution_audit"]["available"])
         self.assertEqual(
             payload["latest_execution_audit"]["connector_status"], "drafted"
@@ -432,6 +504,7 @@ class OperatorBriefTests(unittest.TestCase):
             OUT_JOURNAL_JSONL=outputs / "operator_journal_append.jsonl",
             TRADE_HINTS_JSON=outputs / "trade_journal_hints.json",
             SIGNAL_JSON=outputs / "signal.json",
+            NERV_CURATOR_JSON=outputs / "nerv_curator.json",
             CONNECTOR_AUDIT_JSON=outputs / "chatgpt_robinhood_connector_audit.json",
             CONNECTOR_AUDIT_LOG_JSONL=outputs / "robinhood_connector_audit_log.jsonl",
         )

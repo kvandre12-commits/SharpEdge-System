@@ -54,7 +54,7 @@ def test_phase_model_marks_fresh_acceptance_as_head_and_climactic_volume_as_tail
         "dealer_gamma_score": {
             "score": 72,
             "bias": "NEUTRAL",
-            "reason": "negative gamma supports expansion",
+            "reason": "negative gamma/OI proxy may support expansion",
         },
     }
 
@@ -142,7 +142,7 @@ def test_render_permission_section_shows_phase_badges_and_phase_reason():
             "gate": "PERMIT",
             "score": 73,
             "bias": "CALLS",
-            "recommended_action": "candidate_calls",
+            "diagnostic_posture": "calls_context_only",
             "reason": "core spine only",
             "best": [],
         },
