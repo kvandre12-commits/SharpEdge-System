@@ -15,16 +15,28 @@ venv/
 .env.*
 !.env.example
 
-# Generated runtime/proof artifacts
-outputs/signal.json
-outputs/nerv/
-outputs/nerv_*/
-outputs/nerv_trade_desk/
-outputs/regime_cartridges/
-outputs/runtime_tmp/
-outputs/cockpit_regime_split_loop.*
-outputs/*.log
-outputs/*.pid
+# Generated runtime/proof artifacts — the pipeline rewrites these every run.
+# outputs/ is the cockpit + analytics write target; nothing in it is source.
+outputs/*
+!outputs/.gitkeep
+
+# Generated data stores (SQLite DBs + derived CSVs)
+data/*.db
+data/archive/
+data/attribution_daily.csv
+
+# Root-level runtime state spew
+/workflow_state.json
+/workflow_commit.json
+/journal.json
+/journal_events.jsonl
+/intent_handshake.json
+/execution_plan.json
+/approval_decision.json
+/REPO_MAP.txt
+/CODE_INDEX.txt
+runtime_logs/
+
 phone_companion/launchers/*.json
 phone_companion/observations/*.json
 phone_companion/requests/*_trace.json
