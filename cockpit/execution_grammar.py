@@ -1,11 +1,8 @@
-"""Execution interpretation + permission governance for SharpEdge.
+"""Execution interpretation for SharpEdge.
 
-Current seam:
-- Interpretation: break/dealer states resolve into thesis, bias, and authority.
-- Governance: live trigger readiness constrains permission with caps/floors.
-
-Keep both here while they evolve together. Split only when interpreter doctrine
-or permission-governor doctrine starts changing independently.
+Resolves raw bars/levels/setups into break and dealer-gamma states. Permission
+governance now lives in the bucket-conditioned spine, so this module is
+interpretation only.
 """
 
 from __future__ import annotations
@@ -21,15 +18,12 @@ from execution_state_scores import score_dealer_state
 from failed_break_facts import RESISTANCE_LEVEL_NAMES, SUPPORT_LEVEL_NAMES
 from failed_break_interpreter import best_failed_break_event, failed_break_break_state
 from level_state_engine import build_level_state_map
-from live_trigger_check import live_trigger_check
 from trade_permission_context import BEARISH, BULLISH
 
 ACTIVE_RESISTANCE_LEVELS = RESISTANCE_LEVEL_NAMES
 ACTIVE_SUPPORT_LEVELS = SUPPORT_LEVEL_NAMES
 RECENT_BARS = 6
 ACCEPTANCE_CLOSES = 3
-WALL_PROXIMITY_PCT = 0.20
-PIN_PROXIMITY_PCT = 0.25
 
 
 def _bias_label(bias: int) -> str:
@@ -160,150 +154,7 @@ def build_dealer_gamma_state(
     }
 
 
-def _proof_state(parts: dict[str, Any]) -> dict[str, Any]:
-    volume = parts.get("volume_score")
-    pressure = parts.get("pressure_score")
-    evidence = []
-    if volume:
-        evidence.append(
-            f"volume {volume.score}/{_bias_label(volume.bias)}: {volume.reason}"
-        )
-    if pressure:
-        evidence.append(
-            f"pressure {pressure.score}/{_bias_label(pressure.bias)}: {pressure.reason}"
-        )
-    return {"evidence": evidence}
-
-
-def build_execution_grammar(
-    bars: list[tuple],
-    pa: dict[str, Any],
-    levels: dict[str, Any],
-    op: dict[str, Any],
-    gp: dict[str, Any],
-    parts: dict[str, Any],
-    setups: list[dict[str, Any]] | None = None,
-    day_bucket: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    break_state = build_break_state(bars, levels, setups)
-    dealer = build_dealer_gamma_state(pa, op, gp)
-    proof = _proof_state(parts)
-    break_name = break_state["state"]
-    dealer_name = dealer["state"]
-    adjustment: dict[str, Any] = {
-        "cap": None,
-        "floor": None,
-        "reason": "no grammar adjustment",
-    }
-    thesis = "wait_for_pressure_point"
-    bias = break_state.get("bias", "NEUTRAL")
-    authority = "context"
-
-    if break_name == "failed_breakout":
-        thesis = "failed_breakout_reversal"
-        bias = "PUTS"
-        authority = "primary"
-    elif break_name == "failed_breakdown":
-        thesis = "failed_breakdown_reclaim"
-        bias = "CALLS"
-        authority = "primary"
-    elif (
-        break_name == "accepted_breakout" and dealer_name == "negative_gamma_expansion"
-    ):
-        thesis = "accepted_breakout_runner"
-        bias = "CALLS"
-        authority = "primary"
-        adjustment = {
-            "cap": None,
-            "floor": 72,
-            "reason": "negative gamma lets accepted breakout run",
-        }
-    elif (
-        break_name == "accepted_breakdown" and dealer_name == "negative_gamma_expansion"
-    ):
-        thesis = "accepted_breakdown_runner"
-        bias = "PUTS"
-        authority = "primary"
-        adjustment = {
-            "cap": None,
-            "floor": 72,
-            "reason": "negative gamma lets accepted breakdown run",
-        }
-    elif break_name == "accepted_breakout" and dealer_name == "positive_gamma_gravity":
-        thesis = "breakout_into_dealer_resistance"
-        bias = "NEUTRAL"
-        authority = "governor"
-        adjustment = {
-            "cap": 68,
-            "floor": None,
-            "reason": "accepted breakout is pressing into positive-gamma pin/wall gravity",
-        }
-    elif break_name == "accepted_breakdown" and dealer_name == "positive_gamma_gravity":
-        thesis = "breakdown_into_dealer_support"
-        bias = "NEUTRAL"
-        authority = "governor"
-        adjustment = {
-            "cap": 68,
-            "floor": None,
-            "reason": "accepted breakdown is pressing into positive-gamma pin/wall gravity",
-        }
-    elif dealer_name == "positive_gamma_gravity":
-        thesis = "pin_chop_wait_for_failed_break"
-        bias = dealer.get("bias", "NEUTRAL")
-        authority = "governor"
-        adjustment = {
-            "cap": 70,
-            "floor": None,
-            "reason": "positive gamma gravity requires a pressure-point trigger",
-        }
-
-    live_trigger = live_trigger_check(thesis, day_bucket, pa, dealer, levels)
-    if live_trigger["status"] == "WAIT":
-        existing_cap = adjustment.get("cap")
-        adjustment = {
-            **adjustment,
-            "cap": min(existing_cap, 68) if isinstance(existing_cap, int) else 68,
-            "floor": None,
-            "reason": live_trigger["reason"],
-        }
-    elif live_trigger["status"] == "CONTEXT_MATCH":
-        existing_cap = adjustment.get("cap")
-        adjustment = {
-            **adjustment,
-            "cap": min(existing_cap, 70) if isinstance(existing_cap, int) else 70,
-            "floor": None,
-            "reason": live_trigger["reason"],
-        }
-
-    return {
-        "schema": "sharpedge.execution_grammar.v1",
-        "thesis": thesis,
-        "bias": bias,
-        "authority": authority,
-        "day_bucket": day_bucket or {},
-        "break_state": break_state,
-        "dealer_gamma_state": dealer,
-        "proof_state": proof,
-        "live_trigger_check": live_trigger,
-        "permission_adjustment": adjustment,
-    }
-
-
-def apply_permission_adjustment(permission: int, grammar: dict[str, Any]) -> int:
-    adjustment = grammar.get("permission_adjustment") or {}
-    cap = adjustment.get("cap")
-    floor = adjustment.get("floor")
-    result = permission
-    if isinstance(cap, int):
-        result = min(result, cap)
-    if isinstance(floor, int):
-        result = max(result, floor)
-    return max(0, min(100, int(result)))
-
-
 __all__ = [
-    "apply_permission_adjustment",
     "build_break_state",
     "build_dealer_gamma_state",
-    "build_execution_grammar",
 ]
