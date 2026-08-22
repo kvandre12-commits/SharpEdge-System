@@ -10,6 +10,7 @@ from live_read_view import (
     _active_setup_level_badge,
     infer_target,
     reachability_context,
+    render_confluence_zones_block,
     render_execution_state_packets_block,
     render_live_read_html,
     render_location_strip,
@@ -813,3 +814,27 @@ def test_render_html_shows_active_setup_level_badge_for_failed_break():
     assert "ACTIVE SETUP LEVEL" in html
     assert "ORL" in html
     assert "$99.75" in html
+
+
+def test_render_confluence_zones_block_empty_when_no_zones():
+    assert render_confluence_zones_block(None) == ""
+    assert render_confluence_zones_block({"zones": []}) == ""
+
+
+def test_render_confluence_zones_block_shows_bounce_and_rejection():
+    cz = {"zones": [
+        {"side": "resistance", "stance": "rejection", "zone_lo": 765.99, "zone_hi": 766.49,
+         "conviction": 60, "conviction_band": "medium", "factor_count": 9,
+         "regime_gate": {"applied": "penalty"},
+         "contributing_factors": [{"name": "VWAP"}, {"name": "EMA9"}],
+         "trigger": "1m close rejecting from and failing back below 765.99"},
+        {"side": "support", "stance": "bounce", "zone_lo": 764.17, "zone_hi": 765.0,
+         "conviction": 28, "conviction_band": "low", "factor_count": 3,
+         "regime_gate": {"applied": "trap_veto"},
+         "contributing_factors": [{"name": "PUT_WALL"}, {"name": "PIN"}],
+         "trigger": "reclaim required"},
+    ]}
+    html = render_confluence_zones_block(cz)
+    assert "CONFLUENCE ZONES" in html
+    assert "REJECTION" in html and "BOUNCE" in html
+    assert "VWAP + EMA9" in html and "trap_veto" in html

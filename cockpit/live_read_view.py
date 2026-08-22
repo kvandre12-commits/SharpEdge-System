@@ -1173,6 +1173,39 @@ def render_volume_weighted_rsi_block(pa: dict[str, Any] | None = None) -> str:
     )
 
 
+def render_confluence_zones_block(confluence_zones: dict[str, Any] | None = None) -> str:
+    """Compact confluence bounce/rejection zone strip for the cockpit body."""
+    cz = confluence_zones or {}
+    zones = cz.get("zones") or []
+    if not zones:
+        return ""
+    reject = next((z for z in zones if z.get("side") == "resistance"), None)
+    bounce = next((z for z in zones if z.get("side") == "support"), None)
+    cards = []
+    for zone in (reject, bounce):
+        if not zone:
+            continue
+        edge = "#f85149" if zone.get("side") == "resistance" else "#3fb950"
+        band = str(zone.get("conviction_band", ""))
+        factors = " + ".join(_esc(str(f.get("name", ""))) for f in zone.get("contributing_factors", []))
+        cards.append(
+            f'<div style="border-left:3px solid {edge};padding:6px 10px;margin-top:6px;background:#0d1117">'
+            f'<div style="font-size:12px"><b style="color:{edge}">{_esc(str(zone.get("stance", "")).upper())}</b> '
+            f'<span style="color:{FG}">${zone.get("zone_lo")}–${zone.get("zone_hi")}</span> '
+            f'<span style="color:#7d8590">conv {zone.get("conviction")} ({_esc(band)}) · '
+            f'gate {_esc(str((zone.get("regime_gate") or {}).get("applied", "")))}</span></div>'
+            f'<div style="color:#7d8590;font-size:10px;margin-top:2px;{WRAP}">{factors} · {zone.get("factor_count", 0)} stacked</div>'
+            f'<div style="color:#adbac7;font-size:11px;margin-top:2px;{WRAP}">→ {_esc(str(zone.get("trigger", "")))}</div></div>'
+        )
+    if not cards:
+        return ""
+    return (
+        f'<div style="margin-top:10px;padding:10px;border:1px solid #30363d;border-radius:6px;background:#0d1117">'
+        f'<div style="color:{MUTE};font-size:11px;margin-bottom:2px">CONFLUENCE ZONES • stacked levels · regime-gated · advisory</div>'
+        f'{"".join(cards)}</div>'
+    )
+
+
 def render_live_read_html(
     pa: dict[str, Any],
     op: dict[str, Any],
@@ -1204,6 +1237,7 @@ def render_live_read_html(
     historical_refill_context: dict[str, Any] | None = None,
     chart_svg_inline: str = "",
     candle_coach: dict[str, Any] | None = None,
+    confluence_zones: dict[str, Any] | None = None,
 ) -> str:
     color_map = {"ok": GREEN, "bad": RED, "warn": AMBER, "info": BLUE}
     sign = "+" if pa.get("day_chg", 0) >= 0 else ""
@@ -1252,6 +1286,7 @@ setTimeout(() => {{
 <span style=\"font-size:11px;color:#39c5cf\">{_esc(pa.get("spot_source") or "price")}</span></div>
 {render_price_feed_lag_line(pa)}
 {render_price_context_line(pa)}
+{render_confluence_zones_block(confluence_zones)}
 {render_chart(chart_svg_inline)}\n{render_candle_coach_block(candle_coach)}
 {render_event_radar_block(event_radar)}
 {render_post_apple_rotation_block(post_apple_rotation)}

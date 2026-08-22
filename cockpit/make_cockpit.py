@@ -645,6 +645,7 @@ def write_signal(
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "signal.json"), "w") as f:
         json.dump(sig, f, indent=2)
+    return sig
 
 
 def main():
@@ -914,7 +915,7 @@ def main():
     )
     setup_markers = _markers_for_price_source(setup_markers, price_source)
     append_decision_receipt(Path(receipt_path), decision_receipt)
-    write_signal(
+    sig = write_signal(
         pa,
         op,
         gp,
@@ -1029,6 +1030,7 @@ def main():
                 historical_refill_context=historical_refill_context,
                 chart_svg_inline=chart_markup,
                 candle_coach=candle_coach,
+                confluence_zones=sig.get("confluence_zones"),
             )
         )
     with open(f"{OUT_DIR}/gem_dashboard.html", "w") as f:
