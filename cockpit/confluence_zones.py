@@ -20,9 +20,23 @@ scoring factor — so acceptance is not double-counted with line_authority.
 
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
 from typing import Any
 
 SCHEMA = "sharpedge.confluence_zones.v1"
+
+# Opt-in self-audit weight overlay (mirrors the spine's realtime-adjust seam).
+# Default OFF: weights stay code-default unless SHARPEDGE_CONFLUENCE_REALTIME_ADJUST=1.
+REALTIME_ADJUST_ENV = "SHARPEDGE_CONFLUENCE_REALTIME_ADJUST"
+REALTIME_ADJUST_PATH_ENV = "SHARPEDGE_CONFLUENCE_REALTIME_ADJUSTMENTS"
+DEFAULT_CONFLUENCE_ADJUSTMENT_PATH = (
+    Path(__file__).resolve().parents[1] / "outputs" / "confluence_zone_adjustments.json"
+)
+_ADJUSTMENT_SCHEMA = "sharpedge.confluence_zone_adjustments.v1"
+_SHADOW_AUTHORITY = "diagnostic_shadow_overlay"
+_DEFAULT_MULTIPLIER_BOUNDS = (0.7, 1.3)
 
 # Static-factor authority weights (operator-tunable).
 _STATIC_FACTORS: dict[str, tuple[str, float]] = {
@@ -66,6 +80,54 @@ def _num(value: Any) -> float | None:
         return None if value is None else float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _confluence_overlay_enabled() -> bool:
+    return str(os.getenv(REALTIME_ADJUST_ENV) or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _load_weight_overlay() -> dict[str, Any]:
+    """Load the self-audit weight overlay, or {} unless opted in."""
+    if not _confluence_overlay_enabled():
+        return {}
+    path = Path(os.getenv(REALTIME_ADJUST_PATH_ENV) or DEFAULT_CONFLUENCE_ADJUSTMENT_PATH)
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, ValueError):
+        return {}
+
+
+def _apply_weight_overlay(
+    points: list[dict[str, Any]], overlay: dict[str, Any]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Scale static factor weights by a learned per-kind multiplier (opt-in, clamped).
+
+    Gated on schema + authority + enabled + env flag so a spine overlay can never
+    be consumed as confluence weights. Only the static ``weight`` is scaled;
+    live acceptance (``authority_multiplier``) is never touched.
+    """
+    applied: list[dict[str, Any]] = []
+    if (
+        not overlay
+        or overlay.get("schema") != _ADJUSTMENT_SCHEMA
+        or overlay.get("authority") != _SHADOW_AUTHORITY
+        or not overlay.get("enabled")
+        or not _confluence_overlay_enabled()
+    ):
+        return points, applied
+    adjustments = overlay.get("adjustments") or {}
+    bounds = overlay.get("multiplier_bounds") or list(_DEFAULT_MULTIPLIER_BOUNDS)
+    lo, hi = float(bounds[0]), float(bounds[1])
+    for point in points:
+        adj = adjustments.get(point["kind"])
+        mult = (adj or {}).get("multiplier")
+        if not isinstance(mult, (int, float)):
+            continue
+        clamped = max(lo, min(hi, float(mult)))
+        point["weight"] = round(point["weight"] * clamped, 4)
+        applied.append({"kind": point["kind"], "name": point["name"], "multiplier": clamped})
+    return points, applied
 
 
 def _collect_factor_points(signal: dict[str, Any]) -> list[dict[str, Any]]:
@@ -269,6 +331,11 @@ def build_confluence_zones(signal: dict[str, Any]) -> dict[str, Any]:
         "data_quality": data_quality,
         "expected_move": em,
         "clustering": {"tolerance": tol, "tolerance_source": tol_source},
+        "realtime_adjustments": {
+            "enabled": _confluence_overlay_enabled(),
+            "applied": [],
+            "authority": _SHADOW_AUTHORITY,
+        },
         "zones": [],
         "summary": {},
     }
@@ -278,6 +345,8 @@ def build_confluence_zones(signal: dict[str, Any]) -> dict[str, Any]:
 
     level_states = signal.get("level_states") or {}
     points = _collect_factor_points(signal)
+    points, overlay_applied = _apply_weight_overlay(points, _load_weight_overlay())
+    base["realtime_adjustments"]["applied"] = overlay_applied
     zones: list[dict[str, Any]] = []
     for idx, cluster in enumerate(_cluster(points, tol), start=1):
         score = _score_zone(cluster, spot, em["dollars"])
