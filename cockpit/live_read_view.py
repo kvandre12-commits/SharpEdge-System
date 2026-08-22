@@ -1206,6 +1206,49 @@ def render_confluence_zones_block(confluence_zones: dict[str, Any] | None = None
     )
 
 
+def render_confluence_audit_block(audit: dict[str, Any] | None = None) -> str:
+    """Read-only self-tuning audit summary (per-kind respected-rate / multiplier)."""
+    a = audit or {}
+    if a.get("schema") != "sharpedge.confluence_zone_adjustments.v1":
+        return ""
+    tested = a.get("total_tested", 0)
+    baseline = a.get("baseline_respected_rate", 0.0)
+    enabled = a.get("enabled", False)
+    adjustments = a.get("adjustments") or {}
+    rows = sorted(adjustments.items(), key=lambda kv: -abs(kv[1].get("lift", 0) or 0))
+    body = ""
+    for kind, adj in rows[:8]:
+        mult = adj.get("multiplier", 1.0)
+        color = "#3fb950" if mult > 1 else ("#f85149" if mult < 1 else "#7d8590")
+        body += (
+            f'<tr><td style="padding:2px 8px;color:{FG}">{_esc(kind)}</td>'
+            f'<td style="padding:2px 8px;text-align:right;color:{color}">x{mult}</td>'
+            f'<td style="padding:2px 8px;text-align:right;color:#adbac7">{adj.get("respected_rate")}</td>'
+            f'<td style="padding:2px 8px;text-align:right;color:#7d8590">{adj.get("tested")}</td>'
+            f'<td style="padding:2px 8px;color:#7d8590">{_esc(str(adj.get("action", "")))}</td></tr>'
+        )
+    table = (
+        f'<table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:4px">'
+        f'<tr style="color:{MUTE};font-size:10px;text-transform:uppercase">'
+        f'<th style="padding:2px 8px;text-align:left;font-weight:normal">Factor kind</th>'
+        f'<th style="padding:2px 8px;text-align:right;font-weight:normal">Weight x</th>'
+        f'<th style="padding:2px 8px;text-align:right;font-weight:normal">Held</th>'
+        f'<th style="padding:2px 8px;text-align:right;font-weight:normal">N</th>'
+        f'<th style="padding:2px 8px;text-align:left;font-weight:normal">Action</th></tr>'
+        f"{body}</table>"
+    ) if body else ""
+    warming = (
+        "" if tested
+        else '<div style="color:#7d8590;font-size:11px;margin-top:2px">warming up — grading zones as the session runs</div>'
+    )
+    return (
+        f'<div style="margin-top:10px;padding:10px;border:1px solid #30363d;border-radius:6px;background:#0d1117">'
+        f'<div style="color:{MUTE};font-size:11px">CONFLUENCE WEIGHT AUDIT • self-tuning · advisory</div>'
+        f'<div style="color:#adbac7;font-size:11px;margin-top:2px">baseline held {baseline} over {tested} tested zones · overlay enabled={enabled}</div>'
+        f"{warming}{table}</div>"
+    )
+
+
 def render_live_read_html(
     pa: dict[str, Any],
     op: dict[str, Any],
@@ -1238,6 +1281,7 @@ def render_live_read_html(
     chart_svg_inline: str = "",
     candle_coach: dict[str, Any] | None = None,
     confluence_zones: dict[str, Any] | None = None,
+    confluence_audit: dict[str, Any] | None = None,
 ) -> str:
     color_map = {"ok": GREEN, "bad": RED, "warn": AMBER, "info": BLUE}
     sign = "+" if pa.get("day_chg", 0) >= 0 else ""
@@ -1287,6 +1331,7 @@ setTimeout(() => {{
 {render_price_feed_lag_line(pa)}
 {render_price_context_line(pa)}
 {render_confluence_zones_block(confluence_zones)}
+{render_confluence_audit_block(confluence_audit)}
 {render_chart(chart_svg_inline)}\n{render_candle_coach_block(candle_coach)}
 {render_event_radar_block(event_radar)}
 {render_post_apple_rotation_block(post_apple_rotation)}

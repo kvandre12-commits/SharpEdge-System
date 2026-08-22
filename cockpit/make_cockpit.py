@@ -997,6 +997,14 @@ def main():
             )
         )
     stamp = dt.datetime.now().strftime("%H:%M:%S")
+    try:
+        with open(
+            os.path.expanduser("~/SharpEdge-System/outputs/confluence_zone_audit/latest.json"),
+            encoding="utf-8",
+        ) as _af:
+            confluence_audit = json.load(_af)
+    except (OSError, ValueError):
+        confluence_audit = {}
     with open(f"{OUT_DIR}/cockpit.html", "w") as f:
         f.write(
             render_live_read_html(
@@ -1031,6 +1039,7 @@ def main():
                 chart_svg_inline=chart_markup,
                 candle_coach=candle_coach,
                 confluence_zones=sig.get("confluence_zones"),
+                confluence_audit=confluence_audit,
             )
         )
     with open(f"{OUT_DIR}/gem_dashboard.html", "w") as f:

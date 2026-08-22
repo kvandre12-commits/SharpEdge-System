@@ -10,6 +10,7 @@ from live_read_view import (
     _active_setup_level_badge,
     infer_target,
     reachability_context,
+    render_confluence_audit_block,
     render_confluence_zones_block,
     render_execution_state_packets_block,
     render_live_read_html,
@@ -838,3 +839,29 @@ def test_render_confluence_zones_block_shows_bounce_and_rejection():
     assert "CONFLUENCE ZONES" in html
     assert "REJECTION" in html and "BOUNCE" in html
     assert "VWAP + EMA9" in html and "trap_veto" in html
+
+
+def test_render_confluence_audit_block_empty_without_schema():
+    assert render_confluence_audit_block(None) == ""
+    assert render_confluence_audit_block({"foo": 1}) == ""
+
+
+def test_render_confluence_audit_block_warming_up_cold_start():
+    html = render_confluence_audit_block({
+        "schema": "sharpedge.confluence_zone_adjustments.v1",
+        "total_tested": 0, "baseline_respected_rate": 0.0, "enabled": False, "adjustments": {},
+    })
+    assert "CONFLUENCE WEIGHT AUDIT" in html and "warming up" in html
+
+
+def test_render_confluence_audit_block_shows_per_kind_multipliers():
+    html = render_confluence_audit_block({
+        "schema": "sharpedge.confluence_zone_adjustments.v1",
+        "total_tested": 40, "baseline_respected_rate": 0.51, "enabled": True,
+        "adjustments": {
+            "wall": {"multiplier": 1.18, "respected_rate": 0.68, "tested": 40, "lift": 0.17, "action": "boost"},
+            "ema": {"multiplier": 0.82, "respected_rate": 0.39, "tested": 22, "lift": -0.12, "action": "cut"},
+        },
+    })
+    assert "wall" in html and "x1.18" in html and "ema" in html and "x0.82" in html
+    assert "warming up" not in html
