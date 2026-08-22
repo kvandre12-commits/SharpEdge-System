@@ -27,15 +27,26 @@ from event_calendar import EARNINGS_DATES, MEGA_CAP_EARNINGS_HEADLINERS
 # Per-ticker investor-relations sources for next-earnings-date confirmation.
 # Optional and operator-extensible; VERIFY urls/keywords when adding a name.
 # Tickers without an IR source still get SEC filing context via CIK resolution.
+#
+# NOTE: many mega-cap IR pages are JavaScript single-page apps that render dates
+# client-side; a server-side GET yields no date, so the conservative rule simply
+# returns no suggestion (safe degradation). Prefer events/quarterly-results pages
+# that server-render the schedule. VERIFY each URL when relied upon.
+_EK = ["earnings", "financial results", "quarter results", "results conference call"]
+
 HEADLINER_IR_SOURCES: dict[str, dict] = {
-    "AAPL": {
-        "ir_url": "https://investor.apple.com/investor-relations/default.aspx",
-        "keywords": ["earnings", "financial results", "quarter results"],
-    },
-    "NVDA": {
-        "ir_url": "https://investor.nvidia.com/events-and-presentations/events-and-presentations/default.aspx",
-        "keywords": ["earnings", "financial results", "quarter results"],
-    },
+    "AAPL": {"ir_url": "https://investor.apple.com/investor-relations/default.aspx", "keywords": _EK},
+    "NVDA": {"ir_url": "https://investor.nvidia.com/events-and-presentations/events-and-presentations/default.aspx", "keywords": _EK},
+    "MSFT": {"ir_url": "https://www.microsoft.com/en-us/investor/earnings/default.aspx", "keywords": _EK},
+    "AMZN": {"ir_url": "https://ir.aboutamazon.com/quarterly-results/default.aspx", "keywords": _EK},
+    "GOOGL": {"ir_url": "https://abc.xyz/investor/", "keywords": _EK},
+    "META": {"ir_url": "https://investor.atmeta.com/investor-news/default.aspx", "keywords": _EK},
+    "TSLA": {"ir_url": "https://ir.tesla.com/", "keywords": _EK},
+    "AMD": {"ir_url": "https://ir.amd.com/news-events/events", "keywords": _EK},
+    "NFLX": {"ir_url": "https://ir.netflix.net/financials/quarterly-earnings/default.aspx", "keywords": _EK},
+    "PLTR": {"ir_url": "https://investors.palantir.com/news-details/", "keywords": _EK},
+    "MCHP": {"ir_url": "https://www.microchip.com/en-us/about/investor-relations", "keywords": _EK},
+    "RDDT": {"ir_url": "https://investor.redditinc.com/", "keywords": _EK},
 }
 
 

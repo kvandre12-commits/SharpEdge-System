@@ -29,9 +29,12 @@ from http_utils import request_json_with_backoff, request_text_with_backoff
 SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
 SEC_TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers.json"
 
-# data.sec.gov requires a descriptive User-Agent identifying the caller.
+# SEC EDGAR's fair-access policy REQUIRES a descriptive User-Agent that includes
+# an email-like contact token, or it returns 403. Operators should set a real
+# contact via SHARPEDGE_SEC_USER_AGENT; the fallback below is a valid-format
+# placeholder so unconfigured runs still work.
 DEFAULT_SEC_USER_AGENT_ENV = "SHARPEDGE_SEC_USER_AGENT"
-_FALLBACK_SEC_USER_AGENT = "SharpEdge catalyst refresh (contact via repo owner)"
+_FALLBACK_SEC_USER_AGENT = "SharpEdge Research contact@example.com"
 
 _EARNINGS_WINDOW_DAYS = 180
 
