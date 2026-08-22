@@ -61,6 +61,33 @@ def test_missing_fields_do_not_crash():
     assert "\u03b3 \u00b7 UNKNOWN" in doc
 
 
+def test_renders_confluence_zones_when_present():
+    sig = {
+        **SIGNAL,
+        "confluence_zones": {
+            "zones": [
+                {"side": "resistance", "stance": "rejection", "zone_lo": 765.99, "zone_hi": 766.49,
+                 "conviction": 60, "conviction_band": "medium", "factor_count": 9,
+                 "contributing_factors": [{"name": "VWAP"}, {"name": "EMA9"}],
+                 "trigger": "1m close rejecting from and failing back below 765.99"},
+                {"side": "support", "stance": "bounce", "zone_lo": 764.17, "zone_hi": 765.0,
+                 "conviction": 28, "conviction_band": "low", "factor_count": 3,
+                 "contributing_factors": [{"name": "PUT_WALL"}, {"name": "PIN"}],
+                 "trigger": "1m close reclaiming and holding above 765.00"},
+            ]
+        },
+    }
+    doc = wv.build_walls_html(sig)
+    assert "confluence zones" in doc
+    assert "REJECTION" in doc and "BOUNCE" in doc
+    assert "PUT_WALL + PIN" in doc
+
+
+def test_no_zones_section_when_absent():
+    doc = wv.build_walls_html(SIGNAL)  # no confluence_zones key
+    assert 'class="zones"' not in doc
+
+
 def test_stale_note_when_no_timestamp():
     doc = wv.build_walls_html(SIGNAL)
     assert "markets closed" in doc

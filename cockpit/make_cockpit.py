@@ -11,6 +11,7 @@ from ace_snapshot import write_ace_snapshot
 from auction_regime import build_inherited_auction_context
 from balance import build_balance_stack
 from candle_coach import build_candle_coach
+from confluence_zones import build_confluence_zones
 from context_attachment import build_context_attachment
 from dealer_positioning import build_dealer_positioning_live
 from decision_receipts import (
@@ -631,6 +632,15 @@ def write_signal(
         "candle_coach": candle_coach or {},
         "source_freshness": source_freshness,
     }
+    try:
+        sig["confluence_zones"] = build_confluence_zones(sig)
+    except Exception as exc:  # noqa: BLE001 - never let the zone map break signal emission
+        sig["confluence_zones"] = {
+            "schema": "sharpedge.confluence_zones.v1",
+            "weighted_in_permission": False,
+            "zones": [],
+            "summary": {"reason": f"confluence zones unavailable: {exc}"},
+        }
     out = os.path.expanduser("~/SharpEdge-System/outputs")
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, "signal.json"), "w") as f:

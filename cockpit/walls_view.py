@@ -45,6 +45,35 @@ def _position_pct(spot: float | None, low: float | None, high: float | None) -> 
     return max(0.0, min(100.0, (spot - low) / (high - low) * 100.0))
 
 
+def _zones_html(signal: dict[str, Any]) -> str:
+    """Render the top confluence bounce/rejection zones, if present."""
+    zones = ((signal.get("confluence_zones") or {}).get("zones")) or []
+    if not zones:
+        return ""
+    bounce = next((z for z in zones if z.get("side") == "support"), None)
+    reject = next((z for z in zones if z.get("side") == "resistance"), None)
+    cards = []
+    for zone in (reject, bounce):
+        if not zone:
+            continue
+        factors = " + ".join(
+            html.escape(str(f.get("name", ""))) for f in zone.get("contributing_factors", [])
+        )
+        side_cls = "resist" if zone.get("side") == "resistance" else "support"
+        cards.append(
+            f'<div class="zone {side_cls}">'
+            f'<div class="zrow"><span class="zside">{html.escape(str(zone.get("stance", "")).upper())}</span>'
+            f'<span class="zpx">{_fmt(_num(zone.get("zone_lo")), "$")}–{_fmt(_num(zone.get("zone_hi")), "$")}</span>'
+            f'<span class="zconv {html.escape(str(zone.get("conviction_band", "")))}">{zone.get("conviction", "")}</span></div>'
+            f'<div class="zfac">{factors} · {zone.get("factor_count", 0)} stacked</div>'
+            f'<div class="ztrig">→ {html.escape(str(zone.get("trigger", "")))}</div>'
+            f"</div>"
+        )
+    if not cards:
+        return ""
+    return '<div class="zones"><div class="ztitle">confluence zones</div>' + "".join(cards) + "</div>"
+
+
 def build_walls_html(signal: dict[str, Any]) -> str:
     """Render the walls box HTML from a signal dict."""
     spot = _num(signal.get("spot"))
@@ -132,6 +161,17 @@ def build_walls_html(signal: dict[str, Any]) -> str:
            font-size:13px; color:#9aa3b2; }}
   .foot b {{ color:#e6e9ef; font-weight:700; }}
   .stale {{ margin-top:12px; font-size:12px; color:#c98b4b; }}
+  .zones {{ margin-top:16px; }}
+  .ztitle {{ font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:#8b93a7; margin-bottom:6px; }}
+  .zone {{ border:1px solid #22262f; border-left:3px solid #444; border-radius:10px; padding:10px 12px; margin-bottom:8px; }}
+  .zone.resist {{ border-left-color:#ff6b81; }} .zone.support {{ border-left-color:#4ade80; }}
+  .zrow {{ display:flex; align-items:center; gap:8px; }}
+  .zside {{ font-weight:700; font-size:12px; color:#9aa3b2; }}
+  .zpx {{ font-weight:800; font-variant-numeric:tabular-nums; }}
+  .zconv {{ margin-left:auto; font-weight:800; padding:2px 8px; border-radius:999px; font-size:12px; background:#22262f; }}
+  .zconv.high {{ background:#123024; color:#4ade80; }} .zconv.medium {{ background:#2a2410; color:#e8c37a; }}
+  .zfac {{ font-size:11px; color:#8b93a7; margin-top:4px; }}
+  .ztrig {{ font-size:12px; color:#c7cede; margin-top:4px; }}
 </style></head>
 <body><div class="card">
   <div class="top">
@@ -150,6 +190,7 @@ def build_walls_html(signal: dict[str, Any]) -> str:
     <span>pin <b>{_fmt(pin, "$")}</b></span>
     {f'<span>exp <b>{expiry}</b></span>' if expiry else ''}
   </div>
+  {_zones_html(signal)}
   <div class="stale">{html.escape(stale_note)}</div>
 </div></body></html>"""
 
