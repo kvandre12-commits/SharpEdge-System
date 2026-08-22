@@ -101,6 +101,21 @@ def test_fetch_latest_sec_filing_reports_failure_without_raising():
     assert "429" in result["error"]
 
 
+def test_fetch_sec_ticker_cik_map_zero_pads_and_uppercases():
+    payload = {
+        "0": {"cik_str": 320193, "ticker": "aapl", "title": "Apple Inc."},
+        "1": {"cik_str": 1045810, "ticker": "NVDA", "title": "NVIDIA Corp"},
+    }
+    with patch.object(cat, "request_json_with_backoff", return_value=payload):
+        mapping = cat.fetch_sec_ticker_cik_map()
+    assert mapping == {"AAPL": "0000320193", "NVDA": "0001045810"}
+
+
+def test_fetch_sec_ticker_cik_map_empty_on_failure():
+    with patch.object(cat, "request_json_with_backoff", side_effect=RuntimeError("boom")):
+        assert cat.fetch_sec_ticker_cik_map() == {}
+
+
 def test_diff_filing_newness_baseline_flags_nothing():
     current = {"HLIT": "acc-1", "EXTR": "acc-2"}
     assert cat.diff_filing_newness({}, current) == []

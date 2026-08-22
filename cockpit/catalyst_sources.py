@@ -27,6 +27,7 @@ from html.parser import HTMLParser
 from http_utils import request_json_with_backoff, request_text_with_backoff
 
 SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik}.json"
+SEC_TICKER_MAP_URL = "https://www.sec.gov/files/company_tickers.json"
 
 # data.sec.gov requires a descriptive User-Agent identifying the caller.
 DEFAULT_SEC_USER_AGENT_ENV = "SHARPEDGE_SEC_USER_AGENT"
@@ -221,6 +222,31 @@ def fetch_latest_sec_filing(
     }
 
 
+def fetch_sec_ticker_cik_map(
+    *,
+    user_agent: str | None = None,
+    timeout: int = 20,
+) -> dict[str, str]:
+    """Return an upper-ticker -> zero-padded-10-digit-CIK map from SEC EDGAR.
+
+    Robust CIK resolution so callers never hardcode (and mistype) a CIK.
+    Returns an empty dict on fetch failure rather than raising.
+    """
+    headers = {"User-Agent": _sec_user_agent(user_agent), "Accept": "application/json"}
+    try:
+        data = request_json_with_backoff(SEC_TICKER_MAP_URL, headers=headers, timeout=timeout)
+    except Exception:  # noqa: BLE001 - resolution failure degrades to empty map, never crashes
+        return {}
+    mapping: dict[str, str] = {}
+    rows = data.values() if isinstance(data, dict) else data
+    for row in rows:
+        ticker = str(row.get("ticker", "")).upper()
+        cik = row.get("cik_str")
+        if ticker and cik is not None:
+            mapping[ticker] = str(cik).zfill(10)
+    return mapping
+
+
 def diff_filing_newness(
     previous: dict[str, str],
     current: dict[str, str],
@@ -246,5 +272,6 @@ __all__ = [
     "diff_filing_newness",
     "fetch_issuer_earnings_date",
     "fetch_latest_sec_filing",
+    "fetch_sec_ticker_cik_map",
     "strip_html",
 ]
