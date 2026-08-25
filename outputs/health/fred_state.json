@@ -1,8 +1,8 @@
 {
   "after": {
     "earliest_date": "2000-01-03",
-    "latest_date": "2026-08-19",
-    "rows": 26964
+    "latest_date": "2026-08-24",
+    "rows": 26976
   },
   "before": {
     "earliest_date": "2000-01-03",
@@ -11,8 +11,8 @@
   },
   "force_refresh": false,
   "max_lag_days": 5,
-  "network_refresh": false,
-  "output_rows": 26964,
+  "network_refresh": true,
+  "output_rows": 26976,
   "symbol": "WMT",
-  "upserted_rows": 0
+  "upserted_rows": 26976
 }
