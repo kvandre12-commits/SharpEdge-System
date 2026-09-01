@@ -1,18 +1,18 @@
 {
   "after": {
     "earliest_session_date": "2026-05-27",
-    "latest_session_date": "2026-08-28",
-    "latest_snapshot_ts": "2026-08-29T03:50:04+00:00",
-    "rows": 66
+    "latest_session_date": "2026-08-31",
+    "latest_snapshot_ts": "2026-09-01T01:23:00+00:00",
+    "rows": 67
   },
   "bars_table": "wmt_bars_15m",
   "before": {
     "earliest_session_date": "2026-05-27",
-    "latest_session_date": "2026-08-27",
-    "latest_snapshot_ts": "2026-08-28T06:16:20+00:00",
-    "rows": 65
+    "latest_session_date": "2026-08-28",
+    "latest_snapshot_ts": "2026-08-29T03:50:04+00:00",
+    "rows": 66
   },
-  "input_sessions": 66,
+  "input_sessions": 67,
   "symbol": "WMT",
-  "upserted_rows": 66
+  "upserted_rows": 67
 }

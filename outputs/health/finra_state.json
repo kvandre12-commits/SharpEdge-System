@@ -1,8 +1,8 @@
 {
   "after": {
-    "latest_ingest_ts": "2026-08-24T22:55:57.683321",
-    "latest_week_start": "2026-08-03",
-    "rows": 136
+    "latest_ingest_ts": "2026-09-01T01:23:01.134858",
+    "latest_week_start": "2026-08-10",
+    "rows": 137
   },
   "before": {
     "latest_ingest_ts": "2026-08-24T22:55:57.683321",
@@ -11,11 +11,21 @@
   },
   "cache_ttl_hours": 144.0,
   "failures": 0,
-  "fetched_week_count": 0,
+  "fetched_week_count": 6,
   "force_refresh": false,
-  "network_refresh": false,
-  "overlay_rows": 566,
-  "requested_week_count": 0,
-  "requested_weeks": [],
+  "network_refresh": true,
+  "overlay_rows": 567,
+  "requested_week_count": 9,
+  "requested_weeks": [
+    "2026-07-06",
+    "2026-07-13",
+    "2026-07-20",
+    "2026-07-27",
+    "2026-08-03",
+    "2026-08-10",
+    "2026-08-17",
+    "2026-08-24",
+    "2026-08-31"
+  ],
   "symbol": "WMT"
 }
