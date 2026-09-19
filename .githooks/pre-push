@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+# Local mirror of CI -- runs the SAME gate before any push leaves your machine,
+# so main breakage is caught at the cheapest possible place.
+#
+# Activate once per clone (not automatic, by design):
+#     git config core.hooksPath .githooks
+#
+# Emergency bypass (use only when you truly mean it, and feel the shame):
+#     git push --no-verify
+exec sh scripts/ci_gate.sh
