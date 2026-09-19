@@ -193,8 +193,15 @@ def weeks_to_fetch(state: dict[str, Any], today: dt.date | None = None, force: b
     start = dt.date.fromisoformat(START)
     end = monday_of_week(today or dt.date.today())
     latest_week = parse_date(state.get("latest_week_start"))
+    freshness_now = (
+        dt.datetime.combine(today, dt.time(12, 0, 0))
+        if today is not None
+        else utc_now()
+    )
 
-    if latest_week and not force and cache_is_fresh(state.get("latest_ingest_ts")):
+    if latest_week and not force and cache_is_fresh(
+        state.get("latest_ingest_ts"), now=freshness_now
+    ):
         return []
 
     if latest_week and not force:
