@@ -1,9 +1,11 @@
 import json
+import os
 import urllib.request
 import urllib.error
 import textwrap
 
 MAX = 1900  # keep buffer under 2000
+WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 
 def _post(content: str):
     payload = json.dumps({"content": content}).encode("utf-8")
