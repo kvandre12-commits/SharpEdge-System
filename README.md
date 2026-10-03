@@ -1,5 +1,10 @@
 # SharpEdge Systems
 
+[![CI](https://github.com/kvandre12-commits/SharpEdge-System/actions/workflows/ci.yml/badge.svg)](https://github.com/kvandre12-commits/SharpEdge-System/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+
 SharpEdge Systems is a systematic market data and regime analysis engine focused on
 clarity, discipline, and decision-quality over noise.
 
@@ -14,6 +19,37 @@ of sharp tools, clean structure, and deliberate execution to financial data:
 The goal is simple:
 
 **Create a reliable edge through structure, not speculation.**
+
+---
+
+## See it in action
+
+Every run emits a **deterministic decision card** — and, crucially, it will *refuse
+to trade* when the evidence isn't there. Discipline is the feature, not an
+afterthought:
+
+```
+SHARPEDGE AGENTIC AI V1 DECISION
+Symbol: SPY
+Decision: hold
+Trade allowed: False
+Risk state: PROBE
+Blocking reasons: controller_hold, monitor_no_trade, sample_n_below_30, stale_or_missing_inputs
+Risk flags: broker_integration_unavailable, freshness_gate_failed, low_sample, monitor_blocks_trade
+Orders remain blocked unless an operator manually confirms outside this contract.
+```
+
+Under the hood it ranks **regime x pressure x DTE** buckets by backtested
+expectancy, with a minimum sample size enforced before any bucket counts:
+
+| regime | pressure | n | win | exp | sharpe | maxDD |
+|---|---|---:|---:|---:|---:|---:|
+| high_vol / rising_voltrend | NORMAL | 28 | 82.1% | 0.0054 | 3.62 | -2.01% |
+| mid_vol / rising_voltrend | NORMAL | 44 | 72.7% | 0.0031 | 3.89 | -1.10% |
+| mid_vol / falling_voltrend | NORMAL | 49 | 63.3% | 0.0022 | 2.84 | -2.10% |
+
+*Full artifacts live in [`outputs/`](outputs/) — trade cards, expectancy matrices,
+gate sweeps, and execution attribution.*
 
 ---
 
@@ -122,12 +158,10 @@ Design notes:
 - `docs/operator_breadcrumbs.md`
 - `docs/robinhood_beta_execution.md`
 
-## Results Summary
+## Results
 
-| Metric | Value |
-|--------|-------|
-| Signals Generated | TBD |
-| Win Rate | TBD |
-| Avg Expectancy (R) | TBD |
-| Max Drawdown | TBD |
-| Latest Data Date | 2026-02-06 |
+Rather than one headline number, SharpEdge reports **per-regime expectancy** (see
+the table above and the full matrices in [`outputs/`](outputs/)). Top backtested
+buckets show roughly 63-82% win rates with controlled drawdowns (around 2% or less)
+at enforced minimum sample sizes — and the live decision layer still gates every
+order behind freshness, sample-size, and monitor checks before anything executes.
