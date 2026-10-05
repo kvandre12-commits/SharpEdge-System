@@ -8,6 +8,8 @@ on:
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     timeout-minutes: 45
 
     strategy:
