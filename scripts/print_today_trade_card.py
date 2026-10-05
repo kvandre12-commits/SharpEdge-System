@@ -183,6 +183,40 @@ def load_fallback_card(conn: sqlite3.Connection, symbol: str, session_date: str)
 
     return card
 
+def load_context(conn: sqlite3.Connection, symbol: str, session_date: str):
+    """Market context for the card: event overlays + news tone (2.0 context layer).
+
+    Returns {"events": [(overlay_type, strength, notes)], "news_tone": float|None}.
+    Empty/None-safe: missing tables or rows yield empty context, never an error.
+    """
+    ctx = {"events": [], "news_tone": None}
+    try:
+        if not table_exists(conn, "overlays_daily"):
+            return ctx
+        cols = pd.read_sql_query("PRAGMA table_info(overlays_daily);", conn)["name"].tolist()
+        if not {"date", "symbol", "overlay_type", "overlay_strength"}.issubset(cols):
+            return ctx
+        has_notes = "notes" in cols
+        note_col = ", notes" if has_notes else ", NULL AS notes"
+        rows = conn.execute(
+            f"""
+            SELECT overlay_type, overlay_strength{note_col}
+            FROM overlays_daily
+            WHERE symbol = ? AND date = ?
+              AND (overlay_type LIKE 'event\\_%' ESCAPE '\\' OR overlay_type = 'news_tone')
+            ORDER BY overlay_type
+            """,
+            (symbol, session_date),
+        ).fetchall()
+        for otype, strength, notes in rows:
+            if otype == "news_tone":
+                ctx["news_tone"] = strength
+            else:
+                ctx["events"].append((otype, strength, notes))
+    except Exception:
+        pass
+    return ctx
+
 def fmt_pct(x, digits=2):
     try:
         if x is None or (isinstance(x, float) and pd.isna(x)):
@@ -274,6 +308,19 @@ def print_card(card: dict):
     print(f"  Compression     : {comp if comp is not None else '—'} (1=yes)")
     print(f"  Cluster Score   : {fmt_num(cluster, 3)}")
     print("")
+    print("Market Context")
+    ctx = card.get("context") or {}
+    events = ctx.get("events") or []
+    news_tone = ctx.get("news_tone", None)
+    if news_tone is None and not events:
+        print("  — (no context overlays for this date)")
+    else:
+        if news_tone is not None:
+            print(f"  News Tone       : {news_tone:+.2f} (-1 bearish … +1 bullish)")
+        for otype, strength, notes in events:
+            label = otype.replace("event_", "").replace("_", " ").title()
+            print(f"  Event [{label}] : {notes or '—'} (strength {fmt_num(strength, 2)})")
+    print("")
     print("Plan (3 bullets)")
     for a in actions:
         print(f"  - {a}")
@@ -291,6 +338,8 @@ def main():
         card = load_trade_card_from_execution_state(conn, SYMBOL, session_date)
         if card is None:
             card = load_fallback_card(conn, SYMBOL, session_date)
+
+        card["context"] = load_context(conn, SYMBOL, session_date)
 
         print_card(card)
 

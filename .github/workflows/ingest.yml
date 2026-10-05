@@ -102,6 +102,19 @@ jobs:
         run: |
           python scripts/ingest_fred_overlays.py || echo "WARN: FRED overlay degraded" >> outputs/health/warnings.log
 
+      - name: Seed historical event library (2.0 context)
+        run: |
+          python scripts/seed_event_library.py
+
+      - name: Ingest current events (2.0 context)
+        continue-on-error: true
+        run: |
+          python scripts/ingest_current_events.py || echo "WARN: current-events ingest degraded" >> outputs/health/warnings.log
+
+      - name: Build context overlays (2.0 context)
+        run: |
+          python scripts/build_context_overlays.py
+
       - name: Build regime (daily)
         run: |
           python scripts/build_regime_spy_daily.py
