@@ -8,6 +8,8 @@ on:
 jobs:
   ingest_wmt:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     env:
       SPY_DB_PATH: data/spy_truth.db
