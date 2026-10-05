@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="460" viewBox="0 0 1080 460" font-family="Inter,system-ui,sans-serif">
+<rect width="1080" height="460" fill="#0d1117"/>
+<line x1="46" y1="426.0" x2="994" y2="426.0" stroke="#1f2630" stroke-width="1"/>
+<text x="38" y="430.0" fill="#8b949e" font-size="11" text-anchor="end">$769.39</text>
+<line x1="46" y1="324.0" x2="994" y2="324.0" stroke="#1f2630" stroke-width="1"/>
+<text x="38" y="328.0" fill="#8b949e" font-size="11" text-anchor="end">$770.27</text>
+<line x1="46" y1="222.0" x2="994" y2="222.0" stroke="#1f2630" stroke-width="1"/>
+<text x="38" y="226.0" fill="#8b949e" font-size="11" text-anchor="end">$771.15</text>
+<line x1="46" y1="120.0" x2="994" y2="120.0" stroke="#1f2630" stroke-width="1"/>
+<text x="38" y="124.0" fill="#8b949e" font-size="11" text-anchor="end">$772.03</text>
+<line x1="46" y1="18.0" x2="994" y2="18.0" stroke="#1f2630" stroke-width="1"/>
+<text x="38" y="22.0" fill="#8b949e" font-size="11" text-anchor="end">$772.91</text>
+<rect x="46" y="92.4" width="948.0" height="16.2" fill="#3fb950" opacity="0.08"/>
+<line x1="46" y1="92.4" x2="994" y2="92.4" stroke="#3fb950" stroke-width="1" opacity="0.85"/>
+<line x1="46" y1="108.6" x2="994" y2="108.6" stroke="#3fb950" stroke-width="1" opacity="0.85"/>
+<text x="986" y="86.4" fill="#3fb950" font-size="11" font-weight="bold" text-anchor="end">BULLISH FVG 772.13-772.27</text>
+<line x1="46" y1="258.5" x2="994" y2="258.5" stroke="#ffd33d" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="1000" y="262.5" fill="#ffd33d" font-size="12" font-weight="bold">VWAP 770.83</text>
+<line x1="46" y1="123.7" x2="994" y2="123.7" stroke="#39c5cf" stroke-width="1.5" stroke-dasharray="8 4" opacity="0.95"/>
+<text x="1000" y="127.7" fill="#39c5cf" font-size="12" font-weight="bold">EXIT MAGNET 772.00</text>
+<line x1="46" y1="258.5" x2="994" y2="258.5" stroke="#39c5cf" stroke-width="1.5" stroke-dasharray="10 4" opacity="0.95"/>
+<text x="1000" y="262.5" fill="#39c5cf" font-size="12" font-weight="bold">STRATEGIC VWAP 770.83</text>
+<polyline points="46.0,344.6 65.3,264.2 84.7,271.8 104.0,256.7 123.4,262.5 142.7,245.1 162.1,279.3 181.4,298.4 200.8,286.8 220.1,286.8 239.5,285.6 258.8,256.7 278.2,268.3 297.5,290.3 316.9,281.0 336.2,278.7 355.6,306.5 374.9,285.6 394.2,283.3 413.6,284.5 432.9,282.2 452.3,272.9 471.6,285.6 491.0,307.6 510.3,308.8 529.7,276.4 549.0,281.6 568.4,284.5 587.7,312.2 607.1,279.8 626.4,337.7 645.8,277.8 665.1,256.7 684.4,238.2 703.8,248.6 723.1,204.6 742.5,202.3 761.8,196.5 781.2,166.5 800.5,147.3 819.9,171.1 839.2,140.3 858.6,130.6 877.9,109.8 897.3,131.2 916.6,88.9 936.0,64.6 955.3,69.3 974.7,80.8 994.0,75.1" fill="none" stroke="#3fb950" stroke-width="2.8"/>
+<circle cx="994.0" cy="75.1" r="4.6" fill="#58a6ff"/>
+<text x="1000" y="67.1" fill="#58a6ff" font-size="13" font-weight="bold">SPOT 772.42</text>
+<text x="46" y="450" fill="#8b949e" font-size="11">price + channels + trigger zone + fail level + exits + FVG zones</text>
+</svg>
