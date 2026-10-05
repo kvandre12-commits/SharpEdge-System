@@ -217,6 +217,54 @@ def load_context(conn: sqlite3.Connection, symbol: str, session_date: str):
         pass
     return ctx
 
+def load_options_flow(conn: sqlite3.Connection, symbol: str, session_date: str):
+    """Top options flow events for the session (2.0 snapshots layer).
+
+    Returns {"events": [(expiry, strike, side, d_oi, flow_rank)], "net_call": int|None,
+             "net_put": int|None} for the latest snapshot of the session.
+    Empty-safe: missing tables or rows yield empty events, never an error.
+    """
+    out = {"events": [], "net_call": None, "net_put": None}
+    try:
+        if not table_exists(conn, "options_flow_events"):
+            return out
+        ts = conn.execute(
+            """
+            SELECT MAX(snapshot_ts) FROM options_flow_events
+            WHERE underlying = ? AND session_date = ?
+            """,
+            (symbol, session_date),
+        ).fetchone()[0]
+        if not ts:
+            return out
+        rows = conn.execute(
+            """
+            SELECT expiry_date, strike, side, d_oi, flow_rank
+            FROM options_flow_events
+            WHERE underlying = ? AND snapshot_ts = ?
+            ORDER BY flow_rank, side
+            LIMIT 6
+            """,
+            (symbol, ts),
+        ).fetchall()
+        out["events"] = rows
+        sums = conn.execute(
+            """
+            SELECT side, SUM(d_oi) FROM options_flow_events
+            WHERE underlying = ? AND snapshot_ts = ?
+            GROUP BY side
+            """,
+            (symbol, ts),
+        ).fetchall()
+        for side, total in sums:
+            if side == "call":
+                out["net_call"] = total
+            elif side == "put":
+                out["net_put"] = total
+    except Exception:
+        pass
+    return out
+
 def fmt_pct(x, digits=2):
     try:
         if x is None or (isinstance(x, float) and pd.isna(x)):
@@ -321,6 +369,19 @@ def print_card(card: dict):
             label = otype.replace("event_", "").replace("_", " ").title()
             print(f"  Event [{label}] : {notes or '—'} (strength {fmt_num(strength, 2)})")
     print("")
+    print("Options Flow")
+    flow = card.get("options_flow") or {}
+    fevents = flow.get("events") or []
+    if not fevents:
+        print("  — (no flow events for this date)")
+    else:
+        nc, np_ = flow.get("net_call"), flow.get("net_put")
+        if nc is not None or np_ is not None:
+            print(f"  Net ΔOI         : calls {nc if nc is not None else '—':+d} / "
+                  f"puts {np_ if np_ is not None else '—':+d}")
+        for expiry, strike, side, d_oi, rank in fevents[:6]:
+            print(f"  #{rank} {expiry} {strike:g} {side:<4}: ΔOI {d_oi:+d}")
+    print("")
     print("Plan (3 bullets)")
     for a in actions:
         print(f"  - {a}")
@@ -340,6 +401,7 @@ def main():
             card = load_fallback_card(conn, SYMBOL, session_date)
 
         card["context"] = load_context(conn, SYMBOL, session_date)
+        card["options_flow"] = load_options_flow(conn, SYMBOL, session_date)
 
         print_card(card)
 
