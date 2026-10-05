@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="refresh" content="2">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <title>SharpEdge SPY Scalp Dashboard</title>
+  <style>
+:root { color-scheme: dark; --bg:#080b10; --card:#111823; --muted:#8ea0b5; --text:#ecf4ff; --ok:#36d399; --warn:#fbbf24; --bad:#fb7185; --line:#263244; }
+* { box-sizing: border-box; }
+body { margin:0; font-family: Inter, system-ui, -apple-system, sans-serif; background: radial-gradient(circle at top, #152033, var(--bg)); color:var(--text); }
+header { display:flex; justify-content:space-between; gap:18px; align-items:center; padding:24px; border-bottom:1px solid var(--line); }
+h1 { margin:0; font-size: clamp(2rem, 7vw, 4.5rem); letter-spacing:-0.06em; }
+p { color:var(--muted); margin:8px 0; line-height:1.45; }
+.eyebrow { text-transform:uppercase; letter-spacing:0.16em; color:#7dd3fc; font-weight:800; font-size:0.75rem; }
+.status { padding:16px 18px; border-radius:18px; font-weight:900; text-align:center; min-width:150px; box-shadow:0 10px 30px #0006; }
+.status.armed { background:color-mix(in srgb, var(--ok) 24%, #0b1118); color:var(--ok); }
+.status.danger { background:color-mix(in srgb, var(--bad) 24%, #0b1118); color:var(--bad); }
+.status.caution { background:color-mix(in srgb, var(--warn) 24%, #0b1118); color:var(--warn); }
+.status.wait { background:#172033; color:#cbd5e1; }
+main { padding:24px; max-width:1180px; margin:auto; }
+.hero { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-bottom:16px; }
+.hero div, .card { background:linear-gradient(180deg,#121a27,#0d131d); border:1px solid var(--line); border-radius:20px; padding:18px; box-shadow:0 14px 40px #0005; }
+.hero span { display:block; color:var(--muted); text-transform:uppercase; font-size:0.72rem; letter-spacing:0.14em; }
+.hero strong { display:block; margin-top:4px; font-size:1.8rem; }
+.grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.card.wide { grid-column:1/-1; }
+.card h2 { margin:0 0 12px; }
+.checks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.check { padding:12px; border-radius:14px; border:1px solid var(--line); background:#0a1019; }
+.check.ok { border-color:#23684d; }
+.check.wait { border-color:#66562a; }
+.check b, .check span { display:block; }
+.check span { color:var(--muted); margin-top:4px; }
+.chart-note { margin-top:-4px; margin-bottom:14px; }
+img { width:100%; border-radius:14px; background:#07101a; }
+details { margin-top:16px; color:var(--muted); }
+pre { overflow:auto; background:#05070b; border:1px solid var(--line); border-radius:14px; padding:14px; }
+@media (max-width: 760px) { header { flex-direction:column; align-items:stretch; } .hero, .grid, .checks { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <p class="eyebrow">SharpEdge one-thing dashboard</p>
+      <h1>SPY Options Scalp</h1>
+      <p>Trend-following OR15 checklist for 0DTE/1DTE ATM/ITM contracts. Decision support only, chief.</p>
+    </div>
+    <div class="status danger">DO NOT CHASE</div>
+  </header>
+  <main>
+    <section class="hero">
+      <div><span>SPY</span><strong>$772.68</strong></div>
+      <div><span>Bias</span><strong>CALLS</strong></div>
+      <div><span>Score</span><strong>77/100</strong></div>
+      <div><span>Window</span><strong>opening drive</strong></div>
+    </section>
+    <section class="grid">
+      <article class="card wide">
+        <h2>If-Then Checklist</h2>
+        <div class="checks"><div class="check ok"><b>OK 5m trend aligned</b><span>5m EMA9&gt;EMA20, price above VWAP, slope up</span></div><div class="check ok"><b>OK OR15 break confirmed</b><span>5m closed above ORH $770.98 and 1m holds EMA stack</span></div><div class="check wait"><b>WAIT Not chasing RSI/VWAP</b><span>call side is stretched; wait for pullback/hold</span></div><div class="check ok"><b>OK Volume supports scalp</b><span>participation is tradable but not screaming</span></div><div class="check ok"><b>OK Tradable time window</b><span>opening drive</span></div><div class="check ok"><b>OK Contract/spread sane</b><span>ATM/slightly ITM, 0.45-0.55 delta, high OI, limit order only</span></div></div>
+      </article>
+      <article class="card">
+        <h2>Opening Range</h2>
+        <p>OR15 high: <b>$770.98</b></p>
+        <p>OR15 low: <b>$769.63</b></p>
+        <p>5m closed above ORH $770.98 and 1m holds EMA stack</p>
+      </article>
+      <article class="card">
+        <h2>Indicators</h2>
+        <p>VWAP <b>$770.83</b> (+0.239%)</p>
+        <p>1m EMA 9/20: <b>772.19</b> / <b>771.77</b></p>
+        <p>5m EMA 9/20: <b>771.38</b> / <b>771.08</b></p>
+        <p>RSI 1m/5m: <b>75.7</b> / <b>None</b></p>
+      </article>
+      <article class="card">
+        <h2>Contract</h2>
+        <p>Target: <b>CALL</b></p>
+        <p>Expiry: <b>2026-10-05</b></p>
+        <p>ATM strike: <b>773.0</b> | delta <b>0.251</b></p>
+        <p>Spread: <b>0.0247</b> | limit order only</p>
+      </article>
+      <article class="card">
+        <h2>Risk Box</h2>
+        <p>0.5%-1.0% account equity max</p>
+        <p>+15% to +30% option premium</p>
+        <p>-10% to -15% option premium hard stop</p>
+        <p>exit if sideways for 15 minutes</p>
+      </article>
+      <article class="card wide">
+        <h2>Entry Map</h2>
+        <p class="chart-note">Candles with OR15, VWAP, EMA9/EMA20, 20-bar channel, 8-bar trigger channel, and the exact level the scalp needs to hold.</p>
+        <img src="spy_scalp_chart.svg" alt="SPY scalp entry map">
+      </article>
+    </section>
+    <details>
+      <summary>Raw scalp packet</summary>
+      <pre>{
+  &quot;schema&quot;: &quot;sharpedge.spy_scalp_dashboard.v1&quot;,
+  &quot;symbol&quot;: &quot;SPY&quot;,
+  &quot;stamp&quot;: &quot;10:20:56&quot;,
+  &quot;spot&quot;: 772.68,
+  &quot;latest_minute&quot;: 49,
+  &quot;bias&quot;: &quot;CALLS&quot;,
+  &quot;score&quot;: 77,
+  &quot;status&quot;: &quot;DO NOT CHASE&quot;,
+  &quot;opening_range&quot;: {
+    &quot;available&quot;: true,
+    &quot;minutes&quot;: 15,
+    &quot;high&quot;: 770.98,
+    &quot;low&quot;: 769.63,
+    &quot;volume&quot;: 3040836
+  },
+  &quot;trend&quot;: {
+    &quot;bias&quot;: &quot;CALLS&quot;,
+    &quot;state&quot;: &quot;uptrend&quot;,
+    &quot;reason&quot;: &quot;5m EMA9&gt;EMA20, price above VWAP, slope up&quot;
+  },
+  &quot;trigger&quot;: {
+    &quot;bias&quot;: &quot;CALLS&quot;,
+    &quot;state&quot;: &quot;armed&quot;,
+    &quot;reason&quot;: &quot;5m closed above ORH $770.98 and 1m holds EMA stack&quot;
+  },
+  &quot;risk&quot;: {
+    &quot;position_size&quot;: &quot;0.5%-1.0% account equity max&quot;,
+    &quot;profit_target&quot;: &quot;+15% to +30% option premium&quot;,
+    &quot;stop_loss&quot;: &quot;-10% to -15% option premium hard stop&quot;,
+    &quot;time_stop&quot;: &quot;exit if sideways for 15 minutes&quot;,
+    &quot;daily_drawdown&quot;: &quot;stop trading at -3% to -5% day drawdown&quot;,
+    &quot;order_type&quot;: &quot;limit orders only; no market orders, no chase fills&quot;
+  },
+  &quot;contract&quot;: {
+    &quot;side&quot;: &quot;call&quot;,
+    &quot;expiry&quot;: &quot;2026-10-05&quot;,
+    &quot;strike&quot;: 773.0,
+    &quot;delta&quot;: 0.251,
+    &quot;delta_ok&quot;: false,
+    &quot;spread_pct&quot;: 0.0247,
+    &quot;spread_ok&quot;: true,
+    &quot;rule&quot;: &quot;ATM/slightly ITM, 0.45-0.55 delta, high OI, limit order only&quot;
+  },
+  &quot;time_window&quot;: {
+    &quot;state&quot;: &quot;prime&quot;,
+    &quot;label&quot;: &quot;opening drive&quot;,
+    &quot;score&quot;: 2
+  },
+  &quot;volume&quot;: {
+    &quot;state&quot;: &quot;normal&quot;,
+    &quot;multiple&quot;: 0.97,
+    &quot;reason&quot;: &quot;participation is tradable but not screaming&quot;
+  },
+  &quot;indicators&quot;: {
+    &quot;ema9_1m&quot;: 772.19,
+    &quot;ema20_1m&quot;: 771.77,
+    &quot;ema9_5m&quot;: 771.38,
+    &quot;ema20_5m&quot;: 771.08,
+    &quot;rsi_1m&quot;: 75.7,
+    &quot;rsi_5m&quot;: null,
+    &quot;vwap&quot;: 770.83,
+    &quot;vs_vwap_pct&quot;: 0.239
+  },
+  &quot;overextension&quot;: {
+    &quot;state&quot;: &quot;chasing&quot;,
+    &quot;ok&quot;: false,
+    &quot;reason&quot;: &quot;call side is stretched; wait for pullback/hold&quot;
+  },
+  &quot;checklist&quot;: [
+    {
+      &quot;label&quot;: &quot;5m trend aligned&quot;,
+      &quot;ok&quot;: true,
+      &quot;detail&quot;: &quot;5m EMA9&gt;EMA20, price above VWAP, slope up&quot;
+    },
+    {
+      &quot;label&quot;: &quot;OR15 break confirmed&quot;,
+      &quot;ok&quot;: true,
+      &quot;detail&quot;: &quot;5m closed above ORH $770.98 and 1m holds EMA stack&quot;
+    },
+    {
+      &quot;label&quot;: &quot;Not chasing RSI/VWAP&quot;,
+      &quot;ok&quot;: false,
+      &quot;detail&quot;: &quot;call side is stretched; wait for pullback/hold&quot;
+    },
+    {
+      &quot;label&quot;: &quot;Volume supports scalp&quot;,
+      &quot;ok&quot;: true,
+      &quot;detail&quot;: &quot;participation is tradable but not screaming&quot;
+    },
+    {
+      &quot;label&quot;: &quot;Tradable time window&quot;,
+      &quot;ok&quot;: true,
+      &quot;detail&quot;: &quot;opening drive&quot;
+    },
+    {
+      &quot;label&quot;: &quot;Contract/spread sane&quot;,
+      &quot;ok&quot;: true,
+      &quot;detail&quot;: &quot;ATM/slightly ITM, 0.45-0.55 delta, high OI, limit order only&quot;
+    }
+  ]
+}</pre>
+    </details>
+  </main>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="340" viewBox="0 0 1000 340" font-family="monospace">
+<rect width="1000" height="340" fill="#0d1117"/>
+<text x="48" y="22" fill="#e6edf3" font-size="15" font-weight="bold">SPY 6-month structure</text>
+<text x="914" y="22" fill="#7d8590" font-size="11" text-anchor="end">current month = bright blue • older months fade</text>
+<rect x="897.8" y="34" width="16.2" height="274.0" fill="#58a6ff" opacity="0.05" rx="6"/>
+<text x="905.8" y="48.0" fill="#58a6ff" font-size="10" font-weight="bold">THIS MONTH</text>
+<line x1="48" y1="308.0" x2="914" y2="308.0" stroke="#21262d" stroke-width="1"/>
+<text x="42" y="312.0" fill="#7d8590" font-size="10" text-anchor="end">$758.34</text>
+<line x1="48" y1="239.5" x2="914" y2="239.5" stroke="#21262d" stroke-width="1"/>
+<text x="42" y="243.5" fill="#7d8590" font-size="10" text-anchor="end">$763.61</text>
+<line x1="48" y1="171.0" x2="914" y2="171.0" stroke="#21262d" stroke-width="1"/>
+<text x="42" y="175.0" fill="#7d8590" font-size="10" text-anchor="end">$768.88</text>
+<line x1="48" y1="102.5" x2="914" y2="102.5" stroke="#21262d" stroke-width="1"/>
+<text x="42" y="106.5" fill="#7d8590" font-size="10" text-anchor="end">$774.16</text>
+<line x1="48" y1="34.0" x2="914" y2="34.0" stroke="#21262d" stroke-width="1"/>
+<text x="42" y="38.0" fill="#7d8590" font-size="10" text-anchor="end">$779.43</text>
+<line x1="48.0" y1="34" x2="48.0" y2="308" stroke="#161b22" stroke-width="1"/>
+<text x="124.9" y="330" fill="#7d8590" font-size="10" text-anchor="middle">May</text>
+<polyline points="48.0,797.9 56.1,832.3 64.2,757.4 72.3,626.6 80.4,655.9 88.5,577.4 96.6,555.5 104.7,570.1 112.7,516.4 120.8,440.2 128.9,557.2 137.0,564.0 145.1,627.9 153.2,530.2 161.3,511.1 169.4,473.1 177.5,408.8 185.6,410.5 193.7,356.7 201.8,332.2" fill="none" stroke="rgb(43,78,126)" stroke-width="1.15" opacity="0.16"/>
+<line x1="209.9" y1="34" x2="209.9" y2="308" stroke="#161b22" stroke-width="1"/>
+<text x="290.8" y="330" fill="#7d8590" font-size="10" text-anchor="middle">Jun</text>
+<polyline points="209.9,305.5 218.0,292.1 226.1,361.4 234.1,324.3 242.2,578.3 250.3,556.6 258.4,584.8 266.5,735.8 274.6,575.6 282.7,523.7 290.8,353.7 298.9,412.2 307.0,534.0 315.1,458.8 323.2,489.4 331.3,629.9 339.4,634.3 347.5,620.5 355.6,689.5 363.6,533.4 371.7,458.4" fill="none" stroke="rgb(48,88,136)" stroke-width="1.15" opacity="0.20"/>
+<line x1="379.8" y1="34" x2="379.8" y2="308" stroke="#161b22" stroke-width="1"/>
+<text x="464.8" y="330" fill="#7d8590" font-size="10" text-anchor="middle">Jul</text>
+<polyline points="379.8,471.6 387.9,484.3 396.0,399.8 404.1,446.2 412.2,476.3 420.3,394.2 428.4,352.1 436.5,427.3 444.6,392.7 452.7,353.9 460.8,407.1 468.9,503.7 477.0,519.3 485.0,438.8 493.1,450.1 501.2,570.1 509.3,560.3 517.4,558.3 525.5,535.3 533.6,683.4 541.7,524.5 549.8,455.1" fill="none" stroke="rgb(53,98,146)" stroke-width="1.15" opacity="0.23"/>
+<line x1="557.9" y1="34" x2="557.9" y2="308" stroke="#161b22" stroke-width="1"/>
+<text x="638.8" y="330" fill="#7d8590" font-size="10" text-anchor="middle">Aug</text>
+<polyline points="557.9,316.8 566.0,139.2 574.1,159.2 582.2,175.2 590.3,114.1 598.4,117.1 606.4,149.2 614.5,124.1 622.6,54.1 630.7,74.1 638.8,121.8 646.9,189.7 655.0,168.7 663.1,252.7 671.2,212.1 679.3,241.4 687.4,209.7 695.5,207.5 703.6,142.2 711.7,165.0 719.8,194.9" fill="none" stroke="rgb(58,108,156)" stroke-width="1.15" opacity="0.27"/>
+<line x1="727.9" y1="34" x2="727.9" y2="308" stroke="#161b22" stroke-width="1"/>
+<text x="808.8" y="330" fill="#7d8590" font-size="10" text-anchor="middle">Sep</text>
+<polyline points="727.9,263.3 735.9,219.4 744.0,115.3 752.1,154.0 760.2,209.0 768.3,255.3 776.4,314.7 784.5,230.7 792.6,275.0 800.7,320.4 808.8,363.8 816.9,252.7 825.0,264.5 833.1,111.0 841.2,112.6 849.3,185.0 857.3,193.2 865.4,139.0 873.5,213.6 881.6,231.9 889.7,252.3" fill="none" stroke="#8bb8ff" stroke-width="1.9" opacity="0.72"/>
+<line x1="897.8" y1="34" x2="897.8" y2="308" stroke="#161b22" stroke-width="1"/>
+<text x="905.9" y="330" fill="#7d8590" font-size="10" text-anchor="middle">Oct</text>
+<polyline points="897.8,234.6 905.9,161.2 914.0,120.8" fill="none" stroke="#58a6ff" stroke-width="5.2" opacity="0.14"/>
+<polyline points="897.8,234.6 905.9,161.2 914.0,120.8" fill="none" stroke="#58a6ff" stroke-width="2.6" opacity="1.00"/>
+<line x1="48" y1="229.8" x2="914" y2="229.8" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="1 0" opacity="0.95"/>
+<text x="920" y="233.8" fill="#58a6ff" font-size="10" font-weight="bold">MOPEN 764.36</text>
+<line x1="48" y1="89.7" x2="914" y2="89.7" stroke="#f85149" stroke-width="1.5" stroke-dasharray="7 4" opacity="0.95"/>
+<text x="920" y="93.7" fill="#f85149" font-size="10" font-weight="bold">PMH 775.14</text>
+<line x1="48" y1="252.3" x2="914" y2="252.3" stroke="#bc8cff" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.95"/>
+<text x="920" y="256.3" fill="#bc8cff" font-size="10" font-weight="bold">PMC 762.63</text>
+<circle cx="914.0" cy="120.8" r="3.5" fill="#ffd33d"/>
+<text x="922.0" y="124.8" fill="#ffd33d" font-size="11" font-weight="bold">NOW $772.74</text>
+</svg>

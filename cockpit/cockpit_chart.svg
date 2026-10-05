@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="576" viewBox="0 0 1000 576" font-family="monospace">
+<rect width="1000" height="576" fill="#0d1117"/>
+<line x1="42" y1="386.0" x2="936" y2="386.0" stroke="#1f2630" stroke-width="1"/>
+<text x="36" y="390.0" fill="#7d8590" font-size="11" text-anchor="end">$766.71</text>
+<line x1="42" y1="294.0" x2="936" y2="294.0" stroke="#1f2630" stroke-width="1"/>
+<text x="36" y="298.0" fill="#7d8590" font-size="11" text-anchor="end">$768.31</text>
+<line x1="42" y1="202.0" x2="936" y2="202.0" stroke="#1f2630" stroke-width="1"/>
+<text x="36" y="206.0" fill="#7d8590" font-size="11" text-anchor="end">$769.92</text>
+<line x1="42" y1="110.0" x2="936" y2="110.0" stroke="#1f2630" stroke-width="1"/>
+<text x="36" y="114.0" fill="#7d8590" font-size="11" text-anchor="end">$771.52</text>
+<line x1="42" y1="18.0" x2="936" y2="18.0" stroke="#1f2630" stroke-width="1"/>
+<text x="36" y="22.0" fill="#7d8590" font-size="11" text-anchor="end">$773.12</text>
+<line x1="42" y1="140.9" x2="936" y2="140.9" stroke="#58a6ff" stroke-width="1.35" stroke-dasharray="4 3" opacity="0.95"/>
+<text x="48" y="134.9" fill="#58a6ff" font-size="12" font-weight="bold">ORH 770.98</text>
+<line x1="42" y1="218.4" x2="936" y2="218.4" stroke="#58a6ff" stroke-width="1.35" stroke-dasharray="4 3" opacity="0.95"/>
+<text x="48" y="212.4" fill="#58a6ff" font-size="12" font-weight="bold">ORL 769.63</text>
+<line x1="42" y1="45.1" x2="936" y2="45.1" stroke="#bc8cff" stroke-width="1.35" stroke-dasharray="2 4" opacity="0.95"/>
+<text x="48" y="39.1" fill="#bc8cff" font-size="12" font-weight="bold">PDH 772.65</text>
+<line x1="42" y1="360.6" x2="936" y2="360.6" stroke="#bc8cff" stroke-width="1.35" stroke-dasharray="2 4" opacity="0.95"/>
+<text x="48" y="354.6" fill="#bc8cff" font-size="12" font-weight="bold">PDL 767.15</text>
+<line x1="42" y1="217.8" x2="936" y2="217.8" stroke="#7d8590" stroke-width="1.35" stroke-dasharray="1 4" opacity="0.95"/>
+<text x="48" y="211.8" fill="#7d8590" font-size="12" font-weight="bold">PDC 769.64</text>
+<line x1="42" y1="149.3" x2="936" y2="149.3" stroke="#ffd33d" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="992" y="153.3" fill="#ffd33d" font-size="9" font-weight="bold" text-anchor="end">VWAP 770.83</text>
+<polyline points="42.0,192.0 60.2,152.1 78.5,155.8 96.7,148.4 115.0,151.2 133.2,142.6 151.5,159.5 169.7,169.0 188.0,163.3 206.2,163.3 224.4,162.7 242.7,148.4 260.9,154.1 279.2,165.0 297.4,160.4 315.7,159.3 333.9,173.0 352.2,162.7 370.4,161.6 388.7,162.1 406.9,161.0 425.1,156.4 443.4,162.7 461.6,173.6 479.9,174.2 498.1,158.1 516.4,160.7 534.6,162.1 552.9,175.9 571.1,159.8 589.3,188.5 607.6,158.8 625.8,148.4 644.1,139.2 662.3,144.3 680.6,122.5 698.8,121.4 717.1,118.5 735.3,103.6 753.6,94.1 771.8,105.9 790.0,90.7 808.3,85.8 826.5,75.5 844.8,86.1 863.0,65.2 881.3,53.1 899.5,55.4 917.8,61.2 936.0,58.3" fill="none" stroke="#26a641" stroke-width="2.6"/>
+<circle cx="936.0" cy="58.3" r="4.4" fill="#58a6ff"/>
+<text x="992" y="62.3" fill="#58a6ff" font-size="9" font-weight="bold" text-anchor="end">BAR 772.42</text>
+<line x1="42" y1="43.4" x2="936" y2="43.4" stroke="#39c5cf" stroke-width="1.2" stroke-dasharray="2 4" opacity="0.95"/>
+<circle cx="936.0" cy="43.4" r="5.2" fill="#39c5cf" stroke="#0d1117" stroke-width="2"/>
+<text x="992" y="35.4" fill="#39c5cf" font-size="9" font-weight="bold" text-anchor="end">CNBC 772.68</text>
+</svg>
