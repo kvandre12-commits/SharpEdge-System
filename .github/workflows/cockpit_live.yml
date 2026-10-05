@@ -1,0 +1,54 @@
+name: Live cockpit dashboard
+
+# Regenerates the SharpEdge live cockpit (cockpit/make_cockpit.py) every
+# 15 minutes during market hours and publishes it to the Pages site at
+# /cockpit/. Data is free/no-auth (Yahoo 1m + CBOE delayed options);
+# the pipeline is fail-soft and never breaks the build.
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every 15 min, 13:00-20:45 UTC (09:00-16:45 ET) on weekdays
+    - cron: "*/15 13-20 * * 1-5"
+
+jobs:
+  cockpit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Run cockpit pipeline
+        run: |
+          cd cockpit && python3 make_cockpit.py
+
+      - name: Publish to site/cockpit/
+        run: |
+          mkdir -p site/cockpit
+          cp cockpit/cockpit.html site/cockpit/index.html
+          cp cockpit/cockpit_chart.svg cockpit/cockpit_monthly_context.svg cockpit/cockpit_weekly_context.svg site/cockpit/ 2>/dev/null || true
+          # stamp generation time into the page footer comment
+          printf '\n<!-- generated %s UTC -->\n' "$(date -u '+%Y-%m-%d %H:%M')" >> site/cockpit/index.html
+
+      - name: Commit published dashboard
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add site/cockpit/
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          git commit -m "Live cockpit dashboard refresh" || true
+          git push || true
