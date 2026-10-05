@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SharpEdge Systems — Systematic Market Data &amp; Regime Analysis</title>
+<meta name="description" content="SharpEdge Systems is a systematic market-data and regime-analysis engine: multi-source ingestion, backtested signals, and deterministic trade cards built for decision quality over noise.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">Systematic trading infrastructure</p>
+    <h1>SharpEdge <span>Systems</span></h1>
+    <p class="tagline">A reliable edge through structure, not speculation.</p>
+    <p class="lede">A systematic market-data and regime-analysis engine focused on clarity, discipline, and decision-quality over noise. Multi-source ingestion, backtested signals, and deterministic trade cards — with the discipline to refuse a trade when the evidence isn't there.</p>
+    <div class="cta-row">
+      <a class="btn primary" href="https://github.com/kvandre12-commits/SharpEdge-System">View on GitHub</a>
+      <a class="btn ghost" href="#action">See it in action</a>
+    </div>
+    <div class="badges">
+      <span>MIT Licensed</span><span>Python</span><span>SQLite</span>
+    </div>
+  </div>
+</header>
+
+<section class="stats">
+  <div class="wrap stat-grid">
+    <div class="stat"><strong>63–82%</strong><span>backtested win rates<br>per regime bucket</span></div>
+    <div class="stat"><strong>≤ 2%</strong><span>max drawdown<br>across top buckets</span></div>
+    <div class="stat"><strong>3</strong><span>ingestion sources<br>Alpaca · FINRA · FRED</span></div>
+    <div class="stat"><strong>0</strong><span>trades without evidence<br>discipline is the feature</span></div>
+  </div>
+</section>
+
+<section id="action" class="wrap">
+  <h2>See it in action</h2>
+  <p class="section-lede">Every run emits a <strong>deterministic decision card</strong> — and, crucially, it will <em>refuse to trade</em> when the evidence isn't there. Discipline is the feature, not an afterthought.</p>
+  <pre class="card"><code>SHARPEDGE AGENTIC AI V1 DECISION
+
+Symbol: SPY
+
+Decision: hold
+
+Trade allowed: False
+
+Risk state: PROBE
+
+Blocking reasons: controller_hold, monitor_no_trade,
+  sample_n_below_30, stale_or_missing_inputs
+
+Risk flags: broker_integration_unavailable,
+  freshness_gate_failed, low_sample, monitor_blocks_trade
+
+Orders remain blocked unless an operator manually
+confirms outside this contract.</code></pre>
+
+  <h3>Backtested expectancy by regime bucket</h3>
+  <p class="section-lede">Regime × pressure × DTE buckets ranked by backtested expectancy — with a minimum sample size enforced before any bucket counts.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Regime</th><th>Pressure</th><th>n</th><th>Win</th><th>Exp</th><th>Sharpe</th><th>MaxDD</th></tr></thead>
+    <tbody>
+      <tr><td>high_vol / rising_voltrend</td><td>NORMAL</td><td>28</td><td>82.1%</td><td>0.0054</td><td>3.62</td><td>-2.01%</td></tr>
+      <tr><td>mid_vol / rising_voltrend</td><td>NORMAL</td><td>44</td><td>72.7%</td><td>0.0031</td><td>3.89</td><td>-1.10%</td></tr>
+      <tr><td>mid_vol / falling_voltrend</td><td>NORMAL</td><td>49</td><td>63.3%</td><td>0.0022</td><td>2.84</td><td>-2.10%</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="fine">Full artifacts — trade cards, expectancy matrices, gate sweeps, execution attribution — live in the repo's <code>outputs/</code> directory.</p>
+</section>
+
+<section class="layers">
+  <div class="wrap">
+    <h2>Architecture</h2>
+    <p class="section-lede">Three pipeline layers. All processes automated via scheduled workflows with reproducible SQLite state.</p>
+    <div class="layer-grid">
+      <div class="layer">
+        <p class="layer-n">01</p>
+        <h3>Truth Layer</h3>
+        <p>Raw market-data ingestion and normalization. Alpaca, FINRA, and FRED feeds land in one consistent store — with freshness gates and cache controls so routine runs skip network calls while state is fresh.</p>
+      </div>
+      <div class="layer">
+        <p class="layer-n">02</p>
+        <h3>Feature Layer</h3>
+        <p>Derived signals, regimes, and structural context. Liquidity and regime classification turn raw bars into the features the decision layer reasons over.</p>
+      </div>
+      <div class="layer">
+        <p class="layer-n">03</p>
+        <h3>Decision Layer</h3>
+        <p>Backtested rules, calibrated DTE selection, and trade plans. Every order is gated behind freshness, sample-size, and monitor checks before anything executes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>Built for discipline</h2>
+  <div class="discipline-grid">
+    <div><h3>Refuses bad trades</h3><p>Blocking reasons are explicit — stale inputs, low samples, monitor holds. No silent overrides.</p></div>
+    <div><h3>Reports per-regime expectancy</h3><p>No single headline number. Performance is broken down by regime bucket at enforced minimum sample sizes.</p></div>
+    <div><h3>Operator briefs</h3><p>A thin compression layer over local artifacts: stand-down / monitor / review summaries, watchlists, and session reviews.</p></div>
+    <div><h3>Reproducible state</h3><p>SQLite-backed pipelines with state breadcrumbs — reruns are deterministic, not vibes.</p></div>
+  </div>
+</section>
+
+<section class="cta-band">
+  <div class="wrap">
+    <h2>Read the code. Run the pipeline.</h2>
+    <p>SharpEdge Systems is open source under the MIT license.</p>
+    <a class="btn primary" href="https://github.com/kvandre12-commits/SharpEdge-System">Explore the repository</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>SharpEdge Systems · MIT License · Built by <a href="https://github.com/kvandre12-commits">kvandre12-commits</a></p>
+    <p class="fine">Backtested results are historical and do not guarantee future performance. This is a research and discipline framework, not financial advice.</p>
+  </div>
+</footer>
+
+</body>
+</html>
