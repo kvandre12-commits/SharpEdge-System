@@ -153,6 +153,18 @@ jobs:
         continue-on-error: true
         run: python scripts/analysis/expectancy_engine.py
 
+      - name: Seed candle pattern library (2.0 patterns)
+        run: |
+          python scripts/seed_pattern_library.py
+
+      - name: Detect candle patterns (2.0 patterns)
+        run: |
+          python scripts/detect_candle_patterns.py
+
+      - name: Build pattern expectancy (2.0 patterns)
+        run: |
+          python scripts/build_pattern_expectancy.py
+
       - name: Publish SharpEdge 2.0 report
         continue-on-error: true
         run: |

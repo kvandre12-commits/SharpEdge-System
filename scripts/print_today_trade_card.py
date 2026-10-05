@@ -265,6 +265,42 @@ def load_options_flow(conn: sqlite3.Connection, symbol: str, session_date: str):
         pass
     return out
 
+def load_candle_patterns(conn: sqlite3.Connection, symbol: str, session_date: str):
+    """Patterns detected for the session, with library names and measured
+    5-day expectancy (2.0 pattern engine).
+
+    Returns [(pattern, aka, direction_hint, strength, fwd_5d_mean, n)].
+    Empty-safe: missing tables or rows yield [], never an error.
+    """
+    out = []
+    try:
+        if not table_exists(conn, "candle_patterns"):
+            return out
+        lib = {}
+        if table_exists(conn, "candle_pattern_library"):
+            lib = {r[0]: r[1] for r in conn.execute(
+                "SELECT pattern, aka FROM candle_pattern_library")}
+        exp = {}
+        if table_exists(conn, "pattern_expectancy"):
+            exp = {r[0]: (r[1], r[2]) for r in conn.execute(
+                "SELECT pattern, fwd_5d_mean, n FROM pattern_expectancy "
+                "WHERE symbol = ?", (symbol,))}
+        rows = conn.execute(
+            """
+            SELECT pattern, direction_hint, strength
+            FROM candle_patterns
+            WHERE symbol = ? AND date = ?
+            ORDER BY strength DESC
+            """,
+            (symbol, session_date),
+        ).fetchall()
+        for pattern, bias, strength in rows:
+            fwd5, n = exp.get(pattern, (None, 0))
+            out.append((pattern, lib.get(pattern, pattern), bias, strength, fwd5, n))
+    except Exception:
+        pass
+    return out
+
 def fmt_pct(x, digits=2):
     try:
         if x is None or (isinstance(x, float) and pd.isna(x)):
@@ -382,6 +418,16 @@ def print_card(card: dict):
         for expiry, strike, side, d_oi, rank in fevents[:6]:
             print(f"  #{rank} {expiry} {strike:g} {side:<4}: ΔOI {d_oi:+d}")
     print("")
+    print("Candle Patterns")
+    pats = card.get("patterns") or []
+    if not pats:
+        print("  — (no patterns detected for this date)")
+    else:
+        for pattern, aka, bias, strength, fwd5, n in pats:
+            measured = (f"5d {fwd5:+.2%} (n={n})" if fwd5 is not None and n
+                        else "5d n/a (sample too small)")
+            print(f"  {aka:<18} {bias:<7} str {strength:.2f}  measured: {measured}")
+    print("")
     print("Plan (3 bullets)")
     for a in actions:
         print(f"  - {a}")
@@ -402,6 +448,7 @@ def main():
 
         card["context"] = load_context(conn, SYMBOL, session_date)
         card["options_flow"] = load_options_flow(conn, SYMBOL, session_date)
+        card["patterns"] = load_candle_patterns(conn, SYMBOL, session_date)
 
         print_card(card)
 
