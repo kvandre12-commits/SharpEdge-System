@@ -51,4 +51,4 @@ jobs:
           git add site/cockpit/
           git diff --staged --quiet && echo "No changes to commit" && exit 0
           git commit -m "Live cockpit dashboard refresh" || true
-          git push || true
+          git push
