@@ -29,7 +29,7 @@
   <div class="wrap stat-grid">
     <div class="stat"><strong>63–82%</strong><span>backtested win rates<br>per regime bucket</span></div>
     <div class="stat"><strong>≤ 2%</strong><span>max drawdown<br>across top buckets</span></div>
-    <div class="stat"><strong>3</strong><span>ingestion sources<br>Alpaca · FINRA · FRED</span></div>
+    <div class="stat"><strong>4</strong><span>ingestion sources<br>Alpaca · FINRA · FRED · GDELT</span></div>
     <div class="stat"><strong>0</strong><span>trades without evidence<br>discipline is the feature</span></div>
   </div>
 </section>
@@ -69,6 +69,31 @@ confirms outside this contract.</code></pre>
   </table>
   </div>
   <p class="fine">Full artifacts — trade cards, expectancy matrices, gate sweeps, execution attribution — live in the repo's <code>outputs/</code> directory.</p>
+</section>
+
+<section class="layers">
+  <div class="wrap">
+    <p class="kicker">SharpEdge 2.0 — new</p>
+    <h2>Three new perception layers</h2>
+    <p class="section-lede">2.0 adds context, flow, and pattern recognition on top of the core pipeline — and every one of them lands on the daily trade card.</p>
+    <div class="layer-grid">
+      <div class="layer">
+        <p class="layer-n">A</p>
+        <h3>Market Context</h3>
+        <p>A curated library of 24 market-moving events — crashes, hiking cycles, tariff shocks, elections — plus a daily news ingest with tone scoring. History and headlines become features the pipeline reasons over, not footnotes.</p>
+      </div>
+      <div class="layer">
+        <p class="layer-n">B</p>
+        <h3>Options Flow</h3>
+        <p>The options chain is now snapshotted three times per trading day and diffed snapshot-to-snapshot, flagging unusual positioning moves. Max pain, put/call velocity, and the top flow strikes print on every card.</p>
+      </div>
+      <div class="layer">
+        <p class="layer-n">C</p>
+        <h3>Pattern Engine</h3>
+        <p>A 16-pattern candlestick detector with a plain-English teaching library — and forward expectancy measured per pattern from the symbol's own history. A hammer is "bullish" because a book says so; it's worth trading only if the data says so.</p>
+      </div>
+    </div>
+  </div>
 </section>
 
 <section class="layers">
