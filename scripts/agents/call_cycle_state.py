@@ -5,6 +5,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from scripts.alpha_swarm.contracts import payload_sha256
+
 WALLET_CAP_DOLLARS = 250.0
 STATES = frozenset(
     {
@@ -47,6 +49,16 @@ def _amount(value: Any, field: str) -> float:
     return amount
 
 
+def _validated_thesis(event: dict[str, Any]) -> dict[str, Any]:
+    thesis = deepcopy(event.get("entry_thesis_snapshot") or {})
+    thesis_id = thesis.pop("thesis_id", None)
+    if not thesis or thesis.get("schema") != "sharpedge.helios_entry_thesis.v1":
+        raise CycleTransitionError("immutable Helios entry thesis is required")
+    if thesis_id != payload_sha256(thesis):
+        raise CycleTransitionError("entry thesis hash does not match its contents")
+    return {**thesis, "thesis_id": thesis_id}
+
+
 def transition(state: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
     current = str(state.get("state") or "")
     if current not in STATES:
@@ -63,6 +75,7 @@ def transition(state: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
         trigger_id = str(event.get("trigger_id") or "")
         if not trigger_id:
             raise CycleTransitionError("trigger_id is required")
+        thesis = _validated_thesis(event)
         result.update(
             {
                 "state": "ENTRY_PROPOSED",
@@ -70,6 +83,7 @@ def transition(state: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
                 "trigger_id": trigger_id,
                 "lead_id": event.get("lead_id"),
                 "proposed_ladder": list(event.get("ladder") or []),
+                "entry_thesis_snapshot": thesis,
             }
         )
         return result
@@ -102,6 +116,10 @@ def transition(state: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
                     "fill_receipt_id": event.get("receipt_id"),
                     "profit_management_started": False,
                     "latest_return_pct": 0.0,
+                    "entry_thesis_id": (result.get("entry_thesis_snapshot") or {}).get(
+                        "thesis_id"
+                    ),
+                    "thesis_status": "unknown",
                 },
             }
         )
@@ -111,9 +129,17 @@ def transition(state: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
         if current not in {"OPEN_POSITION", "SELLER_MANAGING"}:
             raise CycleTransitionError("position mark requires an open owned position")
         return_pct = float(event.get("return_pct"))
+        thesis_status = str(event.get("thesis_status") or "unknown").lower()
+        if thesis_status not in {"valid", "degraded", "broken", "unknown"}:
+            raise CycleTransitionError("thesis_status must be valid/degraded/broken/unknown")
         position = dict(result.get("position") or {})
         position["latest_return_pct"] = round(return_pct, 2)
-        if return_pct >= 20:
+        position["thesis_status"] = thesis_status
+        if thesis_status == "broken":
+            position["profit_management_started"] = True
+            position["management_band"] = "thesis_broken_exit_review"
+            result["state"] = "SELLER_MANAGING"
+        elif return_pct >= 20:
             position["profit_management_started"] = True
             position["management_band"] = (
                 "strong_take_profit_review"

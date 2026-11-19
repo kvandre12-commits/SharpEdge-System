@@ -57,6 +57,20 @@ IDLE
 → IDLE                       # trigger reset required
 ```
 
+## Thesis ownership
+
+A verified fill hands the owner two distinct objects:
+
+1. authoritative position facts: exact contracts, quantities, debit, and fill receipt;
+2. the immutable, content-hashed Helios entry thesis: trigger evidence, refill
+   target, source hashes, strategy, and seller policy as they existed at entry.
+
+The thesis is context, not authority. A broken thesis may accelerate an exit,
+but a valid thesis cannot override hard risk, expiry, liquidity, or profit-management
+rules and cannot authorize adding or rebuying. If the thesis is missing, stale,
+or unknown, the owner falls back to its independent rules rather than assuming
+"hold."
+
 Seller review bands:
 
 - +20%: protect and review

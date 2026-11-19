@@ -235,6 +235,29 @@ def build_lead(
     ]
     decisions = {review["decision"] for review in reviews}
     aggregate = "approve" if decisions == {"approve"} else "reject" if "reject" in decisions else "abstain"
+    seller_policy = {
+        "enabled_only_after_verified_fill": True,
+        "profit_management_starts_pct": 20,
+        "tighten_review_pct": 35,
+        "strong_take_profit_review_pct": 55,
+    }
+    thesis = {
+        "schema": "sharpedge.helios_entry_thesis.v1",
+        "captured_at": now.isoformat(),
+        "symbol": symbol,
+        "trigger": trigger,
+        "nearest_refill_target": nearest_target,
+        "strategy": "long_otm_call_wallet_ladder",
+        "seller_policy_at_entry": seller_policy,
+        "source_hashes": source_hashes,
+        "owner_usage": {
+            "context_only": True,
+            "may_tighten_exit": True,
+            "may_loosen_risk_or_expiry_exit": False,
+            "may_authorize_add_or_rebuy": False,
+        },
+    }
+    thesis["thesis_id"] = payload_sha256(thesis)
     payload = {
         "schema": SCHEMA,
         "generated_at": now.isoformat(),
@@ -261,13 +284,9 @@ def build_lead(
             "next_state_after_verified_fill": "OPEN_POSITION",
             "same_trigger_reentry_allowed": False,
             "operator_confirmation_required": True,
+            "entry_thesis_snapshot": thesis,
         },
-        "seller_handoff_policy": {
-            "enabled_only_after_verified_fill": True,
-            "profit_management_starts_pct": 20,
-            "tighten_review_pct": 35,
-            "strong_take_profit_review_pct": 55,
-        },
+        "seller_handoff_policy": seller_policy,
         "source_hashes": source_hashes,
         "authority": {
             "purpose": "research_entry_lead",

@@ -64,6 +64,11 @@ def test_approved_ladder_stays_under_wallet_and_is_non_executable():
     assert payload["authority"]["execution_permitted"] is False
     assert payload["authority"]["broker_action_allowed"] is False
     assert payload["entry_handoff"]["operator_confirmation_required"] is True
+    thesis = payload["entry_handoff"]["entry_thesis_snapshot"]
+    assert thesis["symbol"] == "SPY"
+    assert thesis["owner_usage"]["may_tighten_exit"] is True
+    assert thesis["owner_usage"]["may_loosen_risk_or_expiry_exit"] is False
+    assert thesis["owner_usage"]["may_authorize_add_or_rebuy"] is False
 
 
 def test_non_idle_cycle_rejects_rebuy_even_when_trigger_stays_true():
