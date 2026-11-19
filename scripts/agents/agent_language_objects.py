@@ -217,6 +217,9 @@ def build_workflow_state(inputs: dict[str, Any], run_id: str) -> dict[str, Any]:
                 "spot": brief.get("focus", {}).get("spot"),
                 "atm_strike": brief.get("focus", {}).get("atm_strike"),
                 "dealer_state_hint": brief.get("focus", {}).get("dealer_state_hint"),
+                "historical_refill": brief.get(
+                    "refill_context", {"available": False}
+                ),
             },
             "evidence": {
                 "artifact_readiness_confidence": controller.get("confidence", 0.0),
@@ -270,6 +273,9 @@ def build_execution_plan(inputs: dict[str, Any], run_id: str) -> dict[str, Any]:
                 "spot": brief.get("focus", {}).get("spot"),
                 "atm_strike": brief.get("focus", {}).get("atm_strike"),
                 "gap_fill_level": brief.get("focus", {}).get("gap_fill_level"),
+                "historical_refill": brief.get(
+                    "refill_context", {"available": False}
+                ),
                 "max_capital_risk_pct": contract.get("max_capital_risk_pct", 0.0),
             },
             "constraints": [

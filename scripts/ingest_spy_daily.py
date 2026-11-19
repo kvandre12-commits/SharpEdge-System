@@ -7,7 +7,7 @@ import csv
 import os
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from cockpit.market_data_sources import fetch_yahoo_daily_bars  # noqa: E402
+from cockpit.market_data_sources import fetch_yahoo_daily_bars
 
 try:
     from scripts.utils.pipeline_state import is_fresh, write_state
@@ -28,6 +28,8 @@ SOURCE = "yahoo_chart"
 FULL_PERIOD = os.getenv("DAILY_FULL_PERIOD", "2y")
 INCREMENTAL_PERIOD = os.getenv("DAILY_INCREMENTAL_PERIOD", "10d")
 CACHE_TTL_HOURS = float(os.getenv("DAILY_CACHE_TTL_HOURS", "12"))
+MAX_LATEST_BAR_AGE_DAYS = int(os.getenv("DAILY_MAX_LATEST_BAR_AGE_DAYS", "7"))
+FULL_REFRESH_GAP_DAYS = int(os.getenv("DAILY_FULL_REFRESH_GAP_DAYS", "14"))
 FORCE_REFRESH = os.getenv("DAILY_FORCE_REFRESH", "0").strip().lower() in {
     "1",
     "true",
@@ -98,14 +100,34 @@ def latest_state(con: sqlite3.Connection) -> dict[str, Any]:
     }
 
 
+def utc_today() -> date:
+    return datetime.now(timezone.utc).date()
+
+
+def latest_bar_age_days(state: dict[str, Any]) -> int | None:
+    latest = state.get("latest_date")
+    if not latest:
+        return None
+    try:
+        return max((utc_today() - date.fromisoformat(str(latest)[:10])).days, 0)
+    except ValueError:
+        return None
+
+
 def should_skip_network(state: dict[str, Any]) -> bool:
     if FORCE_REFRESH or not state.get("rows"):
+        return False
+    bar_age = latest_bar_age_days(state)
+    if bar_age is not None and bar_age > MAX_LATEST_BAR_AGE_DAYS:
         return False
     return is_fresh(state.get("latest_ingest_ts"), CACHE_TTL_HOURS)
 
 
 def fetch_period_for_state(state: dict[str, Any]) -> str:
     if FORCE_REFRESH or not state.get("rows"):
+        return FULL_PERIOD
+    bar_age = latest_bar_age_days(state)
+    if bar_age is not None and bar_age > FULL_REFRESH_GAP_DAYS:
         return FULL_PERIOD
     return INCREMENTAL_PERIOD
 

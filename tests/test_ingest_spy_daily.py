@@ -19,10 +19,37 @@ class IngestSpyDailyTests(unittest.TestCase):
             patch.object(daily, "FORCE_REFRESH", False),
             patch(
                 "scripts.utils.pipeline_state.utc_now",
-                return_value=dt.datetime(2026, 6, 10, 12, 0, 0),
+                return_value=dt.datetime(
+                    2026, 6, 10, 12, 0, 0, tzinfo=dt.UTC
+                ).replace(tzinfo=None),
             ),
         ):
             self.assertTrue(daily.should_skip_network(state))
+
+    def test_stale_latest_bar_forces_network_even_with_fresh_ingest(self) -> None:
+        state = {
+            "rows": 10,
+            "latest_date": "2026-05-01",
+            "latest_ingest_ts": "2026-06-10T10:00:00+00:00",
+        }
+
+        with (
+            patch.object(daily, "FORCE_REFRESH", False),
+            patch.object(daily, "MAX_LATEST_BAR_AGE_DAYS", 7),
+            patch.object(daily, "utc_today", return_value=dt.date(2026, 6, 10)),
+        ):
+            self.assertFalse(daily.should_skip_network(state))
+
+    def test_stale_latest_bar_uses_full_refresh_period(self) -> None:
+        state = {"rows": 10, "latest_date": "2026-05-01"}
+
+        with (
+            patch.object(daily, "FORCE_REFRESH", False),
+            patch.object(daily, "FULL_PERIOD", "2y"),
+            patch.object(daily, "FULL_REFRESH_GAP_DAYS", 14),
+            patch.object(daily, "utc_today", return_value=dt.date(2026, 6, 10)),
+        ):
+            self.assertEqual(daily.fetch_period_for_state(state), "2y")
 
     def test_fetch_period_uses_incremental_when_state_exists(self) -> None:
         state = {"rows": 10, "latest_ingest_ts": "2026-06-01T10:00:00+00:00"}

@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from scripts.agents.operator_refill_context import summarize_refill_context
 from scripts.agents.operator_watchlist_logic import build_watchlist_derivatives
 
 SYMBOL = os.getenv("SYMBOL", "SPY").upper()
@@ -385,6 +386,7 @@ def build_brief_payload(
             "sample_n": risk.get("sample_n"),
         },
         "historical_hints": summarize_historical_hints(hints),
+        "refill_context": summarize_refill_context(signal, curator),
         "execution_logic": execution_logic,
         "permission_score_trend": permission_score_trend,
         "options_liquidity_read": liquidity_read,
@@ -572,6 +574,7 @@ def render_text(brief: dict[str, Any]) -> str:
     focus = brief["focus"]
     risk = brief["risk"]
     historical = brief.get("historical_hints", {})
+    refill = brief.get("refill_context", {})
     execution_logic = brief.get("execution_logic", {})
     permission_trend = brief.get("permission_score_trend", {})
     liquidity_read = brief.get("options_liquidity_read", {})
@@ -623,6 +626,16 @@ def render_text(brief: dict[str, Any]) -> str:
                 "Historical hints:",
                 f"- Top pattern: {historical.get('top_pattern_summary') or 'none'}",
                 f"- Low sample: {historical.get('low_sample')}",
+            ]
+        )
+    if refill.get("available"):
+        lines.extend(
+            [
+                "",
+                "Historical refill structure:",
+                f"- Stack: {refill.get('stack_label') or 'unknown'} ({refill.get('active_count') or 0} active)",
+                f"- Nearest / highest target: {refill.get('nearest_target')} / {refill.get('highest_target')}",
+                "- Authority: diagnostic only; permission effect: none",
             ]
         )
     if liquidity_read.get("available"):

@@ -30,6 +30,15 @@ class AgentLanguageObjectsTests(unittest.TestCase):
         self.assertEqual(workflow["state"]["lifecycle_stage"], "approval_pending_operator")
         self.assertEqual(plan["intended_action"], "review_trade_plan")
         self.assertIn("confirm_order", plan["prerequisites"]["required_approvals"])
+        self.assertEqual(
+            workflow["market_context"]["historical_refill"]["stack_label"],
+            "double_dip_stack",
+        )
+        self.assertEqual(
+            plan["reference_context"]["historical_refill"]["nearest_target"],
+            739.95,
+        )
+        self.assertNotIn("historical_refill", approval)
         self.assertTrue(approval["trade_allowed"])
         self.assertEqual(approval["authority"], "authoritative_permission_gate")
         self.assertEqual(journal["latest_entry"]["entry_id"], "entry-123")
@@ -138,6 +147,15 @@ class AgentLanguageObjectsTests(unittest.TestCase):
                         "available": True,
                         "top_pattern_summary": "Observed journal winners cluster around VWAP_FADE + REJECT.",
                         "low_sample": True,
+                    },
+                    "refill_context": {
+                        "available": True,
+                        "authority": "diagnostic_only",
+                        "stack_label": "double_dip_stack",
+                        "active_count": 2,
+                        "nearest_target": 739.95,
+                        "highest_target": 754.37,
+                        "permission_effect": "none",
                     },
                     "next_steps": ["Review thesis.", "Confirm risk."],
                 }

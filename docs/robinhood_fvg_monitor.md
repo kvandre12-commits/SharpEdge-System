@@ -56,6 +56,53 @@ Any order path must require explicit operator confirmation.
 When the bridge is unavailable, downstream safety contracts downgrade broker
 read/monitor permissions while preserving the artifact for manual review.
 
+## SPY and NVDA overnight-gap watch
+
+`scripts/build_robinhood_gap_watch.py` adds a smaller daily-bar monitor for SPY
+and NVDA. It reads `bars_daily` without modifying it and writes:
+
+- `outputs/robinhood_gap_watch.json`
+- `outputs/robinhood_gap_watch.txt`
+
+The artifact separates two layers that must not be conflated:
+
+1. **Session gap:** the latest open versus the prior close, with a default 0.25%
+   threshold and same-session fill check.
+2. **Historical refill structure:** unresolved down-gap/dip targets accumulated
+   across the full loaded timeline. A new event while older targets remain open
+   forms a double-, triple-, or multi-dip stack.
+
+A filled latest-session gap can therefore remain `no_trade` at the session layer
+while the symbol is `watch` at the structural layer because older refill targets
+remain unresolved. The output preserves stack depth, event dates, target levels,
+age, and matching symbol-specific historical stack statistics. SPY and NVDA use
+separate five-year refill surfaces; statistics are never borrowed across symbols.
+The artifact permits read-only quote/historical monitoring and blocks all order
+actions.
+
+Refresh and build manually:
+
+```bash
+SYMBOL=SPY python scripts/ingest_spy_daily.py
+SYMBOL=NVDA python scripts/ingest_spy_daily.py
+python scripts/build_robinhood_gap_watch.py
+```
+
+Useful controls:
+
+- `GAP_WATCH_SYMBOLS=SPY,NVDA`
+- `GAP_WATCH_MIN_GAP_PCT=0.0025`
+- `GAP_WATCH_MAX_STALE_DAYS=4`
+- `SPY_DB_PATH=data/spy_truth.db`
+- `REFILL_SURFACE_DIR=outputs`
+
+Canonical research artifacts:
+
+- SPY: `historical_refill_surface.json` and
+  `historical_refill_stack_surface.json`
+- NVDA: `nvda_historical_refill_surface.json` and
+  `nvda_historical_refill_stack_surface.json`
+
 ## Why Gemini was removed
 
 The prior controller depended on Gemini API access and leaked a failed request URL into an output artifact. The controller is now deterministic and local-only:
