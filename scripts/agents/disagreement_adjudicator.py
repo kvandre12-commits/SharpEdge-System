@@ -63,7 +63,7 @@ def adjudicate(
     owner_decision = _decision(owner, default="none")
     thesis_status = str(observer.get("thesis_status") or "unknown").lower()
 
-    if not observer_fresh:
+    if phase == PRE_FILL and not observer_fresh:
         return _finish(
             payload,
             disagreement=True,
@@ -123,11 +123,26 @@ def adjudicate(
     if owner_decision in {"exit", "exit_review", "exit_proposed"}:
         return _finish(
             payload,
-            disagreement=helios_decision == "hold",
-            disagreement_type="owner_exits_despite_helios" if helios_decision == "hold" else "owner_exit",
+            disagreement=helios_decision == "hold" or not observer_fresh,
+            disagreement_type=(
+                "owner_protects_without_observer"
+                if not observer_fresh
+                else "owner_exits_despite_helios"
+                if helios_decision == "hold"
+                else "owner_exit"
+            ),
             resolution="OWNER_EXIT_REVIEW",
             effect="exit_tightened",
             reasons=list(owner.get("reasons") or ["position owner requested exit review"]),
+        )
+    if not observer_fresh:
+        return _finish(
+            payload,
+            disagreement=True,
+            disagreement_type="observation_unavailable",
+            resolution="ABSTAIN_REFRESH_REQUIRED",
+            effect="authority_reduced",
+            reasons=["observer evidence is missing or stale"],
         )
     if observer_hard_blocks or thesis_status == "broken":
         reasons = observer_hard_blocks or ["entry thesis is broken"]

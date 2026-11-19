@@ -80,6 +80,20 @@ def test_owner_exit_review_wins_over_helios_hold_after_fill():
     assert receipt["effect"] == "exit_tightened"
 
 
+def test_owner_protection_survives_observer_failure_after_fill():
+    receipt = adjudicate(
+        phase=POST_FILL,
+        observer=_observer(fresh=False, decision="abstain"),
+        helios=_helios(decision="abstain"),
+        owner=_owner(decision="exit_review", reasons=["protect verified position"]),
+    )
+
+    assert receipt["resolution"] == "OWNER_EXIT_REVIEW"
+    assert receipt["disagreement_type"] == "owner_protects_without_observer"
+    assert receipt["effect"] == "exit_tightened"
+    assert receipt["authority"]["broker_action_allowed"] is False
+
+
 def test_broken_thesis_accelerates_review_even_when_helios_and_owner_hold():
     receipt = adjudicate(
         phase=POST_FILL,
