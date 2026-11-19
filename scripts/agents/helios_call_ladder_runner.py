@@ -24,6 +24,7 @@ if str(COCKPIT) not in sys.path:
 
 from market_data_sources import fetch_yahoo_regular_session_chart_rows
 
+from scripts.agents.disagreement_adjudicator import PRE_FILL, adjudicate
 from scripts.alpha_swarm.contracts import canonical_json, payload_sha256
 from scripts.alpha_swarm.helios_call_ladder import build_lead
 
@@ -184,6 +185,52 @@ def _apply_global_wallet(leads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return leads
 
 
+def _build_disagreement_receipts(leads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    receipts = []
+    for lead in leads:
+        data_review = next(
+            (
+                review
+                for review in lead.get("reviews") or []
+                if review.get("role") == "data_steward"
+            ),
+            {},
+        )
+        observer_fresh = data_review.get("decision") == "approve"
+        observer_decision = (
+            "approve"
+            if observer_fresh
+            else "abstain"
+            if data_review.get("decision") == "abstain"
+            else "reject"
+        )
+        receipts.append(
+            {
+                "symbol": lead["symbol"],
+                "lead_id": lead["lead_id"],
+                "receipt": adjudicate(
+                    phase=PRE_FILL,
+                    observer={
+                        "fresh": observer_fresh,
+                        "decision": observer_decision,
+                        "hard_blocks": list(data_review.get("reasons") or []),
+                        "source_hashes": lead.get("source_hashes") or {},
+                    },
+                    helios={
+                        "decision": lead["aggregate_decision"],
+                        "reasons": [
+                            reason
+                            for review in lead.get("reviews") or []
+                            for reason in review.get("reasons") or []
+                        ],
+                        "lead_id": lead["lead_id"],
+                    },
+                ),
+            }
+        )
+    return receipts
+
+
 def build_run(now: datetime, *, refresh_nerv: bool = True) -> dict[str, Any]:
     local = now.astimezone(NY)
     session_date = local.date().isoformat()
@@ -241,12 +288,14 @@ def build_run(now: datetime, *, refresh_nerv: bool = True) -> dict[str, Any]:
         )
 
     leads = _apply_global_wallet(leads)
+    disagreement_receipts = _build_disagreement_receipts(leads)
     payload = {
         "schema": "sharpedge.helios_call_ladder_run.v1",
         "generated_at": now.isoformat(),
         "session_date": session_date,
         "timezone": "America/New_York",
         "leads": leads,
+        "disagreement_receipts": disagreement_receipts,
         "authority": {
             "authoritative": False,
             "execution_permitted": False,

@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from scripts.agents import helios_call_ladder_runner as runner
 from scripts.agents.helios_call_ladder_runner import (
     _apply_global_wallet,
+    _build_disagreement_receipts,
     _due,
     _features,
     _wallet_cycle_state,
@@ -65,6 +66,26 @@ def test_missing_bridge_source_writes_blocked_handoff(tmp_path, monkeypatch):
     payload = runner._read_json(output)
     assert payload["status"] == "blocked"
     assert payload["blockers"] == ["robinhood_bridge_source_unavailable"]
+
+
+def test_prefill_disagreement_receipt_is_attached_to_lead_identity():
+    lead = {
+        "symbol": "SPY",
+        "lead_id": "lead-1",
+        "aggregate_decision": "approve",
+        "source_hashes": {"nerv": "a" * 64},
+        "reviews": [
+            {"role": "data_steward", "decision": "approve", "reasons": []},
+            {"role": "trigger_researcher", "decision": "approve", "reasons": []},
+        ],
+    }
+
+    receipt = _build_disagreement_receipts([lead])[0]
+
+    assert receipt["symbol"] == "SPY"
+    assert receipt["lead_id"] == "lead-1"
+    assert receipt["receipt"]["resolution"] == "ENTRY_PROPOSAL_ELIGIBLE"
+    assert receipt["receipt"]["authority"]["execution_permitted"] is False
 
 
 def test_global_wallet_never_allocates_more_than_250_across_symbols():
