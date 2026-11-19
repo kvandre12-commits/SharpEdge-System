@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from scripts.agents import helios_call_ladder_runner as runner
 from scripts.agents.helios_call_ladder_runner import (
     _apply_global_wallet,
     _due,
@@ -52,6 +53,18 @@ def test_old_unfilled_proposal_resets_next_session_but_open_position_does_not():
 
     assert _wallet_cycle_state(old_proposal, "2026-11-18") == "IDLE"
     assert _wallet_cycle_state(open_position, "2026-11-18") == "OPEN_POSITION"
+
+
+def test_missing_bridge_source_writes_blocked_handoff(tmp_path, monkeypatch):
+    output = tmp_path / "wallet_handoff.json"
+    monkeypatch.setattr(runner, "BRIDGE_ROOT", tmp_path / "missing-bridge")
+    monkeypatch.setattr(runner, "WALLET_HANDOFF_PATH", output)
+
+    runner._publish_wallet_handoff(tmp_path / "lead.json")
+
+    payload = runner._read_json(output)
+    assert payload["status"] == "blocked"
+    assert payload["blockers"] == ["robinhood_bridge_source_unavailable"]
 
 
 def test_global_wallet_never_allocates_more_than_250_across_symbols():

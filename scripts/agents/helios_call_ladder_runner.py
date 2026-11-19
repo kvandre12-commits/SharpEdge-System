@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import statistics
 import subprocess
 import sys
@@ -32,6 +33,13 @@ SNAPSHOT_DIR = ROOT / "outputs" / "nerv_helios_call_ladder"
 GAP_WATCH = ROOT / "outputs" / "robinhood_gap_watch.json"
 STATE_PATH = OUTDIR / "cycle_state.json"
 LATEST_PATH = OUTDIR / "latest.json"
+WALLET_HANDOFF_PATH = OUTDIR / "wallet_buyer_handoff.json"
+BRIDGE_ROOT = Path(
+    os.getenv(
+        "SHARPEDGE_ROBINHOOD_BRIDGE_ROOT",
+        str(ROOT.parent / "SharpEdge-Robinhood-Bridge"),
+    )
+)
 SYMBOLS = ("SPY", "NVDA")
 
 
@@ -282,6 +290,52 @@ def _update_state(payload: dict[str, Any]) -> None:
     _atomic_json(STATE_PATH, state)
 
 
+def _publish_wallet_handoff(lead_path: Path) -> None:
+    source_root = BRIDGE_ROOT / "src"
+    if not source_root.exists():
+        _atomic_json(
+            WALLET_HANDOFF_PATH,
+            {
+                "schema": "sharpedge.helios_wallet_buyer_handoff.v1",
+                "status": "blocked",
+                "blockers": ["robinhood_bridge_source_unavailable"],
+                "source_lead_run": str(lead_path),
+            },
+        )
+        return
+    environment = dict(os.environ)
+    environment["PYTHONPATH"] = str(source_root)
+    command = [
+        sys.executable,
+        "-m",
+        "sharpedge_robinhood_bridge.helios_wallet_buyer",
+        "--lead-run",
+        str(lead_path),
+        "--output",
+        str(WALLET_HANDOFF_PATH),
+    ]
+    completed = subprocess.run(
+        command,
+        cwd=BRIDGE_ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if completed.returncode != 0:
+        _atomic_json(
+            WALLET_HANDOFF_PATH,
+            {
+                "schema": "sharpedge.helios_wallet_buyer_handoff.v1",
+                "status": "blocked",
+                "blockers": ["wallet_buyer_adapter_failed"],
+                "source_lead_run": str(lead_path),
+                "error": completed.stderr.strip()[:500],
+            },
+        )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--force", action="store_true", help="run outside the scheduler for bounded validation")
@@ -303,6 +357,7 @@ def main() -> int:
     _atomic_json(daily_path, payload)
     _atomic_json(LATEST_PATH, payload)
     _update_state(payload)
+    _publish_wallet_handoff(daily_path)
     print(canonical_json({"run_id": payload["run_id"], "decisions": {lead["symbol"]: lead["aggregate_decision"] for lead in payload["leads"]}}))
     return 0
 
