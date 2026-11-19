@@ -13,6 +13,7 @@ POSITION_LAB_NERV_MAX_EXPIRATIONS="${POSITION_LAB_NERV_MAX_EXPIRATIONS:-20}"
 SYMBOL=SPY python3 scripts/ingest_spy_daily.py
 SYMBOL=NVDA python3 scripts/ingest_spy_daily.py
 python3 scripts/build_robinhood_gap_watch.py
+python3 -m scripts.agents.helios_call_ladder_runner
 python3 scripts/build_robinhood_fvg_monitor.py
 python3 -m scripts.agents.nerv_curator
 python3 -m scripts.agents.controller_agent
