@@ -3,17 +3,18 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from scripts.agents.helios_call_ladder_runner import (
+    _apply_global_wallet,
     _due,
     _features,
-    _symbol_cycle_state,
+    _wallet_cycle_state,
 )
 
 
-def test_due_only_inside_weekday_1230_window():
+def test_due_only_inside_weekday_noon_to_1230_window():
+    assert _due(datetime(2026, 11, 18, 17, 0, tzinfo=UTC)) is True
     assert _due(datetime(2026, 11, 18, 17, 30, tzinfo=UTC)) is True
-    assert _due(datetime(2026, 11, 18, 17, 40, tzinfo=UTC)) is True
-    assert _due(datetime(2026, 11, 18, 17, 41, tzinfo=UTC)) is False
-    assert _due(datetime(2026, 11, 21, 17, 30, tzinfo=UTC)) is False
+    assert _due(datetime(2026, 11, 18, 17, 31, tzinfo=UTC)) is False
+    assert _due(datetime(2026, 11, 21, 17, 0, tzinfo=UTC)) is False
 
 
 def test_features_compute_vwap_momentum_and_volume_ratio():
@@ -38,12 +39,42 @@ def test_features_compute_vwap_momentum_and_volume_ratio():
 
 
 def test_old_unfilled_proposal_resets_next_session_but_open_position_does_not():
-    state = {
+    old_proposal = {
         "symbols": {
             "SPY": {"state": "ENTRY_PROPOSED", "session_date": "2026-11-17"},
+        }
+    }
+    open_position = {
+        "symbols": {
             "NVDA": {"state": "OPEN_POSITION", "session_date": "2026-11-17"},
         }
     }
 
-    assert _symbol_cycle_state(state, "SPY", "2026-11-18") == "IDLE"
-    assert _symbol_cycle_state(state, "NVDA", "2026-11-18") == "OPEN_POSITION"
+    assert _wallet_cycle_state(old_proposal, "2026-11-18") == "IDLE"
+    assert _wallet_cycle_state(open_position, "2026-11-18") == "OPEN_POSITION"
+
+
+def test_global_wallet_never_allocates_more_than_250_across_symbols():
+    def lead(symbol, costs):
+        return {
+            "symbol": symbol,
+            "aggregate_decision": "approve",
+            "ladder": [
+                {
+                    "contract_symbol": f"{symbol}{index}",
+                    "max_debit_dollars": cost,
+                    "score": 100 - index,
+                }
+                for index, cost in enumerate(costs)
+            ],
+            "wallet": {},
+            "entry_handoff": {"state": "ENTRY_PROPOSED"},
+            "reviews": [],
+            "lead_id": "old",
+        }
+
+    leads = _apply_global_wallet([lead("SPY", [100, 90]), lead("NVDA", [80, 70])])
+
+    total = sum(item["max_debit_dollars"] for lead in leads for item in lead["ladder"])
+    assert total <= 250
+    assert all(lead["wallet"]["global_proposed_debit_dollars"] == total for lead in leads)

@@ -113,11 +113,11 @@ def test_liquidity_price_dte_and_option_type_are_hard_filters():
     assert payload["rejected_quote_count"] == len(quotes)
 
 
-def test_outside_1230_window_rejects_publication():
+def test_after_1230_window_rejects_publication():
     payload = _build(now=datetime(2026, 11, 18, 13, 0, tzinfo=NY))
 
     assert payload["aggregate_decision"] == "reject"
-    assert "outside_1230_window" in payload["reviews"][-1]["reasons"]
+    assert "after_1230_et" in payload["reviews"][-1]["reasons"]
 
 
 def test_same_inputs_produce_same_content_hash():

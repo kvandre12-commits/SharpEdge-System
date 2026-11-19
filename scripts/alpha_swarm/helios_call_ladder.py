@@ -1,4 +1,4 @@
-"""Deterministic 12:30 ET long-call ladder research leads.
+"""Deterministic noon-to-12:30 ET long-call ladder research leads.
 
 A Helios approval in this module means research-review approval only. It never
 creates broker authority, submits an order, or modifies approval_decision.
@@ -206,10 +206,10 @@ def build_lead(
         blockers.append("unsupported_symbol")
     if local.weekday() >= 5:
         blockers.append("weekend")
-    if (local.hour, local.minute) < (12, 30):
-        blockers.append("before_1230_et")
-    if (local.hour, local.minute) > (12, 40):
-        blockers.append("outside_1230_window")
+    if (local.hour, local.minute) < (12, 0):
+        blockers.append("before_noon_et")
+    if (local.hour, local.minute) > (12, 30):
+        blockers.append("after_1230_et")
     if cycle_state != "IDLE":
         blockers.append(f"cycle_not_idle:{cycle_state}")
 
@@ -239,7 +239,10 @@ def build_lead(
         "schema": SCHEMA,
         "generated_at": now.isoformat(),
         "session_date": local.date().isoformat(),
-        "scheduled_cutoff": local.replace(hour=12, minute=30, second=0, microsecond=0).isoformat(),
+        "entry_window": {
+            "opens_at": local.replace(hour=12, minute=0, second=0, microsecond=0).isoformat(),
+            "closes_at": local.replace(hour=12, minute=30, second=0, microsecond=0).isoformat(),
+        },
         "symbol": symbol,
         "strategy": "long_otm_call_wallet_ladder",
         "trigger": trigger,

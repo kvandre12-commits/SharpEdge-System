@@ -1,7 +1,7 @@
 # Helios 12:30 ET Long-Call Ladder
 
-Helios publishes a deterministic SPY/NVDA research lead once per weekday near
-12:30 `America/New_York`. "Ladder" means a wallet-bounded basket of long OTM
+Helios watches for a deterministic SPY/NVDA research lead each weekday from
+12:00 through 12:30 `America/New_York`. "Ladder" means a wallet-bounded basket of long OTM
 calls across eligible strikes/expirations, not a call spread and never a short
 option.
 
@@ -16,7 +16,8 @@ option.
 - Bid must be positive, quote must not be crossed, and spread must be at most
   25% of midpoint.
 - Minimum volume is 10 and minimum open interest is 50.
-- Total proposed debit may not exceed $250.
+- SPY and NVDA share one global wallet; total proposed debit across both symbols
+  may not exceed $250.
 - NERV volume, OI, width, IV/Greeks, and refill-target alignment rank eligible
   calls. They cannot override a failed trigger or liquidity gate.
 
@@ -33,8 +34,9 @@ The deterministic reviewers are:
 4. skeptic
 
 All must approve. Missing/stale evidence causes abstention. Policy violations,
-a false trigger, a non-idle cycle, weekends, or publication outside 12:30–12:40
-ET cause rejection.
+a false trigger, a non-idle cycle, weekends, or publication outside 12:00–12:30
+ET cause rejection. A false trigger does not end the window: the runner checks
+again on later operator refreshes until a lead is approved or 12:30 passes.
 
 Helios approval means **research lead approved for operator review**. Every
 artifact is non-authoritative, non-executable, and unable to modify
@@ -73,10 +75,11 @@ The always-running operator refresh calls:
 python3 -m scripts.agents.helios_call_ladder_runner
 ```
 
-Outside the 12:30–12:40 ET window it exits without network work. During the
-window it refreshes a dedicated SPY/NVDA NERV snapshot, captures current
-intraday features, publishes once, and latches approved cycles against duplicate
-same-trigger entries.
+Outside the 12:00–12:30 ET window it exits without network work. During the
+window it reuses a dedicated SPY/NVDA NERV snapshot for up to five minutes,
+captures current intraday features, and keeps evaluating until it publishes an
+approved wallet reservation or the window closes. An approved proposal latches
+the shared wallet against duplicate or cross-symbol entries.
 
 Manual bounded validation:
 

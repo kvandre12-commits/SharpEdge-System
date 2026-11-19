@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish one idempotent SPY/NVDA Helios call-ladder lead near 12:30 ET."""
+"""Publish one idempotent SPY/NVDA Helios call-ladder lead from noon–12:30 ET."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _due(now: datetime) -> bool:
     local = now.astimezone(NY)
-    return local.weekday() < 5 and time(12, 30) <= local.time() <= time(12, 40)
+    return local.weekday() < 5 and time(12, 0) <= local.time() <= time(12, 30)
 
 
 def _features(rows: list[dict[str, Any]]) -> dict[str, float] | None:
@@ -111,20 +111,77 @@ def _refresh_nerv() -> None:
     subprocess.run(command, cwd=ROOT, check=True, timeout=120)
 
 
-def _symbol_cycle_state(state: dict[str, Any], symbol: str, session_date: str) -> str:
-    item = (state.get("symbols") or {}).get(symbol) or {}
-    current = str(item.get("state") or "IDLE")
-    if item.get("session_date") != session_date and current in {"ENTRY_PROPOSED", "STAND_DOWN", "CLOSED", "COOLDOWN"}:
-        return "IDLE"
-    return current
+def _wallet_cycle_state(state: dict[str, Any], session_date: str) -> str:
+    for item in (state.get("symbols") or {}).values():
+        current = str(item.get("state") or "IDLE")
+        if current in {"OPEN_POSITION", "SELLER_MANAGING", "EXIT_PENDING_CONFIRM"}:
+            return current
+        if current == "ENTRY_PROPOSED" and item.get("session_date") == session_date:
+            return current
+    return "IDLE"
+
+
+def _snapshot_is_fresh(path: Path, now: datetime, max_age_minutes: float = 5.0) -> bool:
+    summary = (_read_json(path).get("summary") or {}) if path.exists() else {}
+    try:
+        fetched = datetime.fromisoformat(str(summary.get("fetch_timestamp") or "").replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    age = (now.astimezone(UTC) - fetched.astimezone(UTC)).total_seconds() / 60.0
+    return 0 <= age <= max_age_minutes
+
+
+def _apply_global_wallet(leads: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    candidates = [
+        (float(item.get("score") or 0.0), lead["symbol"], item)
+        for lead in leads
+        if lead.get("aggregate_decision") == "approve"
+        for item in lead.get("ladder") or []
+    ]
+    candidates.sort(key=lambda row: (-row[0], row[1], str(row[2].get("contract_symbol"))))
+    selected: dict[str, list[dict[str, Any]]] = {symbol: [] for symbol in SYMBOLS}
+    spent = 0.0
+    for _score, symbol, item in candidates:
+        cost = float(item.get("max_debit_dollars") or 0.0)
+        if cost > 0 and spent + cost <= 250.0:
+            selected[symbol].append(item)
+            spent += cost
+
+    for lead in leads:
+        symbol = lead["symbol"]
+        originally_approved = lead.get("aggregate_decision") == "approve"
+        lead["ladder"] = selected.get(symbol, [])
+        debit = round(sum(float(item["max_debit_dollars"]) for item in lead["ladder"]), 2)
+        lead["wallet"] = {
+            "global_cap_dollars": 250.0,
+            "proposed_debit_dollars": debit,
+            "global_proposed_debit_dollars": round(spent, 2),
+            "global_remaining_dollars": round(250.0 - spent, 2),
+        }
+        if originally_approved and not lead["ladder"]:
+            lead["aggregate_decision"] = "abstain"
+            lead["entry_handoff"]["state"] = "STAND_DOWN"
+            lead["reviews"].append(
+                {
+                    "role": "global_wallet_allocator",
+                    "decision": "abstain",
+                    "reasons": ["global_wallet_allocated_elsewhere"],
+                    "authoritative": False,
+                    "execution_permitted": False,
+                }
+            )
+        unsigned = dict(lead)
+        unsigned.pop("lead_id", None)
+        lead["lead_id"] = payload_sha256(unsigned)
+    return leads
 
 
 def build_run(now: datetime, *, refresh_nerv: bool = True) -> dict[str, Any]:
     local = now.astimezone(NY)
     session_date = local.date().isoformat()
-    if refresh_nerv:
-        _refresh_nerv()
     snapshot_path = SNAPSHOT_DIR / "nerv_options_snapshot.json"
+    if refresh_nerv and not _snapshot_is_fresh(snapshot_path, now):
+        _refresh_nerv()
     snapshot = _read_json(snapshot_path)
     gap_watch = _read_json(GAP_WATCH)
     state = _read_json(STATE_PATH)
@@ -143,6 +200,7 @@ def build_run(now: datetime, *, refresh_nerv: bool = True) -> dict[str, Any]:
 
     leads = []
     feature_packets: dict[str, Any] = {}
+    cycle_state = _wallet_cycle_state(state, session_date)
     for symbol in SYMBOLS:
         rows, source = fetch_yahoo_regular_session_chart_rows(symbol, timeout=15)
         features = _features(rows)
@@ -169,11 +227,12 @@ def build_run(now: datetime, *, refresh_nerv: bool = True) -> dict[str, Any]:
                 quotes=symbol_quotes,
                 nearest_target=targets.get(symbol),
                 source_hashes=source_hashes,
-                cycle_state=_symbol_cycle_state(state, symbol, session_date),
+                cycle_state=cycle_state,
                 data_issues=sorted(set(symbol_issues)),
             )
         )
 
+    leads = _apply_global_wallet(leads)
     payload = {
         "schema": "sharpedge.helios_call_ladder_run.v1",
         "generated_at": now.isoformat(),
@@ -193,15 +252,19 @@ def build_run(now: datetime, *, refresh_nerv: bool = True) -> dict[str, Any]:
 def _update_state(payload: dict[str, Any]) -> None:
     state = _read_json(STATE_PATH)
     symbols = state.setdefault("symbols", {})
+    total_reserved = 0.0
     for lead in payload["leads"]:
         symbol = lead["symbol"]
         existing = symbols.get(symbol) or {}
         if lead["aggregate_decision"] == "approve":
+            debit = float((lead.get("wallet") or {}).get("proposed_debit_dollars") or 0.0)
+            total_reserved += debit
             symbols[symbol] = {
                 "state": "ENTRY_PROPOSED",
                 "session_date": payload["session_date"],
                 "trigger_id": lead["lead_id"],
                 "lead_id": lead["lead_id"],
+                "reserved_dollars": debit,
             }
         else:
             symbols[symbol] = {
@@ -210,6 +273,11 @@ def _update_state(payload: dict[str, Any]) -> None:
                 "last_evaluated_session": payload["session_date"],
                 "last_decision": lead["aggregate_decision"],
             }
+    state["wallet"] = {
+        "cap_dollars": 250.0,
+        "reserved_dollars": round(total_reserved, 2),
+        "available_dollars": round(250.0 - total_reserved, 2),
+    }
     state["updated_at"] = payload["generated_at"]
     _atomic_json(STATE_PATH, state)
 
@@ -228,7 +296,8 @@ def main() -> int:
         return 0
     local = now.astimezone(NY)
     daily_path = OUTDIR / local.date().isoformat() / "lead_1230.json"
-    if daily_path.exists() and not args.force:
+    state = _read_json(STATE_PATH)
+    if _wallet_cycle_state(state, local.date().isoformat()) != "IDLE" and not args.force:
         return 0
     payload = build_run(now, refresh_nerv=not args.no_refresh)
     _atomic_json(daily_path, payload)
