@@ -1,5 +1,10 @@
 # SharpEdge Systems
 
+> Recruiter or reviewer? Start with the
+> [60-second engineering evidence](docs/RECRUITER_EVIDENCE.md): one merged
+> upstream concurrency fix, one reproducible crash-recovery proof, exact test
+> commands, and explicit limits.
+
 ## What is this?
 
 SharpEdge-System is the signal-generation and trade-gate analytics repo for
