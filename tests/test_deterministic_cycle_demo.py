@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import pytest
+
+from scripts.agents.compounding_agent import build_candidate, summarize_candidates
 from scripts.agents.deterministic_cycle_demo import run_cycle, write_atomic
 
 
@@ -44,6 +47,48 @@ def test_compounding_agent_learns_only_for_future_evaluation():
         "may_modify_approval_decision": False,
         "may_modify_policy": False,
     }
+
+
+def _candidate(cycle_number: int, observed_delta: float = 15.0):
+    return build_candidate(
+        cycle_receipt_id=f"cycle-receipt-{cycle_number}",
+        adjudication={"receipt_id": f"adjudication-{cycle_number}"},
+        outcome={
+            "receipt_id": f"outcome-{cycle_number}",
+            "observed_delta_pct": observed_delta,
+        },
+    )
+
+
+def test_compounding_summary_requires_distinct_consistent_settled_cycles():
+    summary = summarize_candidates([_candidate(1), _candidate(2), _candidate(3)])
+
+    assert summary["evidence_count"] == 3
+    assert summary["consistent"] is True
+    assert summary["review_eligible"] is True
+    assert summary["promotion_eligible"] is False
+    assert summary["promotion_status"] == "human_review_required"
+    assert summary["policy_modified"] is False
+    assert summary["causality_claimed"] is False
+    assert summary["authority"]["may_self_promote"] is False
+    assert summary["authority"]["may_modify_policy"] is False
+
+
+def test_duplicate_cycle_cannot_manufacture_compounding_confidence():
+    candidate = _candidate(1)
+
+    with pytest.raises(ValueError, match="duplicate cycle evidence"):
+        summarize_candidates([candidate, candidate, candidate])
+
+
+def test_inconsistent_evidence_stays_below_review_gate():
+    summary = summarize_candidates([_candidate(1), _candidate(2, -4.0), _candidate(3)])
+
+    assert summary["consistent"] is False
+    assert summary["review_eligible"] is False
+    assert summary["promotion_eligible"] is False
+    assert summary["promotion_status"] == "collect_more_evidence"
+    assert summary["candidate_lesson"] is None
 
 
 def test_atomic_projection_is_byte_identical_on_repeat(tmp_path):
