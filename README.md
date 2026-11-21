@@ -5,6 +5,11 @@
 [![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
 
+> Recruiter or reviewer? Start with the
+> [60-second engineering evidence](docs/RECRUITER_EVIDENCE.md): one merged
+> upstream concurrency fix, one reproducible crash-recovery proof, exact test
+> commands, and explicit limits.
+
 SharpEdge Systems is a systematic market data and regime analysis engine focused on
 clarity, discipline, and decision-quality over noise.
 
