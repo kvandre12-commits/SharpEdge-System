@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from scripts.agents.compounding_agent import summarize_candidates
 from scripts.agents.deterministic_cycle_demo import run_cycle, write_atomic
 from scripts.alpha_swarm.contracts import canonical_json, payload_sha256
 
@@ -52,6 +53,16 @@ class RecoveryLedger:
             );
             CREATE TABLE IF NOT EXISTS cycle_commits (
                 cycle_id TEXT PRIMARY KEY,
+                receipt_id TEXT NOT NULL,
+                payload_json TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS compounding_candidates (
+                cycle_receipt_id TEXT PRIMARY KEY,
+                receipt_id TEXT NOT NULL,
+                payload_json TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS compounding_reviews (
+                evidence_set_id TEXT PRIMARY KEY,
                 receipt_id TEXT NOT NULL,
                 payload_json TEXT NOT NULL
             );
@@ -187,6 +198,115 @@ class RecoveryLedger:
         except BaseException:
             self.connection.rollback()
             raise
+
+    def record_compounding_candidate(self, payload: dict[str, Any]) -> bool:
+        """Persist one candidate per settled cycle; replay is idempotent."""
+        cycle_receipt_id = str(payload.get("cycle_receipt_id") or "")
+        receipt_id = str(payload.get("receipt_id") or "")
+        if not cycle_receipt_id or not receipt_id:
+            raise ValueError("candidate requires cycle_receipt_id and receipt_id")
+        payload_json = canonical_json(payload)
+        with self.connection:
+            row = self.connection.execute(
+                "SELECT receipt_id, payload_json FROM compounding_candidates "
+                "WHERE cycle_receipt_id = ?",
+                (cycle_receipt_id,),
+            ).fetchone()
+            if row is not None:
+                if row != (receipt_id, payload_json):
+                    raise ContradictoryHistoryError(
+                        f"conflicting compounding evidence for {cycle_receipt_id}"
+                    )
+                return False
+            self.connection.execute(
+                "INSERT INTO compounding_candidates "
+                "(cycle_receipt_id, receipt_id, payload_json) VALUES (?, ?, ?)",
+                (cycle_receipt_id, receipt_id, payload_json),
+            )
+        return True
+
+    def publish_compounding_review(
+        self,
+        summary: dict[str, Any],
+        *,
+        crash_before_commit: bool = False,
+    ) -> bool:
+        """Publish one review per exact evidence set after verifying its sources."""
+        source_cycles = sorted(summary.get("source_cycle_receipts") or [])
+        source_candidates = sorted(summary.get("source_candidate_receipts") or [])
+        if not source_cycles or len(source_cycles) != len(source_candidates):
+            raise ValueError("summary requires paired source cycle and candidate receipts")
+        evidence_set_id = payload_sha256(
+            {
+                "source_cycle_receipts": source_cycles,
+                "minimum_evidence": summary.get("minimum_evidence"),
+            }
+        )
+        receipt_id = str(summary.get("receipt_id") or "")
+        payload_json = canonical_json(summary)
+
+        self.connection.execute("BEGIN IMMEDIATE")
+        try:
+            placeholders = ",".join("?" for _ in source_cycles)
+            rows = self.connection.execute(
+                "SELECT cycle_receipt_id, receipt_id, payload_json "
+                "FROM compounding_candidates "
+                f"WHERE cycle_receipt_id IN ({placeholders})",
+                source_cycles,
+            ).fetchall()
+            actual = sorted(receipt for _cycle, receipt, _payload in rows)
+            if len(rows) != len(source_cycles) or actual != source_candidates:
+                raise ContradictoryHistoryError(
+                    "staged compounding evidence does not match review summary"
+                )
+            stored_candidates = [json.loads(payload) for _cycle, _receipt, payload in rows]
+            expected_summary = summarize_candidates(
+                stored_candidates,
+                minimum_evidence=int(summary["minimum_evidence"]),
+            )
+            if canonical_json(expected_summary) != payload_json:
+                raise ContradictoryHistoryError(
+                    "compounding review is not reproducible from staged evidence"
+                )
+            if crash_before_commit:
+                print(
+                    "SIMULATED_CRASH=during_compounding_review_publication",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                os._exit(CRASH_EXIT_CODE)
+
+            row = self.connection.execute(
+                "SELECT receipt_id, payload_json FROM compounding_reviews "
+                "WHERE evidence_set_id = ?",
+                (evidence_set_id,),
+            ).fetchone()
+            if row is not None:
+                if row != (receipt_id, payload_json):
+                    raise ContradictoryHistoryError(
+                        f"conflicting compounding review for {evidence_set_id}"
+                    )
+                self.connection.commit()
+                return False
+            self.connection.execute(
+                "INSERT INTO compounding_reviews "
+                "(evidence_set_id, receipt_id, payload_json) VALUES (?, ?, ?)",
+                (evidence_set_id, receipt_id, payload_json),
+            )
+            self.connection.commit()
+            return True
+        except BaseException:
+            self.connection.rollback()
+            raise
+
+    def compounding_counts(self) -> dict[str, int]:
+        return {
+            name: int(self.connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0])
+            for name, table in {
+                "candidates": "compounding_candidates",
+                "reviews": "compounding_reviews",
+            }.items()
+        }
 
     def counts(self, cycle_id: str) -> dict[str, int]:
         return {
