@@ -120,18 +120,16 @@ Expected exit code: `86`. Restart without `--crash-before-review`, then run the
 same restart command again. The first restart publishes one review; the replay
 publishes none.
 
-## Relevant commits
+## Relevant public commits
 
-```text
-cb5c1a0  Add deterministic protective cycle demo
-b5907fb  Prove cycle recovery across publication crash
-d26304e  Aggregate compounding evidence without self-promotion
-4d94229  Recover compounding review publication exactly once
-```
+- [`cb5c1a0`](https://github.com/kvandre12-commits/SharpEdge-System/commit/cb5c1a0f92eeb69b485f506f8aced9987885ea0c) — Add deterministic protective cycle demo
+- [`b5907fb`](https://github.com/kvandre12-commits/SharpEdge-System/commit/b5907fb44956489897f8783947c5a05babb99e6a) — Prove cycle recovery across publication crash
+- [`d26304e`](https://github.com/kvandre12-commits/SharpEdge-System/commit/d26304ebf1574df26440dc471b0372a4fac572da) — Aggregate compounding evidence without self-promotion
+- [`4d94229`](https://github.com/kvandre12-commits/SharpEdge-System/commit/4d94229c4471022e89748624f0775f15df339218) — Recover compounding review publication exactly once
 
-These commit links become publicly verifiable only after this feature branch is
-published to GitHub. Until then, describe the recovery result as locally tested,
-not publicly inspectable.
+The proof is published on the `feature/deterministic-cycle-demo` branch. It is
+publicly inspectable and reproducible, but it has not been merged into the
+repository's default branch.
 
 ## Honest boundary
 
