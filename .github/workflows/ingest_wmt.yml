@@ -128,5 +128,5 @@ jobs:
 
           git add data/ outputs/ sql/ scripts/ || true
           git diff --staged --quiet && echo "No changes to commit" && exit 0
-          git commit -m "WMT pipeline update"
-          git push
+          git commit -m "WMT pipeline update" || true
+          git push || echo "::warning::Protected main rejected the scheduled data push; run output remains visible in this job"

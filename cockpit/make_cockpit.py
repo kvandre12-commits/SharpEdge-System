@@ -46,6 +46,7 @@ from market_data_sources import (
     read_options_surface,
 )
 from monthly_context_chart import build_monthly_context_svg
+from options_availability import fetch_cboe_options_book_fail_soft
 from open_resolution import build_open_resolution_live
 from post_apple_rotation import build_post_apple_rotation_live
 from price_authority import apply_yahoo_display_price
@@ -180,7 +181,7 @@ def fetch_options():
 
 
 def fetch_options_with_source():
-    return fetch_cboe_options_book("SPY")
+    return fetch_cboe_options_book_fail_soft("SPY")
 
 
 # ----------------------------- analytics -----------------------------
@@ -339,23 +340,32 @@ def synthesize(pa, op):
         lines.append(("Move volume mixed", "warn", detail))
 
     # 5. options walls (magnets / levels)
-    cw, pw = op["call_wall"], op["put_wall"]
-    if cw is not None and pw is not None:
+    if not op.get("available", True):
         lines.append(
             (
-                "Options box",
-                "info",
-                f"put wall ${pw:g} (support) <-> call wall ${cw:g} "
-                f"(resistance) | exp {op['exp']}",
+                "Options unavailable",
+                "warn",
+                "CBOE delayed options could not be fetched; no walls, PCR, IV, or gamma inferred",
             )
         )
-    lines.append(
-        (
-            "Sentiment",
-            "info",
-            f"P/C OI {op['pcr']:.2f} | ATM IV {op['atm_iv'] * 100:.1f}%",
+    else:
+        cw, pw = op["call_wall"], op["put_wall"]
+        if cw is not None and pw is not None:
+            lines.append(
+                (
+                    "Options box",
+                    "info",
+                    f"put wall ${pw:g} (support) <-> call wall ${cw:g} "
+                    f"(resistance) | exp {op['exp']}",
+                )
+            )
+        lines.append(
+            (
+                "Sentiment",
+                "info",
+                f"P/C OI {op['pcr']:.2f} | ATM IV {op['atm_iv'] * 100:.1f}%",
+            )
         )
-    )
 
     return lines
 
