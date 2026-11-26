@@ -415,6 +415,7 @@ def read_options_surface(
 
     if not book:
         return {
+            "available": False,
             "exp": None,
             "call_wall": None,
             "put_wall": None,
@@ -488,6 +489,7 @@ def read_options_surface(
     )
 
     return {
+        "available": True,
         "exp": expiry.isoformat(),
         "call_wall": call_wall,
         "put_wall": put_wall,
@@ -576,6 +578,7 @@ def fetch_cboe_options_book(
     source = {
         "provider": "cboe",
         "endpoint": "delayed_quotes/options",
+        "available": True,
         "symbol": symbol,
         "option_count": len(options),
         "current_price": _safe_float(data.get("current_price")),
